@@ -1,0 +1,216 @@
+import { Employee, Vacation, Setting } from '../models/index.js';
+import { calculateEmployeeVacationStats } from './employeeController.js';
+import { Op } from 'sequelize';
+
+// Helper para calcular días hábiles excluyendo sábados y domingos
+export const calculateBusinessDays = (startDateStr, returnDateStr) => {
+  const start = new Date(startDateStr + 'T00:00:00');
+  const returnDate = new Date(returnDateStr + 'T00:00:00');
+  
+  if (returnDate <= start) return 0;
+  
+  let businessDays = 0;
+  let current = new Date(start);
+  
+  // Se recorre desde el día de inicio hasta el día ANTERIOR a la fecha de regreso.
+  // El "returnDate" representa el día en que el empleado vuelve a laborar físicamente.
+  while (current < returnDate) {
+    const dayOfWeek = current.getDay();
+    if (dayOfWeek !== 0 && dayOfWeek !== 6) { // 0 = Domingo, 6 = Sábado
+      businessDays++;
+    }
+    current.setDate(current.getDate() + 1);
+  }
+  return businessDays;
+};
+
+export const registerVacation = async (req, res) => {
+  const { employeeId, startDate, returnDate, notes } = req.body;
+
+  try {
+    if (!employeeId || !startDate || !returnDate) {
+      return res.status(400).json({ message: 'El id del empleado, fecha de inicio y fecha de regreso son requeridos.' });
+    }
+
+    const employee = await Employee.findByPk(employeeId, {
+      include: [{ model: Vacation, as: 'vacations' }]
+    });
+
+    if (!employee) {
+      return res.status(404).json({ message: 'Empleado no encontrado.' });
+    }
+
+    if (employee.status !== 'activo') {
+      return res.status(400).json({ message: 'No se pueden registrar vacaciones para un empleado inactivo.' });
+    }
+
+    const start = new Date(startDate);
+    const ret = new Date(returnDate);
+
+    if (ret <= start) {
+      return res.status(400).json({ message: 'La fecha de regreso debe ser posterior a la fecha de inicio.' });
+    }
+
+    // Calcular días hábiles
+    const businessDays = calculateBusinessDays(startDate, returnDate);
+    if (businessDays === 0) {
+      return res.status(400).json({ message: 'El intervalo seleccionado no contiene días hábiles laborables.' });
+    }
+
+    // Calcular estadísticas actuales del empleado
+    const stats = await calculateEmployeeVacationStats(employee);
+
+    // Validar si tiene suficientes días disponibles
+    if (businessDays > stats.availableDays) {
+      return res.status(400).json({
+        message: `El empleado no tiene suficientes días disponibles. Solicitados: ${businessDays}, Disponibles: ${stats.availableDays}.`
+      });
+    }
+
+    // Crear registro de vacaciones
+    const vacation = await Vacation.create({
+      employeeId,
+      startDate,
+      returnDate,
+      businessDays,
+      notes
+    });
+
+    res.status(201).json({
+      message: 'Vacaciones registradas exitosamente.',
+      vacation
+    });
+  } catch (error) {
+    console.error('Error al registrar vacaciones:', error);
+    res.status(500).json({ message: 'Error interno del servidor al registrar vacaciones.' });
+  }
+};
+
+export const deleteVacation = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const vacation = await Vacation.findByPk(id);
+    if (!vacation) {
+      return res.status(404).json({ message: 'Registro de vacaciones no encontrado.' });
+    }
+
+    await vacation.destroy();
+    res.json({ message: 'Registro de vacaciones eliminado con éxito.' });
+  } catch (error) {
+    console.error('Error al eliminar vacaciones:', error);
+    res.status(500).json({ message: 'Error al eliminar el registro de vacaciones.' });
+  }
+};
+
+export const getDashboardStats = async (req, res) => {
+  try {
+    const employees = await Employee.findAll({
+      include: [{ model: Vacation, as: 'vacations' }]
+    });
+
+    const settings = await Setting.findOne() || { daysRequiredForOneVacationDay: 24.333333333333332 };
+    const todayStr = new Date().toISOString().split('T')[0];
+    const today = new Date(todayStr + 'T00:00:00');
+
+    let totalEmployees = 0;
+    let activeEmployees = 0;
+    let totalPendingDays = 0;
+    const currentlyOnVacation = [];
+    const lowBalanceEmployees = [];
+    const upcomingVacations = [];
+
+    // Límite para vacaciones próximas (próximos 15 días)
+    const fifteenDaysFromNow = new Date(today);
+    fifteenDaysFromNow.setDate(fifteenDaysFromNow.getDate() + 15);
+
+    for (const emp of employees) {
+      totalEmployees++;
+      if (emp.status === 'activo') activeEmployees++;
+
+      const stats = await calculateEmployeeVacationStats(emp, settings);
+      totalPendingDays += stats.availableDays;
+
+      // Empleado con pocos días disponibles (activo y <= 3 días disponibles)
+      if (emp.status === 'activo' && stats.availableDays <= 3) {
+        lowBalanceEmployees.push({
+          id: emp.id,
+          fullName: emp.fullName,
+          position: emp.position,
+          department: emp.department,
+          availableDays: stats.availableDays
+        });
+      }
+
+      // Analizar historial de vacaciones para vacaciones actuales y próximas
+      for (const vac of emp.vacations) {
+        const start = new Date(vac.startDate + 'T00:00:00');
+        const ret = new Date(vac.returnDate + 'T00:00:00');
+
+        // Actualmente en vacaciones: hoy está entre start (inclusive) y ret (exclusive, porque ret es el regreso a trabajar)
+        if (today >= start && today < ret) {
+          currentlyOnVacation.push({
+            employeeName: emp.fullName,
+            department: emp.department,
+            startDate: vac.startDate,
+            returnDate: vac.returnDate,
+            businessDays: vac.businessDays
+          });
+        }
+
+        // Vacaciones próximas: el inicio es mayor que hoy, pero menor o igual a hoy + 15 días
+        if (start > today && start <= fifteenDaysFromNow) {
+          upcomingVacations.push({
+            employeeName: emp.fullName,
+            department: emp.department,
+            startDate: vac.startDate,
+            returnDate: vac.returnDate,
+            businessDays: vac.businessDays
+          });
+        }
+      }
+    }
+
+    res.json({
+      totalEmployees,
+      activeEmployees,
+      totalPendingDays,
+      currentlyOnVacationCount: currentlyOnVacation.length,
+      currentlyOnVacation,
+      upcomingVacations,
+      lowBalanceEmployeesCount: lowBalanceEmployees.length,
+      lowBalanceEmployees
+    });
+  } catch (error) {
+    console.error('Error al obtener estadísticas del dashboard:', error);
+    res.status(500).json({ message: 'Error al obtener estadísticas del dashboard.' });
+  }
+};
+
+export const updateVacationStatus = async (req, res) => {
+  const { id } = req.params;
+  const { status } = req.body;
+
+  try {
+    if (!['Programada', 'Activa', 'Completada'].includes(status)) {
+      return res.status(400).json({ message: 'Estado inválido. Debe ser Programada, Activa o Completada.' });
+    }
+
+    const vacation = await Vacation.findByPk(id);
+    if (!vacation) {
+      return res.status(404).json({ message: 'Registro de vacaciones no encontrado.' });
+    }
+
+    vacation.status = status;
+    await vacation.save();
+
+    res.json({
+      message: `Vacación marcada como "${status}" con éxito.`,
+      vacation
+    });
+  } catch (error) {
+    console.error('Error al actualizar estado de las vacaciones:', error);
+    res.status(500).json({ message: 'Error al actualizar el estado de las vacaciones.' });
+  }
+};
+

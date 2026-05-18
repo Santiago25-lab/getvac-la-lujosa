@@ -4,10 +4,10 @@ import { LayoutDashboard, Users, Settings, LogOut, CalendarCheck, UserCheck, Clo
 export default function Sidebar({ activeView, onViewChange, user, onLogout }) {
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'employees', label: 'Team', icon: Users },
-    { id: 'attendance', label: 'Attendance', icon: Clock },
-    { id: 'permissions', label: 'Permissions', icon: FileText },
-    { id: 'absences', label: 'Absences', icon: AlertOctagon },
+    { id: 'employees', label: 'Colaboradores', icon: Users },
+    { id: 'attendance', label: 'Asistencia', icon: Clock },
+    { id: 'permissions', label: 'Permisos', icon: FileText },
+    { id: 'absences', label: 'Inasistencias', icon: AlertOctagon },
     { id: 'settings', label: 'Configuración', icon: Settings },
   ];
 
@@ -28,7 +28,7 @@ export default function Sidebar({ activeView, onViewChange, user, onLogout }) {
               StaffFlow
             </h1>
             <p className="text-[9px] text-brand-500 font-bold uppercase tracking-wider mt-0.5">
-              HR Management
+              Gestión de RRHH
             </p>
           </div>
         </div>
@@ -54,14 +54,14 @@ export default function Sidebar({ activeView, onViewChange, user, onLogout }) {
             );
           })}
           
-          {/* Botón "+ Add Employee" según captura */}
+          {/* Botón "+ Agregar Colaborador" según captura */}
           {user?.role === 'Administrador' && (
             <button
               onClick={() => onViewChange('employees')}
               className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-bold bg-brand-600 text-white shadow-md shadow-brand-600/10 hover:bg-brand-700 transition-all duration-200 mt-4 cursor-pointer"
             >
               <Plus className="w-4 h-4" />
-              <span>Add Employee</span>
+              <span>Agregar Colaborador</span>
             </button>
           )}
 
@@ -85,14 +85,14 @@ export default function Sidebar({ activeView, onViewChange, user, onLogout }) {
           className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold tracking-wide text-slate-500 hover:bg-slate-50 hover:text-slate-800 transition-all duration-200 select-none"
         >
           <HelpCircle className="w-5 h-5 text-slate-400" />
-          Help Center
+          Centro de Ayuda
         </button>
         <button
           onClick={onLogout}
           className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold tracking-wide text-rose-600 hover:bg-rose-50 transition-all duration-200 select-none mt-1"
         >
           <LogOut className="w-5 h-5 text-rose-500" />
-          Logout
+          Cerrar Sesión
         </button>
       </div>
     </aside>

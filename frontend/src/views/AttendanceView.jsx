@@ -486,6 +486,79 @@ export default function AttendanceView({ token, userRole }) {
 
       </div>
 
+      {/* Sección Gráfico y Reloj QR en la parte inferior */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Gráfico de Tendencia */}
+        <div className="lg:col-span-2 bg-white border border-slate-200/60 rounded-3xl p-6 shadow-sm flex flex-col justify-between">
+          <div>
+            <div className="flex justify-between items-center mb-4">
+              <div>
+                <h4 className="text-sm font-black text-slate-800 tracking-tight">Tendencia de Puntualidad Semanal</h4>
+                <p className="text-[10px] text-slate-450 font-bold">Comparativa de ingresos del lunes a viernes.</p>
+              </div>
+              <div className="flex gap-3 text-[10px] font-bold">
+                <div className="flex items-center gap-1.5 text-slate-600">
+                  <span className="w-2.5 h-2.5 rounded-full bg-brand-500"></span>
+                  <span>A tiempo</span>
+                </div>
+                <div className="flex items-center gap-1.5 text-slate-600">
+                  <span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
+                  <span>Retardo</span>
+                </div>
+              </div>
+            </div>
+            
+            {/* Visual Bars Container */}
+            <div className="h-36 flex items-end justify-between px-4 pt-4 border-b border-slate-100">
+              {[
+                { day: 'Lun', onTime: 92, late: 8 },
+                { day: 'Mar', onTime: 88, late: 12 },
+                { day: 'Mié', onTime: 95, late: 5 },
+                { day: 'Jue', onTime: 90, late: 10 },
+                { day: 'Vie', onTime: 85, late: 15 }
+              ].map((item, index) => (
+                <div key={index} className="flex flex-col items-center gap-2 w-12">
+                  <div className="flex gap-1.5 items-end h-24">
+                    <div 
+                      style={{ height: `${item.onTime}%` }} 
+                      className="w-3.5 bg-brand-500 rounded-t-lg transition-all duration-300 hover:opacity-85" 
+                      title={`${item.onTime}% a tiempo`}
+                    />
+                    <div 
+                      style={{ height: `${item.late}%` }} 
+                      className="w-3.5 bg-amber-500 rounded-t-lg transition-all duration-300 hover:opacity-85" 
+                      title={`${item.late}% tarde`}
+                    />
+                  </div>
+                  <span className="text-[10px] font-bold text-slate-400">{item.day}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Lanzador de Reloj Integrado */}
+        <div className="bg-gradient-to-br from-brand-600 to-brand-500 rounded-3xl p-6 text-white shadow-lg shadow-brand-600/10 flex flex-col justify-between relative overflow-hidden group">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full blur-2xl transform translate-x-10 -translate-y-10 group-hover:scale-125 transition-transform duration-500" />
+          <div className="space-y-2 z-10">
+            <div className="p-3 bg-white/10 rounded-2xl w-fit text-white">
+              <Clock className="w-6 h-6 animate-pulse" />
+            </div>
+            <h4 className="text-base font-black tracking-tight mt-4">Pantalla de Reloj QR</h4>
+            <p className="text-xs text-brand-100 font-medium leading-relaxed">
+              Permite a los colaboradores marcar asistencia de forma segura mediante código QR o ID en una tablet o monitor público.
+            </p>
+          </div>
+          
+          <button
+            onClick={() => window.open('/asistencia-qr', '_blank')}
+            className="w-full mt-6 py-3 rounded-2xl bg-white hover:bg-brand-50 text-brand-600 text-xs font-black uppercase tracking-wider transition active:scale-[0.98] shadow-md shadow-black/5 cursor-pointer z-10"
+          >
+            Lanzar Pantalla Reloj
+          </button>
+        </div>
+      </div>
+
       {/* --- MODAL REGISTRO MANUAL --- */}
       {showManualModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm p-4">

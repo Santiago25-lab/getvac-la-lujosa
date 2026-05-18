@@ -290,7 +290,7 @@ export default function EmployeeList({ token, userRole, onViewChange }) {
                       </td>
                       
                       {/* Documento */}
-                      <td className="py-4 px-4 font-semibold text-slate-550 dark:text-slate-400">
+                      <td className="py-4 px-4 font-semibold text-slate-600 dark:text-slate-400">
                         {emp.documentNumber}
                       </td>
 
@@ -301,7 +301,7 @@ export default function EmployeeList({ token, userRole, onViewChange }) {
                       </td>
 
                       {/* Fecha de Ingreso */}
-                      <td className="py-4 px-4 text-xs font-semibold text-slate-650 dark:text-slate-450">
+                      <td className="py-4 px-4 text-xs font-semibold text-slate-600 dark:text-slate-400">
                         {formatDateFriendly(emp.hireDate)}
                       </td>
 
@@ -322,7 +322,7 @@ export default function EmployeeList({ token, userRole, onViewChange }) {
                       </td>
 
                       {/* Tomados */}
-                      <td className="py-4 px-4 text-center font-bold text-slate-650 dark:text-slate-400">
+                      <td className="py-4 px-4 text-center font-bold text-slate-600 dark:text-slate-400">
                         {stats.takenDays}
                       </td>
 

@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
   --color-brand-50: #eff6ff;
@@ -13,6 +14,11 @@
   --color-brand-800: #1e40af;
   --color-brand-900: #1e3a8a;
   --color-brand-950: #172554;
+  
+  --color-slate-450: #78889b;
+  --color-slate-550: #55657a;
+  --color-slate-650: #3d4e66;
+  --color-slate-850: #141f32;
 }
 
 /* Estilos Base para Body */

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Users, Calendar, AlertTriangle, Clock, ArrowRight, UserMinus, UserCheck, ClipboardSignature, UserX } from 'lucide-react';
 import StatCard from '../components/StatCard';
 import { formatDateFriendly } from '../utils/dateUtils';
+import { API_URL } from '../config.js';
 
 export default function Dashboard({ token, onViewChange }) {
   const [stats, setStats] = useState(null);
@@ -13,7 +14,7 @@ export default function Dashboard({ token, onViewChange }) {
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const response = await fetch('http://localhost:5000/api/dashboard/stats', {
+        const response = await fetch(`${API_URL}/api/dashboard/stats`, {
           headers: {
             'Authorization': `Bearer ${token}`
           }
@@ -27,7 +28,7 @@ export default function Dashboard({ token, onViewChange }) {
         setStats(data);
 
         // Cargar estadísticas de asistencia de hoy
-        const attRes = await fetch('http://localhost:5000/api/attendance/stats', {
+        const attRes = await fetch(`${API_URL}/api/attendance/stats`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         if (attRes.ok) {
@@ -36,7 +37,7 @@ export default function Dashboard({ token, onViewChange }) {
         }
 
         // Cargar solicitudes de permisos pendientes
-        const permRes = await fetch('http://localhost:5000/api/permissions', {
+        const permRes = await fetch(`${API_URL}/api/permissions`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         if (permRes.ok) {

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Search, Plus, FileSpreadsheet, FileText, Trash2, Eye, UserPlus, X, Calendar, UserCheck, AlertTriangle } from 'lucide-react';
 import { exportEmployeesToExcel, exportEmployeesToPDF } from '../utils/exportUtils';
 import { formatDateFriendly } from '../utils/dateUtils';
+import { API_URL } from '../config.js';
 
 export default function EmployeeList({ token, userRole, onViewChange }) {
   const [employees, setEmployees] = useState([]);
@@ -29,7 +30,7 @@ export default function EmployeeList({ token, userRole, onViewChange }) {
 
   const fetchEmployees = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/employees', {
+      const response = await fetch(`${API_URL}/api/employees`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
 
@@ -49,7 +50,7 @@ export default function EmployeeList({ token, userRole, onViewChange }) {
 
   const fetchDepartments = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/departments', {
+      const response = await fetch(`${API_URL}/api/departments`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (response.ok) {
@@ -86,7 +87,7 @@ export default function EmployeeList({ token, userRole, onViewChange }) {
     setFormLoading(true);
 
     try {
-      const response = await fetch('http://localhost:5000/api/employees', {
+      const response = await fetch(`${API_URL}/api/employees`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -125,7 +126,7 @@ export default function EmployeeList({ token, userRole, onViewChange }) {
     }
 
     try {
-      const response = await fetch(`http://localhost:5000/api/employees/${id}`, {
+      const response = await fetch(`${API_URL}/api/employees/${id}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });

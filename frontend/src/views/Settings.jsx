@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Settings, Info, Save, ShieldAlert, CheckCircle2, ListFilter, ShieldCheck } from 'lucide-react';
+import { API_URL } from '../config.js';
 
 export default function SettingsView({ token, userRole }) {
   const [days, setDays] = useState(30);
@@ -19,7 +20,7 @@ export default function SettingsView({ token, userRole }) {
 
   const fetchSettings = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/settings', {
+      const response = await fetch(`${API_URL}/api/settings`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
 
@@ -59,7 +60,7 @@ export default function SettingsView({ token, userRole }) {
     setErrorMsg('');
 
     try {
-      const response = await fetch('http://localhost:5000/api/settings', {
+      const response = await fetch(`${API_URL}/api/settings`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

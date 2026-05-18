@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Clock, CheckCircle2, AlertTriangle, CreditCard } from 'lucide-react';
+import { API_URL } from '../config.js';
 
 export default function PublicAttendance() {
   const [documentNumber, setDocumentNumber] = useState('');
@@ -45,7 +46,7 @@ export default function PublicAttendance() {
     setLoading(true);
     try {
       // Registrar asistencia en el servidor (capturando hora segura)
-      const response = await fetch('http://localhost:5000/api/public/attendance/register', {
+      const response = await fetch(`${API_URL}/api/public/attendance/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ documentNumber: documentNumber.trim() })

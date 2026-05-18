@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { FileText, Search, Calendar, Filter, Plus, CheckCircle2, XCircle, Clock, AlertCircle } from 'lucide-react';
+import { API_URL } from '../config.js';
 
 export default function PermissionsView({ token, userRole }) {
   const [permissions, setPermissions] = useState([]);
@@ -42,7 +43,7 @@ export default function PermissionsView({ token, userRole }) {
       if (startDate) queryParams.append('startDate', startDate);
       if (endDate) queryParams.append('endDate', endDate);
 
-      const response = await fetch(`http://localhost:5000/api/permissions?${queryParams.toString()}`, {
+      const response = await fetch(`${API_URL}/api/permissions?${queryParams.toString()}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (response.ok) {
@@ -51,7 +52,7 @@ export default function PermissionsView({ token, userRole }) {
       }
 
       // Empleados para el modal de solicitud
-      const empRes = await fetch('http://localhost:5000/api/employees', {
+      const empRes = await fetch(`${API_URL}/api/employees`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (empRes.ok) {
@@ -77,7 +78,7 @@ export default function PermissionsView({ token, userRole }) {
     setSuccessMsg('');
 
     try {
-      const response = await fetch('http://localhost:5000/api/permissions', {
+      const response = await fetch(`${API_URL}/api/permissions`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -130,7 +131,7 @@ export default function PermissionsView({ token, userRole }) {
     setSuccessMsg('');
 
     try {
-      const response = await fetch(`http://localhost:5000/api/permissions/${selectedPermission.id}/status`, {
+      const response = await fetch(`${API_URL}/api/permissions/${selectedPermission.id}/status`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',

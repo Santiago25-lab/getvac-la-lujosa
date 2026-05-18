@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { ShieldCheck, Briefcase, History, Save, Plus, Trash2, Edit, CheckCircle2, ShieldAlert, Info, Users } from 'lucide-react';
+import { API_URL } from '../config.js';
 
 export default function SuperUserPanelView({ token, userRole }) {
   const [logs, setLogs] = useState([]);
@@ -28,7 +29,7 @@ export default function SuperUserPanelView({ token, userRole }) {
     setLoading(true);
     try {
       // Fetch Logs
-      const logsRes = await fetch('http://localhost:5000/api/audit-logs', {
+      const logsRes = await fetch(`${API_URL}/api/audit-logs`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (logsRes.ok) {
@@ -37,7 +38,7 @@ export default function SuperUserPanelView({ token, userRole }) {
       }
 
       // Fetch Departments
-      const deptsRes = await fetch('http://localhost:5000/api/departments', {
+      const deptsRes = await fetch(`${API_URL}/api/departments`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (deptsRes.ok) {
@@ -46,7 +47,7 @@ export default function SuperUserPanelView({ token, userRole }) {
       }
 
       // Fetch Users
-      const usersRes = await fetch('http://localhost:5000/api/users', {
+      const usersRes = await fetch(`${API_URL}/api/users`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (usersRes.ok) {
@@ -55,7 +56,7 @@ export default function SuperUserPanelView({ token, userRole }) {
       }
 
       // Fetch Settings
-      const settingsRes = await fetch('http://localhost:5000/api/settings', {
+      const settingsRes = await fetch(`${API_URL}/api/settings`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (settingsRes.ok) {
@@ -82,7 +83,7 @@ export default function SuperUserPanelView({ token, userRole }) {
     if (!newDeptName.trim()) return;
 
     try {
-      const res = await fetch('http://localhost:5000/api/departments', {
+      const res = await fetch(`${API_URL}/api/departments`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -104,7 +105,7 @@ export default function SuperUserPanelView({ token, userRole }) {
   const handleSaveSettings = async (e) => {
     e.preventDefault();
     try {
-      const res = await fetch('http://localhost:5000/api/settings', {
+      const res = await fetch(`${API_URL}/api/settings`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -127,7 +128,7 @@ export default function SuperUserPanelView({ token, userRole }) {
     if (!newUser.username.trim() || !newUser.password.trim() || !newUser.fullName.trim()) return;
 
     try {
-      const res = await fetch('http://localhost:5000/api/users', {
+      const res = await fetch(`${API_URL}/api/users`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -149,7 +150,7 @@ export default function SuperUserPanelView({ token, userRole }) {
   const handleDeleteUser = async (id) => {
     if (!window.confirm('¿Estás seguro de eliminar este usuario?')) return;
     try {
-      const res = await fetch(`http://localhost:5000/api/users/${id}`, {
+      const res = await fetch(`${API_URL}/api/users/${id}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Clock, Search, Calendar, Filter, Users, UserCheck, AlertOctagon, UserX, Plus, Edit3, MessageSquare, ClipboardSignature, Download } from 'lucide-react';
+import { API_URL } from '../config.js';
 
 export default function AttendanceView({ token, userRole }) {
   const [records, setRecords] = useState([]);
@@ -76,7 +77,7 @@ export default function AttendanceView({ token, userRole }) {
     setLoading(true);
     try {
       // 1. Cargar Estadísticas del día
-      const statsRes = await fetch('http://localhost:5000/api/attendance/stats', {
+      const statsRes = await fetch(`${API_URL}/api/attendance/stats`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (statsRes.ok) {
@@ -92,7 +93,7 @@ export default function AttendanceView({ token, userRole }) {
       if (startDate) queryParams.append('startDate', startDate);
       if (endDate) queryParams.append('endDate', endDate);
 
-      const recordsRes = await fetch(`http://localhost:5000/api/attendance?${queryParams.toString()}`, {
+      const recordsRes = await fetch(`${API_URL}/api/attendance?${queryParams.toString()}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (recordsRes.ok) {
@@ -101,7 +102,7 @@ export default function AttendanceView({ token, userRole }) {
       }
 
       // 3. Cargar lista de empleados activos para el registro manual
-      const empRes = await fetch('http://localhost:5000/api/employees', {
+      const empRes = await fetch(`${API_URL}/api/employees`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (empRes.ok) {
@@ -127,7 +128,7 @@ export default function AttendanceView({ token, userRole }) {
     setSuccessMsg('');
 
     try {
-      const response = await fetch('http://localhost:5000/api/attendance/manual', {
+      const response = await fetch(`${API_URL}/api/attendance/manual`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -184,7 +185,7 @@ export default function AttendanceView({ token, userRole }) {
     setSuccessMsg('');
 
     try {
-      const response = await fetch(`http://localhost:5000/api/attendance/${selectedRecord.id}/notes`, {
+      const response = await fetch(`${API_URL}/api/attendance/${selectedRecord.id}/notes`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

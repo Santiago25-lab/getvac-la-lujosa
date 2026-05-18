@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { AlertOctagon, Search, Calendar, Filter, Plus, CheckCircle2, ShieldCheck, ClipboardCheck } from 'lucide-react';
+import { API_URL } from '../config.js';
 
 export default function AbsencesView({ token, userRole }) {
   const [absences, setAbsences] = useState([]);
@@ -48,7 +49,7 @@ export default function AbsencesView({ token, userRole }) {
       if (startDate) queryParams.append('startDate', startDate);
       if (endDate) queryParams.append('endDate', endDate);
 
-      const response = await fetch(`http://localhost:5000/api/absences?${queryParams.toString()}`, {
+      const response = await fetch(`${API_URL}/api/absences?${queryParams.toString()}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (response.ok) {
@@ -56,7 +57,7 @@ export default function AbsencesView({ token, userRole }) {
         setAbsences(data);
       }
 
-      const empRes = await fetch('http://localhost:5000/api/employees', {
+      const empRes = await fetch(`${API_URL}/api/employees`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (empRes.ok) {
@@ -82,7 +83,7 @@ export default function AbsencesView({ token, userRole }) {
     setSuccessMsg('');
 
     try {
-      const response = await fetch('http://localhost:5000/api/absences', {
+      const response = await fetch(`${API_URL}/api/absences`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -141,7 +142,7 @@ export default function AbsencesView({ token, userRole }) {
     setSuccessMsg('');
 
     try {
-      const response = await fetch(`http://localhost:5000/api/absences/${selectedAbsence.id}`, {
+      const response = await fetch(`${API_URL}/api/absences/${selectedAbsence.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

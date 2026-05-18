@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { ChevronLeft, CalendarRange, Clock, CalendarDays, CheckCircle2, AlertTriangle, Trash2, FileText, UserSquare2, RefreshCw, ClipboardSignature, ShieldCheck, AlertOctagon } from 'lucide-react';
 import { formatDateFriendly, calculateBusinessDays, calculateReturnDate } from '../utils/dateUtils';
 import { exportEmployeeHistoryToPDF } from '../utils/exportUtils';
+import { API_URL } from '../config.js';
 
 export default function EmployeeDetail({ token, employeeId, onViewChange, userRole }) {
   const [employee, setEmployee] = useState(null);
@@ -23,7 +24,7 @@ export default function EmployeeDetail({ token, employeeId, onViewChange, userRo
   // Cargar datos del empleado
   const fetchEmployeeData = async () => {
     try {
-      const response = await fetch(`http://localhost:5000/api/employees/${employeeId}`, {
+      const response = await fetch(`${API_URL}/api/employees/${employeeId}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
 
@@ -83,7 +84,7 @@ export default function EmployeeDetail({ token, employeeId, onViewChange, userRo
     setBookingError('');
 
     try {
-      const response = await fetch('http://localhost:5000/api/vacations', {
+      const response = await fetch(`${API_URL}/api/vacations`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -123,7 +124,7 @@ export default function EmployeeDetail({ token, employeeId, onViewChange, userRo
     }
 
     try {
-      const response = await fetch(`http://localhost:5000/api/vacations/${vacationId}`, {
+      const response = await fetch(`${API_URL}/api/vacations/${vacationId}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -147,7 +148,7 @@ export default function EmployeeDetail({ token, employeeId, onViewChange, userRo
     }
 
     try {
-      const response = await fetch(`http://localhost:5000/api/vacations/${vacationId}/status`, {
+      const response = await fetch(`${API_URL}/api/vacations/${vacationId}/status`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -175,7 +176,7 @@ export default function EmployeeDetail({ token, employeeId, onViewChange, userRo
     }
 
     try {
-      const response = await fetch(`http://localhost:5000/api/employees/${employee.id}`, {
+      const response = await fetch(`${API_URL}/api/employees/${employee.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

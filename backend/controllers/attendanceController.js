@@ -64,7 +64,8 @@ export const registerPublicAttendance = async (req, res) => {
 
     if (!record) {
       // --- REGISTRO 1: ENTRADA MAÑANA ---
-      const [officialH, officialM] = settings.checkInTime.split(':').map(Number);
+      const officialTime = settings.isSplitShift && settings.checkInTimeMorning ? settings.checkInTimeMorning : settings.checkInTime;
+      const [officialH, officialM] = officialTime.split(':').map(Number);
       const limitSeconds = officialH * 3600 + officialM * 60 + (settings.toleranceMinutes * 60);
 
       const [nowH, nowM, nowS] = timeStr.split(':').map(Number);
@@ -366,12 +367,39 @@ export const getAttendanceStats = async (req, res) => {
     const presentCount = todayRecords.filter(r => r.status === 'Presente' || r.status === 'Salida registrada' || r.status === 'Sin salida' || r.status === 'Tarde').length;
     const lateCount = todayRecords.filter(r => r.status === 'Tarde').length;
     const checkoutCount = todayRecords.filter(r => r.status === 'Salida registrada').length;
-    
-    const absentCount = Math.max(0, totalActiveEmployees - presentCount);
 
-    // Calcular qué empleados activos NO tienen registro hoy (Inasistentes)
-    const presentEmployeeIds = new Set(todayRecords.map(r => r.employeeId));
-    const absentEmployees = activeEmployees.filter(emp => !presentEmployeeIds.has(emp.id));
+    // Obtener políticas horarias configuradas
+    const settings = await Setting.findOne() || {
+      checkInTime: '08:00',
+      checkOutTime: '17:00',
+      toleranceMinutes: 10,
+      workDays: '1,2,3,4,5'
+    };
+
+    // 1. Verificar si hoy es día laboral
+    // new Date().getDay(): 0=Domingo, 1=Lunes, ..., 6=Sábado
+    const localDay = new Date().getDay();
+    const dayOfWeek = localDay === 0 ? 7 : localDay; // Mapear 0 a 7
+    const workDaysArray = settings.workDays ? settings.workDays.split(',').map(Number) : [1,2,3,4,5];
+    const isTodayWorkDay = workDaysArray.includes(dayOfWeek);
+
+    // 2. Verificar si la hora límite (hora de entrada + tolerancia) ya pasó
+    const officialTime = settings.isSplitShift && settings.checkInTimeMorning ? settings.checkInTimeMorning : settings.checkInTime;
+    const [officialH, officialM] = officialTime.split(':').map(Number);
+    const limitMinutes = officialH * 60 + officialM + (settings.toleranceMinutes || 0);
+
+    const now = new Date();
+    const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+    let absentEmployees = [];
+    let absentCount = 0;
+
+    // Si es día laboral y ya pasó la hora límite, determinamos las inasistencias reales
+    if (isTodayWorkDay && currentMinutes >= limitMinutes) {
+      const presentEmployeeIds = new Set(todayRecords.map(r => r.employeeId));
+      absentEmployees = activeEmployees.filter(emp => !presentEmployeeIds.has(emp.id));
+      absentCount = absentEmployees.length;
+    }
 
     res.json({
       totalActiveEmployees,

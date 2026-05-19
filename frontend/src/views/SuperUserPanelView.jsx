@@ -183,6 +183,28 @@ export default function SuperUserPanelView({ token, userRole }) {
     );
   }
 
+  const DAYS = [
+    { id: 1, label: 'L', name: 'Lunes' },
+    { id: 2, label: 'M', name: 'Martes' },
+    { id: 3, label: 'M', name: 'Miércoles' },
+    { id: 4, label: 'J', name: 'Jueves' },
+    { id: 5, label: 'V', name: 'Viernes' },
+    { id: 6, label: 'S', name: 'Sábado' },
+    { id: 7, label: 'D', name: 'Domingo' }
+  ];
+
+  const activeDays = settings.workDays ? settings.workDays.split(',').map(Number) : [];
+
+  const toggleDay = (dayId) => {
+    let daysArray = settings.workDays ? settings.workDays.split(',').map(Number) : [];
+    if (daysArray.includes(dayId)) {
+      daysArray = daysArray.filter(d => d !== dayId);
+    } else {
+      daysArray = [...daysArray, dayId].sort((a, b) => a - b);
+    }
+    setSettings({ ...settings, workDays: daysArray.join(',') });
+  };
+
   return (
     <div className="flex-1 p-8 overflow-y-auto space-y-8 select-none animate-fade-in">
       
@@ -254,15 +276,28 @@ export default function SuperUserPanelView({ token, userRole }) {
               />
             </div>
 
-            <div className="space-y-1">
-              <label className="text-xs font-bold text-slate-500 uppercase">Días Laborables (1=Lun, 5=Vie)</label>
-              <input
-                type="text"
-                value={settings.workDays}
-                onChange={(e) => setSettings({ ...settings, workDays: e.target.value })}
-                className="w-full bg-white border border-slate-200 rounded-xl py-2 px-3 text-sm font-bold text-slate-800 outline-none focus:border-brand-500 transition"
-                placeholder="1,2,3,4,5"
-              />
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-slate-500 uppercase block">Días Laborables</label>
+              <div className="flex gap-2 flex-wrap">
+                {DAYS.map((day) => {
+                  const isActive = activeDays.includes(day.id);
+                  return (
+                    <button
+                      key={day.id}
+                      type="button"
+                      onClick={() => toggleDay(day.id)}
+                      className={`w-10 h-10 rounded-full font-extrabold text-xs flex items-center justify-center border transition-all active:scale-90 cursor-pointer ${
+                        isActive
+                          ? 'bg-rose-600 text-white border-rose-600 hover:bg-rose-700 shadow-md shadow-rose-600/20'
+                          : 'bg-white text-slate-650 border-slate-200 hover:bg-slate-100 hover:text-slate-800'
+                      }`}
+                      title={day.name}
+                    >
+                      {day.label}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
             <div className="flex items-center gap-2">

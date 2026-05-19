@@ -23,6 +23,7 @@ export default function AttendanceView({ token, userRole }) {
   // Modales y Edición
   const [showManualModal, setShowManualModal] = useState(false);
   const [showNotesModal, setShowNotesModal] = useState(false);
+  const [showQrModal, setShowQrModal] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState(null);
   
   // Formulario manual
@@ -76,6 +77,103 @@ export default function AttendanceView({ token, userRole }) {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+  };
+
+  const handlePrintQr = () => {
+    const qrUrl = `${window.location.origin}/asistencia-qr`;
+    const qrCodeApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(qrUrl)}&color=000000`;
+    
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Imprimir QR Corporativo - GetVac</title>
+          <style>
+            body {
+              font-family: 'Helvetica Neue', Arial, sans-serif;
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              justify-content: center;
+              height: 100vh;
+              margin: 0;
+              background-color: #ffffff;
+              color: #0f172a;
+              text-align: center;
+            }
+            .container {
+              border: 6px solid #10b981;
+              padding: 50px;
+              border-radius: 36px;
+              max-width: 500px;
+              box-shadow: 0 20px 50px -12px rgba(0, 0, 0, 0.15);
+            }
+            h1 {
+              font-size: 38px;
+              font-weight: 900;
+              margin-bottom: 6px;
+              color: #0f172a;
+              letter-spacing: -1px;
+            }
+            h2 {
+              font-size: 15px;
+              font-weight: 800;
+              color: #10b981;
+              text-transform: uppercase;
+              letter-spacing: 3px;
+              margin-top: 0;
+              margin-bottom: 32px;
+            }
+            .qr-wrapper {
+              background: #f8fafc;
+              padding: 28px;
+              border-radius: 28px;
+              display: inline-block;
+              border: 2px dashed #cbd5e1;
+            }
+            img {
+              width: 280px;
+              height: 280px;
+              display: block;
+            }
+            p {
+              font-size: 15px;
+              font-weight: 700;
+              color: #475569;
+              margin-top: 32px;
+              line-height: 1.6;
+              padding: 0 10px;
+            }
+            .footer {
+              font-size: 11px;
+              font-weight: 800;
+              color: #94a3b8;
+              margin-top: 36px;
+              text-transform: uppercase;
+              letter-spacing: 1.5px;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <h1>GetVac</h1>
+            <h2>La Lujosa - Registro Móvil</h2>
+            <div class="qr-wrapper">
+              <img src="${qrCodeApiUrl}" alt="QR Asistencia" />
+            </div>
+            <p>Escanea este código QR con tu celular para registrar tu Entrada Mañana, Salida Mañana, Entrada Tarde o Salida Tarde al instante.</p>
+            <div class="footer">Estación de Control Horario Digital</div>
+          </div>
+          <script>
+            window.onload = function() {
+              window.print();
+              setTimeout(function() { window.close(); }, 500);
+            };
+          </script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
   };
 
   // Cargar datos
@@ -566,18 +664,26 @@ export default function AttendanceView({ token, userRole }) {
             <div className="p-3 bg-white/10 rounded-2xl w-fit text-white">
               <Clock className="w-6 h-6 animate-pulse" />
             </div>
-            <h4 className="text-base font-black tracking-tight mt-4">Pantalla de Reloj QR</h4>
+            <h4 className="text-base font-black tracking-tight mt-4">Póster QR de Marcación</h4>
             <p className="text-xs text-brand-100 font-medium leading-relaxed">
-              Permite a los colaboradores marcar asistencia de forma segura mediante código QR o ID en una tablet o monitor público.
+              Genera el QR de marcación móvil sin contacto. Los colaboradores lo escanean desde su celular para registrar sus 4 marcaciones.
             </p>
           </div>
           
-          <button
-            onClick={() => window.open('/asistencia-qr', '_blank')}
-            className="w-full mt-6 py-3 rounded-2xl bg-white hover:bg-brand-50 text-brand-600 text-xs font-black uppercase tracking-wider transition active:scale-[0.98] shadow-md shadow-black/5 cursor-pointer z-10"
-          >
-            Lanzar Pantalla Reloj
-          </button>
+          <div className="grid grid-cols-2 gap-3 mt-6 z-10">
+            <button
+              onClick={() => setShowQrModal(true)}
+              className="py-3 rounded-2xl bg-white hover:bg-brand-50 text-brand-600 text-[11px] font-black uppercase tracking-wider transition active:scale-[0.98] shadow-md shadow-black/5 cursor-pointer"
+            >
+              Generar QR
+            </button>
+            <button
+              onClick={() => window.open('/asistencia-qr', '_blank')}
+              className="py-3 rounded-2xl bg-brand-700/50 hover:bg-brand-800/60 border border-white/20 text-white text-[11px] font-black uppercase tracking-wider transition active:scale-[0.98] shadow-md shadow-black/5 cursor-pointer"
+            >
+              Lanzar Reloj
+            </button>
+          </div>
         </div>
       </div>
 
@@ -817,6 +923,57 @@ export default function AttendanceView({ token, userRole }) {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* --- MODAL CÓDIGO QR CORPORATIVO --- */}
+      {showQrModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm p-4">
+          <div className="w-full max-w-md bg-white border border-slate-200 rounded-3xl p-6 shadow-2xl space-y-6 animate-scale-in">
+            <div className="flex items-center justify-between border-b border-slate-150 pb-3">
+              <h3 className="text-lg font-black text-slate-850">Código QR de Marcación Móvil</h3>
+              <button 
+                onClick={() => setShowQrModal(false)}
+                className="text-slate-400 hover:text-slate-650 font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="text-center space-y-4">
+              <div className="bg-slate-50 border border-slate-150 p-4 rounded-3xl flex justify-center items-center">
+                <img 
+                  src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(window.location.origin + '/asistencia-qr')}&color=0f172a`} 
+                  alt="QR Code" 
+                  className="w-48 h-48 rounded-xl shadow-inner border border-slate-200"
+                />
+              </div>
+
+              <div className="text-xs font-bold text-slate-500 leading-relaxed px-2">
+                Escanea este código QR desde la cámara de tu celular para abrir de forma segura el registro de asistencia de GetVac La Lujosa en tu dispositivo móvil.
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 pt-3">
+              <button
+                type="button"
+                onClick={() => {
+                  navigator.clipboard.writeText(window.location.origin + '/asistencia-qr');
+                  alert('¡Enlace de asistencia copiado al portapapeles!');
+                }}
+                className="px-4 py-3 text-xs font-bold uppercase tracking-wider rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50 active:scale-[0.98] transition"
+              >
+                Copiar Enlace
+              </button>
+              <button
+                type="button"
+                onClick={handlePrintQr}
+                className="px-4 py-3 text-xs font-bold uppercase tracking-wider rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white active:scale-[0.98] transition flex items-center justify-center gap-1.5 shadow-md shadow-emerald-600/10"
+              >
+                Imprimir Póster
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -1,7 +1,33 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Calendar, Search, Bell, Settings } from 'lucide-react';
 
 export default function Navbar({ activeView }) {
+  const [currentTime, setCurrentTime] = useState(new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const formatDateTime = (date) => {
+    const dateStr = date.toLocaleDateString('es-ES', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
+    });
+    const timeStr = date.toLocaleTimeString('es-ES', {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false
+    });
+    // Capitalize first letter of date
+    return `${dateStr.charAt(0).toUpperCase() + dateStr.slice(1)} | ${timeStr}`;
+  };
+
   const getHeaderTitle = () => {
     switch (activeView) {
       case 'dashboard':
@@ -34,15 +60,15 @@ export default function Navbar({ activeView }) {
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <input
             type="text"
-            placeholder="Search..."
+            placeholder="Buscar..."
             className="w-full pl-9 pr-4 py-2 rounded-full bg-slate-100/80 border-none focus:outline-none focus:ring-2 focus:ring-brand-500/20 text-xs font-semibold placeholder-slate-400 text-slate-700"
           />
         </div>
 
-        {/* Fecha Actual */}
-        <div className="hidden lg:flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-slate-100 text-slate-650 text-xs font-bold">
+        {/* Fecha Actual Dinámica */}
+        <div className="hidden lg:flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-slate-100 text-slate-650 text-xs font-bold border border-slate-200/30">
           <Calendar className="w-4 h-4 text-brand-550" />
-          <span>{new Date().toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'short' })}</span>
+          <span className="font-semibold tracking-wide tabular-nums">{formatDateTime(currentTime)}</span>
         </div>
 
         {/* Campana de Notificaciones */}

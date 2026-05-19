@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { ChevronLeft, CalendarRange, Clock, CalendarDays, CheckCircle2, AlertTriangle, Trash2, FileText, UserSquare2, RefreshCw, ClipboardSignature, ShieldCheck, AlertOctagon } from 'lucide-react';
+import { ChevronLeft, CalendarRange, Clock, CalendarDays, CheckCircle2, AlertTriangle, Trash2, FileText, UserSquare2, RefreshCw, ClipboardSignature, ShieldCheck, AlertOctagon, Edit, X } from 'lucide-react';
 import { formatDateFriendly, calculateBusinessDays, calculateReturnDate } from '../utils/dateUtils';
 import { exportEmployeeHistoryToPDF } from '../utils/exportUtils';
 import { API_URL } from '../config.js';
@@ -20,6 +20,22 @@ export default function EmployeeDetail({ token, employeeId, onViewChange, userRo
   const [bookingError, setBookingError] = useState('');
   const [bookingLoading, setBookingLoading] = useState(false);
   const [requestedDays, setRequestedDays] = useState('');
+
+  // Estados para Edición de Empleado
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [departments, setDepartments] = useState([]);
+  const [editFormError, setEditFormError] = useState('');
+  const [editFormLoading, setEditFormLoading] = useState(false);
+  const [formData, setFormData] = useState({
+    fullName: '',
+    documentNumber: '',
+    position: '',
+    department: '',
+    hireDate: '',
+    status: 'activo',
+    email: '',
+    phone: ''
+  });
 
   // Cargar datos del empleado
   const fetchEmployeeData = async () => {
@@ -42,8 +58,23 @@ export default function EmployeeDetail({ token, employeeId, onViewChange, userRo
     }
   };
 
+  const fetchDepartments = async () => {
+    try {
+      const response = await fetch(`${API_URL}/api/departments`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setDepartments(data);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   useEffect(() => {
     fetchEmployeeData();
+    fetchDepartments();
   }, [employeeId, token]);
 
   // Escuchar cambios de fecha para calcular días hábiles en tiempo real
@@ -197,6 +228,65 @@ export default function EmployeeDetail({ token, employeeId, onViewChange, userRo
     }
   };
 
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleEditClick = () => {
+    if (!employee) return;
+    setFormData({
+      fullName: employee.fullName || '',
+      documentNumber: employee.documentNumber || '',
+      position: employee.position || '',
+      department: employee.department || '',
+      hireDate: employee.hireDate || '',
+      status: employee.status || 'activo',
+      email: employee.email || '',
+      phone: employee.phone || ''
+    });
+    setEditFormError('');
+    setIsEditModalOpen(true);
+  };
+
+  const handleUpdateEmployee = async (e) => {
+    e.preventDefault();
+    setEditFormError('');
+
+    const { fullName, documentNumber, position, department, hireDate } = formData;
+
+    if (!fullName.trim() || !documentNumber.trim() || !position.trim() || !department.trim() || !hireDate) {
+      setEditFormError('Todos los campos son requeridos obligatoriamente.');
+      return;
+    }
+
+    setEditFormLoading(true);
+
+    try {
+      const response = await fetch(`${API_URL}/api/employees/${employee.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(formData)
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Error al actualizar los datos del empleado.');
+      }
+
+      setIsEditModalOpen(false);
+      fetchEmployeeData();
+    } catch (err) {
+      setEditFormError(err.message || 'Ocurrió un error en el servidor.');
+    } finally {
+      setEditFormLoading(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center p-8">
@@ -256,10 +346,21 @@ export default function EmployeeDetail({ token, employeeId, onViewChange, userRo
         </div>
 
         <div className="flex items-center gap-3">
+          {/* Editar Datos */}
+          {userRole === 'Administrador' && (
+            <button
+              onClick={handleEditClick}
+              className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-amber-200/50 bg-amber-50 dark:border-amber-900/30 dark:bg-amber-950/10 text-xs font-bold text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-950/20 transition cursor-pointer"
+            >
+              <Edit className="w-4 h-4" />
+              <span>Editar Datos</span>
+            </button>
+          )}
+
           {/* Alternar estado */}
           <button
             onClick={toggleEmployeeStatus}
-            className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 text-xs font-bold text-slate-650 dark:text-slate-350 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+            className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 text-xs font-bold text-slate-650 dark:text-slate-350 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
           >
             <RefreshCw className="w-4 h-4 text-slate-400 animate-spin-slow" />
             <span>Marcar como {employee.status === 'activo' ? 'Inactivo' : 'Activo'}</span>
@@ -268,7 +369,7 @@ export default function EmployeeDetail({ token, employeeId, onViewChange, userRo
           {/* Exportar expediente a PDF */}
           <button
             onClick={() => exportEmployeeHistoryToPDF(employee, employee.vacations, stats)}
-            className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-slate-900 dark:bg-slate-850 hover:bg-slate-800 text-white font-bold text-xs shadow-md hover:shadow-lg transition"
+            className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-slate-900 dark:bg-slate-850 hover:bg-slate-800 text-white font-bold text-xs shadow-md hover:shadow-lg transition cursor-pointer"
           >
             <FileText className="w-4 h-4" />
             <span>Exportar Vacaciones</span>
@@ -810,6 +911,146 @@ export default function EmployeeDetail({ token, employeeId, onViewChange, userRo
         </div>
 
       </div>
+
+      {/* MODAL EDITAR DATOS (EXPEDIENTE) */}
+      {isEditModalOpen && (
+        <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 select-none animate-fade-in">
+          <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl border border-slate-200/50 p-6 space-y-6 max-h-[90vh] overflow-y-auto">
+            {/* Header Modal */}
+            <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-xl bg-brand-500/10 text-brand-500">
+                  <Edit className="w-5 h-5" />
+                </div>
+                <h3 className="text-lg font-bold text-slate-800">
+                  Editar Datos del Empleado
+                </h3>
+              </div>
+              <button
+                onClick={() => { setIsEditModalOpen(false); setEditFormError(''); }}
+                className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-650 transition cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Error Formulario */}
+            {editFormError && (
+              <div className="p-4 bg-rose-500/10 border border-rose-500/20 text-rose-500 rounded-2xl text-xs font-semibold flex items-center gap-2.5">
+                <AlertTriangle className="w-4 h-4 shrink-0" />
+                <span>{editFormError}</span>
+              </div>
+            )}
+
+            {/* Formulario */}
+            <form onSubmit={handleUpdateEmployee} className="space-y-4">
+              
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-500 pl-1 uppercase tracking-wide">Nombre Completo</label>
+                <input
+                  type="text"
+                  name="fullName"
+                  value={formData.fullName}
+                  onChange={handleInputChange}
+                  placeholder="Ej: Juan Pérez"
+                  className="w-full bg-white border border-slate-200 rounded-2xl py-2.5 px-4 text-sm outline-none focus:border-brand-500 transition focus:ring-2 focus:ring-brand-500/10"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-500 pl-1 uppercase tracking-wide">Cédula / Documento</label>
+                  <input
+                    type="text"
+                    name="documentNumber"
+                    value={formData.documentNumber}
+                    onChange={handleInputChange}
+                    placeholder="Ej: 12345678"
+                    className="w-full bg-white border border-slate-200 rounded-2xl py-2.5 px-4 text-sm outline-none focus:border-brand-500 transition focus:ring-2 focus:ring-brand-500/10"
+                  />
+                </div>
+                
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-500 pl-1 uppercase tracking-wide">Cargo / Puesto</label>
+                  <input
+                    type="text"
+                    name="position"
+                    value={formData.position}
+                    onChange={handleInputChange}
+                    placeholder="Ej: Analista"
+                    className="w-full bg-white border border-slate-200 rounded-2xl py-2.5 px-4 text-sm outline-none focus:border-brand-500 transition focus:ring-2 focus:ring-brand-500/10"
+                  />
+                </div>
+              </div>
+
+              {/* Campos de contacto: Correo y Teléfono */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-500 pl-1 uppercase tracking-wide">Correo Electrónico (Gmail)</label>
+                  <input
+                    type="email"
+                    name="email"
+                    value={formData.email}
+                    onChange={handleInputChange}
+                    placeholder="Ej: juan.perez@gmail.com"
+                    className="w-full bg-white border border-slate-200 rounded-2xl py-2.5 px-4 text-sm outline-none focus:border-brand-500 transition focus:ring-2 focus:ring-brand-500/10"
+                  />
+                </div>
+                
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-500 pl-1 uppercase tracking-wide">Número de Teléfono</label>
+                  <input
+                    type="tel"
+                    name="phone"
+                    value={formData.phone}
+                    onChange={handleInputChange}
+                    placeholder="Ej: +57 300 123 4567"
+                    className="w-full bg-white border border-slate-200 rounded-2xl py-2.5 px-4 text-sm outline-none focus:border-brand-500 transition focus:ring-2 focus:ring-brand-500/10"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-500 pl-1 uppercase tracking-wide">Departamento</label>
+                  <select
+                    name="department"
+                    value={formData.department}
+                    onChange={handleInputChange}
+                    className="w-full bg-white border border-slate-200 rounded-2xl py-2.5 px-4 text-sm outline-none focus:border-brand-500 transition"
+                  >
+                    <option value="">Selecciona área...</option>
+                    {departments.map(dept => (
+                      <option key={dept.id} value={dept.name}>{dept.name}</option>
+                    ))}
+                  </select>
+                </div>
+                
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-500 pl-1 uppercase tracking-wide">Fecha de Ingreso</label>
+                  <input
+                    type="date"
+                    name="hireDate"
+                    value={formData.hireDate}
+                    onChange={handleInputChange}
+                    className="w-full bg-white border border-slate-200 rounded-2xl py-2.5 px-4 text-sm outline-none focus:border-brand-500 transition"
+                  />
+                </div>
+              </div>
+
+              {/* Botón de Enviar */}
+              <button
+                type="submit"
+                disabled={editFormLoading}
+                className="w-full bg-brand-500 hover:bg-brand-600 text-white font-bold py-3.5 px-4 rounded-2xl shadow-lg shadow-brand-500/10 transition duration-200 flex items-center justify-center gap-2 cursor-pointer"
+              >
+                {editFormLoading ? 'Guardando...' : 'Guardar Cambios'}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

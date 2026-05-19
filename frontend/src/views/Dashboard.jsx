@@ -78,29 +78,7 @@ export default function Dashboard({ token, onViewChange }) {
 
   return (
     <div className="flex-1 p-8 overflow-y-auto space-y-8 select-none animate-fade-in bg-slate-50/50">
-      {/* Header Superior */}
-      <div className="flex justify-between items-center border-b border-slate-150 pb-4">
-        <div>
-          <span className="text-sm font-bold text-brand-600">Dashboard General</span>
-          <span className="text-sm text-slate-400 mx-2">|</span>
-          <span className="text-sm text-slate-500 font-medium">Lunes, 24 de Octubre 2023</span>
-        </div>
-        <div className="flex items-center gap-4">
-          <button className="text-slate-400 hover:text-slate-600">
-            <Clock className="w-5 h-5" />
-          </button>
-          <button className="text-slate-400 hover:text-slate-600">
-            <Users className="w-5 h-5" />
-          </button>
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-slate-200 rounded-full flex items-center justify-center text-slate-600 font-bold text-xs">
-              AD
-            </div>
-            <span className="text-sm font-bold text-slate-700">Administrador</span>
-          </div>
-        </div>
-      </div>
-
+      
       {/* Banner de Bienvenida */}
       <div className="bg-gradient-to-r from-brand-600 to-brand-500 text-white p-8 rounded-3xl shadow-lg shadow-brand-500/10">
         <h1 className="text-3xl font-extrabold tracking-tight mb-2">Panel de Control General</h1>
@@ -108,10 +86,16 @@ export default function Dashboard({ token, onViewChange }) {
           Bienvenido de nuevo. Hoy tienes una tasa de asistencia del 94%. Revisa las alertas de saldo pendientes y las solicitudes de permisos que requieren tu atención inmediata.
         </p>
         <div className="flex gap-3 mt-6">
-          <button className="bg-white text-brand-600 px-5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider hover:bg-brand-50 transition">
+          <button 
+            onClick={() => onViewChange('attendance')}
+            className="bg-white text-brand-600 px-5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider hover:bg-brand-50 transition active:scale-95 cursor-pointer shadow-md shadow-brand-600/5"
+          >
             Ver Reporte Diario
           </button>
-          <button className="bg-brand-700/50 text-white border border-brand-400/30 px-5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider hover:bg-brand-700 transition">
+          <button 
+            onClick={() => onViewChange('employees')}
+            className="bg-brand-700/50 text-white border border-brand-400/30 px-5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider hover:bg-brand-700 transition active:scale-95 cursor-pointer"
+          >
             Gestionar Equipo
           </button>
         </div>
@@ -245,7 +229,7 @@ export default function Dashboard({ token, onViewChange }) {
         <div className="xl:col-span-2 bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
           <div className="flex justify-between items-center mb-6">
             <h3 className="text-lg font-bold text-slate-800">Actividad Horaria</h3>
-            <button className="text-xs font-bold text-brand-600 hover:text-brand-700">Ver Todo</button>
+            <button onClick={() => onViewChange('attendance')} className="text-xs font-bold text-brand-600 hover:text-brand-700 cursor-pointer">Ver Todo</button>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm border-collapse">
@@ -323,7 +307,7 @@ export default function Dashboard({ token, onViewChange }) {
           <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-bold text-slate-800">Alertas Críticas</h3>
-              <span className="bg-rose-100 text-rose-600 text-[10px] font-black uppercase px-2 py-0.5 rounded-full animate-pulse">Live</span>
+              <span className="bg-rose-100 text-rose-600 text-[10px] font-black uppercase px-2 py-0.5 rounded-full animate-pulse">En Vivo</span>
             </div>
             <div className="space-y-4">
               <div className="flex items-start gap-3 p-3 bg-slate-50 rounded-xl border border-slate-100">
@@ -331,7 +315,7 @@ export default function Dashboard({ token, onViewChange }) {
                 <div>
                   <p className="text-sm font-bold text-slate-700">Salto de Turno Detectado</p>
                   <p className="text-xs text-slate-500 mt-0.5">Planta 04 - Sector C ha reportado falta de personal crítico.</p>
-                  <button className="text-xs font-bold text-rose-600 hover:text-rose-700 mt-1">Gestionar Ahora</button>
+                  <button onClick={() => onViewChange('absences')} className="text-xs font-bold text-rose-600 hover:text-rose-700 mt-1 cursor-pointer">Gestionar Ahora</button>
                 </div>
               </div>
               <div className="flex items-start gap-3 p-3 bg-slate-50 rounded-xl border border-slate-100">
@@ -339,7 +323,7 @@ export default function Dashboard({ token, onViewChange }) {
                 <div>
                   <p className="text-sm font-bold text-slate-700">Nómina por Cerrar</p>
                   <p className="text-xs text-slate-500 mt-0.5">Faltan 4 validaciones para el cierre de quincena.</p>
-                  <button className="text-xs font-bold text-amber-600 hover:text-amber-700 mt-1">Validar Pendientes</button>
+                  <button onClick={() => onViewChange('permissions')} className="text-xs font-bold text-amber-600 hover:text-amber-700 mt-1 cursor-pointer">Validar Pendientes</button>
                 </div>
               </div>
             </div>
@@ -349,7 +333,7 @@ export default function Dashboard({ token, onViewChange }) {
           <div className="bg-emerald-900 text-white p-6 rounded-2xl shadow-sm">
             <h3 className="text-lg font-bold">¿Necesitas ayuda?</h3>
             <p className="text-xs text-emerald-100 mt-1">Nuestro equipo de soporte está listo para ayudarte con la configuración de turnos.</p>
-            <button className="w-full bg-white text-emerald-900 font-bold text-xs uppercase tracking-wider py-3 px-4 rounded-xl mt-4 hover:bg-emerald-50 transition">
+            <button onClick={() => alert('Soporte StaffFlow: Contactar a soporte@staffflow.com o al canal interno de Teams.')} className="w-full bg-white text-emerald-900 font-bold text-xs uppercase tracking-wider py-3 px-4 rounded-xl mt-4 hover:bg-emerald-50 transition cursor-pointer">
               Chat de Soporte
             </button>
           </div>

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Search, Plus, FileSpreadsheet, FileText, Trash2, Eye, UserPlus, X, Calendar, UserCheck, AlertTriangle } from 'lucide-react';
+import { Search, Plus, FileSpreadsheet, FileText, Trash2, Eye, UserPlus, X, Calendar, UserCheck, AlertTriangle, Edit } from 'lucide-react';
 import { exportEmployeesToExcel, exportEmployeesToPDF } from '../utils/exportUtils';
 import { formatDateFriendly } from '../utils/dateUtils';
 import { API_URL } from '../config.js';
@@ -17,6 +17,8 @@ export default function EmployeeList({ token, userRole, onViewChange }) {
   
   // Estado del Modal
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editingEmployeeId, setEditingEmployeeId] = useState(null);
   const [formError, setFormError] = useState('');
   const [formLoading, setFormLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -25,7 +27,9 @@ export default function EmployeeList({ token, userRole, onViewChange }) {
     position: '',
     department: '',
     hireDate: '',
-    status: 'activo'
+    status: 'activo',
+    email: '',
+    phone: ''
   });
 
   const fetchEmployees = async () => {
@@ -73,6 +77,38 @@ export default function EmployeeList({ token, userRole, onViewChange }) {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
+  const handleEditClick = (emp) => {
+    setFormData({
+      fullName: emp.fullName || '',
+      documentNumber: emp.documentNumber || '',
+      position: emp.position || '',
+      department: emp.department || '',
+      hireDate: emp.hireDate || '',
+      status: emp.status || 'activo',
+      email: emp.email || '',
+      phone: emp.phone || ''
+    });
+    setEditingEmployeeId(emp.id);
+    setIsEditMode(true);
+    setIsModalOpen(true);
+  };
+
+  const handleAddClick = () => {
+    setFormData({
+      fullName: '',
+      documentNumber: '',
+      position: '',
+      department: '',
+      hireDate: '',
+      status: 'activo',
+      email: '',
+      phone: ''
+    });
+    setEditingEmployeeId(null);
+    setIsEditMode(false);
+    setIsModalOpen(true);
+  };
+
   const handleRegisterEmployee = async (e) => {
     e.preventDefault();
     setFormError('');
@@ -87,8 +123,14 @@ export default function EmployeeList({ token, userRole, onViewChange }) {
     setFormLoading(true);
 
     try {
-      const response = await fetch(`${API_URL}/api/employees`, {
-        method: 'POST',
+      const url = isEditMode
+        ? `${API_URL}/api/employees/${editingEmployeeId}`
+        : `${API_URL}/api/employees`;
+
+      const method = isEditMode ? 'PUT' : 'POST';
+
+      const response = await fetch(url, {
+        method,
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
@@ -99,7 +141,7 @@ export default function EmployeeList({ token, userRole, onViewChange }) {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || 'Error al registrar al empleado.');
+        throw new Error(data.message || 'Error al guardar los datos del empleado.');
       }
 
       // Reiniciar formulario, cerrar modal y recargar lista
@@ -109,9 +151,13 @@ export default function EmployeeList({ token, userRole, onViewChange }) {
         position: '',
         department: '',
         hireDate: '',
-        status: 'activo'
+        status: 'activo',
+        email: '',
+        phone: ''
       });
       setIsModalOpen(false);
+      setIsEditMode(false);
+      setEditingEmployeeId(null);
       fetchEmployees();
     } catch (err) {
       setFormError(err.message || 'Ocurrió un error en el servidor.');
@@ -201,7 +247,7 @@ export default function EmployeeList({ token, userRole, onViewChange }) {
 
           {/* Botón Añadir Empleado */}
           <button
-            onClick={() => setIsModalOpen(true)}
+            onClick={handleAddClick}
             className="flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-brand-500 hover:bg-brand-600 text-white font-bold text-sm shadow-md hover:shadow-lg transition duration-200"
           >
             <UserPlus className="w-4 h-4" />
@@ -342,7 +388,7 @@ export default function EmployeeList({ token, userRole, onViewChange }) {
                       <td className="py-4 px-6 text-right space-x-2.5">
                         <button
                           onClick={() => onViewChange('employee-detail', emp.id)}
-                          className="inline-flex p-2 rounded-xl bg-brand-500/10 hover:bg-brand-500 hover:text-white text-brand-500 transition duration-150"
+                          className="inline-flex p-2 rounded-xl bg-brand-500/10 hover:bg-brand-500 hover:text-white text-brand-500 transition duration-150 active:scale-95 cursor-pointer"
                           title="Ver Expediente"
                         >
                           <Eye className="w-4 h-4" />
@@ -350,8 +396,18 @@ export default function EmployeeList({ token, userRole, onViewChange }) {
                         
                         {userRole === 'Administrador' && (
                           <button
+                            onClick={() => handleEditClick(emp)}
+                            className="inline-flex p-2 rounded-xl bg-amber-500/10 hover:bg-amber-500 hover:text-white text-amber-600 transition duration-150 active:scale-95 cursor-pointer"
+                            title="Editar Empleado"
+                          >
+                            <Edit className="w-4 h-4" />
+                          </button>
+                        )}
+                        
+                        {userRole === 'Administrador' && (
+                          <button
                             onClick={() => handleDeleteEmployee(emp.id, emp.fullName)}
-                            className="inline-flex p-2 rounded-xl bg-rose-500/10 hover:bg-rose-500 hover:text-white text-rose-500 transition duration-150"
+                            className="inline-flex p-2 rounded-xl bg-rose-500/10 hover:bg-rose-500 hover:text-white text-rose-500 transition duration-150 active:scale-95 cursor-pointer"
                             title="Eliminar Empleado"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -367,10 +423,10 @@ export default function EmployeeList({ token, userRole, onViewChange }) {
         )}
       </div>
 
-      {/* MODAL REGISTRAR EMPLEADO */}
+      {/* MODAL REGISTRAR / EDITAR EMPLEADO */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 select-none">
-          <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl border border-slate-200/50 p-6 space-y-6 animate-fade-in max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 select-none animate-fade-in">
+          <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl border border-slate-200/50 p-6 space-y-6 max-h-[90vh] overflow-y-auto">
             {/* Header Modal */}
             <div className="flex items-center justify-between pb-4 border-b border-slate-100">
               <div className="flex items-center gap-2.5">
@@ -378,12 +434,12 @@ export default function EmployeeList({ token, userRole, onViewChange }) {
                   <UserPlus className="w-5 h-5" />
                 </div>
                 <h3 className="text-lg font-bold text-slate-800">
-                  Registrar Nuevo Empleado
+                  {isEditMode ? 'Editar Datos del Empleado' : 'Registrar Nuevo Empleado'}
                 </h3>
               </div>
               <button
                 onClick={() => { setIsModalOpen(false); setFormError(''); }}
-                className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-650 transition"
+                className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-650 transition cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -433,6 +489,33 @@ export default function EmployeeList({ token, userRole, onViewChange }) {
                     value={formData.position}
                     onChange={handleInputChange}
                     placeholder="Ej: Analista"
+                    className="w-full bg-white border border-slate-200 rounded-2xl py-2.5 px-4 text-sm outline-none focus:border-brand-500 transition focus:ring-2 focus:ring-brand-500/10"
+                  />
+                </div>
+              </div>
+
+              {/* Nuevos campos de contacto: Correo y Teléfono */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-500 pl-1 uppercase tracking-wide">Correo Electrónico (Gmail)</label>
+                  <input
+                    type="email"
+                    name="email"
+                    value={formData.email}
+                    onChange={handleInputChange}
+                    placeholder="Ej: juan.perez@gmail.com"
+                    className="w-full bg-white border border-slate-200 rounded-2xl py-2.5 px-4 text-sm outline-none focus:border-brand-500 transition focus:ring-2 focus:ring-brand-500/10"
+                  />
+                </div>
+                
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-500 pl-1 uppercase tracking-wide">Número de Teléfono</label>
+                  <input
+                    type="tel"
+                    name="phone"
+                    value={formData.phone}
+                    onChange={handleInputChange}
+                    placeholder="Ej: +57 300 123 4567"
                     className="w-full bg-white border border-slate-200 rounded-2xl py-2.5 px-4 text-sm outline-none focus:border-brand-500 transition focus:ring-2 focus:ring-brand-500/10"
                   />
                 </div>
@@ -506,9 +589,9 @@ export default function EmployeeList({ token, userRole, onViewChange }) {
               <button
                 type="submit"
                 disabled={formLoading}
-                className="w-full bg-brand-500 hover:bg-brand-600 text-white font-bold py-3.5 px-4 rounded-2xl shadow-lg shadow-brand-500/10 transition duration-200 flex items-center justify-center gap-2"
+                className="w-full bg-brand-500 hover:bg-brand-600 text-white font-bold py-3.5 px-4 rounded-2xl shadow-lg shadow-brand-500/10 transition duration-200 flex items-center justify-center gap-2 cursor-pointer"
               >
-                {formLoading ? 'Registrando...' : 'Registrar Empleado'}
+                {formLoading ? 'Guardando...' : (isEditMode ? 'Guardar Cambios' : 'Registrar Empleado')}
               </button>
             </form>
           </div>

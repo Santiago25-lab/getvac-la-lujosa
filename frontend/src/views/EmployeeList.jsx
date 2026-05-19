@@ -394,7 +394,7 @@ export default function EmployeeList({ token, userRole, onViewChange }) {
                           <Eye className="w-4 h-4" />
                         </button>
                         
-                        {userRole === 'Administrador' && (
+                        {(userRole === 'Administrador' || userRole === 'Super Usuario') && (
                           <button
                             onClick={() => handleEditClick(emp)}
                             className="inline-flex p-2 rounded-xl bg-amber-500/10 hover:bg-amber-500 hover:text-white text-amber-600 transition duration-150 active:scale-95 cursor-pointer"
@@ -404,7 +404,7 @@ export default function EmployeeList({ token, userRole, onViewChange }) {
                           </button>
                         )}
                         
-                        {userRole === 'Administrador' && (
+                        {(userRole === 'Administrador' || userRole === 'Super Usuario') && (
                           <button
                             onClick={() => handleDeleteEmployee(emp.id, emp.fullName)}
                             className="inline-flex p-2 rounded-xl bg-rose-500/10 hover:bg-rose-500 hover:text-white text-rose-500 transition duration-150 active:scale-95 cursor-pointer"

@@ -216,7 +216,7 @@ export default function PermissionsView({ token, userRole }) {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <input
               type="text"
-              placeholder="Buscar colaborador..."
+              placeholder="Buscar empleado..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-white border border-slate-200 focus:border-brand-500 text-xs font-bold placeholder-slate-400 outline-none transition"
@@ -290,7 +290,7 @@ export default function PermissionsView({ token, userRole }) {
             <table className="w-full text-left border-collapse select-none">
               <thead>
                 <tr className="bg-slate-50/70 border-b border-slate-200/60 dark:bg-slate-950/20 dark:border-slate-800/40 text-[10px] font-black text-slate-450 uppercase tracking-widest">
-                  <th className="px-6 py-4.5">Colaborador</th>
+                  <th className="px-6 py-4.5">Empleado</th>
                   <th className="px-6 py-4.5">Tipo de Permiso</th>
                   <th className="px-6 py-4.5">Desde</th>
                   <th className="px-6 py-4.5">Hasta</th>
@@ -324,7 +324,7 @@ export default function PermissionsView({ token, userRole }) {
                       <div className="font-bold text-slate-550">{perm.approvedBy || <span className="text-slate-350 dark:text-slate-750 font-normal italic">Sin firmar</span>}</div>
                     </td>
                     <td className="px-6 py-4 text-center">
-                      {userRole === 'Administrador' && perm.status === 'Pendiente' ? (
+                      {(userRole === 'Administrador' || userRole === 'Super Usuario') && perm.status === 'Pendiente' ? (
                         <button
                           onClick={() => handleOpenReview(perm)}
                           className="px-3.5 py-1.5 rounded-xl bg-brand-500 hover:bg-brand-600 text-white font-extrabold text-[10px] uppercase tracking-wider shadow-sm transition active:scale-95"
@@ -364,14 +364,14 @@ export default function PermissionsView({ token, userRole }) {
             <form onSubmit={handleRequestSubmit} className="space-y-4">
               
               <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-1">Colaborador</label>
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-1">Empleado</label>
                 <select
                   required
                   value={reqEmployeeId}
                   onChange={(e) => setReqEmployeeId(e.target.value)}
                   className="w-full px-3 py-2.5 rounded-xl border border-slate-250 bg-white focus:border-brand-500 text-xs font-bold outline-none transition"
                 >
-                  <option value="">Selecciona Colaborador</option>
+                  <option value="">Selecciona Empleado</option>
                   {employees.map(emp => (
                     <option key={emp.id} value={emp.id}>{emp.fullName} ({emp.department})</option>
                   ))}
@@ -488,7 +488,7 @@ export default function PermissionsView({ token, userRole }) {
                 )}
               </div>
 
-              {userRole === 'Administrador' && selectedPermission?.status === 'Pendiente' ? (
+              {(userRole === 'Administrador' || userRole === 'Super Usuario') && selectedPermission?.status === 'Pendiente' ? (
                 <div className="space-y-3">
                   <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-1">Notas / Observaciones de Revisión</label>
                   <textarea

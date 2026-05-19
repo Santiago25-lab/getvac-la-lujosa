@@ -347,7 +347,7 @@ export default function EmployeeDetail({ token, employeeId, onViewChange, userRo
 
         <div className="flex items-center gap-3">
           {/* Editar Datos */}
-          {userRole === 'Administrador' && (
+          {(userRole === 'Administrador' || userRole === 'Super Usuario') && (
             <button
               onClick={handleEditClick}
               className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-amber-200/50 bg-amber-50 dark:border-amber-900/30 dark:bg-amber-950/10 text-xs font-bold text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-950/20 transition cursor-pointer"
@@ -377,7 +377,7 @@ export default function EmployeeDetail({ token, employeeId, onViewChange, userRo
         </div>
       </div>
 
-      {/* Grid de Información del Colaborador */}
+      {/* Grid de Información del Empleado */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
         
         {/* Columna Izquierda: Tarjeta de Perfil & Métricas */}
@@ -677,7 +677,7 @@ export default function EmployeeDetail({ token, employeeId, onViewChange, userRo
                               {vac.notes || 'Sin observaciones'}
                             </td>
                             <td className="py-3.5 pl-4 text-right space-x-2">
-                              {userRole === 'Administrador' && (
+                              {(userRole === 'Administrador' || userRole === 'Super Usuario') && (
                                 <>
                                   {vac.status === 'Programada' && (
                                     <button
@@ -784,7 +784,7 @@ export default function EmployeeDetail({ token, employeeId, onViewChange, userRo
                 </div>
                 <div>
                   <h3 className="text-base font-bold text-slate-850 dark:text-white">Expediente de Permisos y Licencias</h3>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 font-semibold mt-0.5">Control de ausencias autorizadas, citas médicas y calamidades del colaborador.</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 font-semibold mt-0.5">Control de ausencias autorizadas, citas médicas y calamidades del empleado.</p>
                 </div>
               </div>
 

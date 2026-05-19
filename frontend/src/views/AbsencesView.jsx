@@ -238,7 +238,7 @@ export default function AbsencesView({ token, userRole }) {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <input
               type="text"
-              placeholder="Buscar colaborador..."
+              placeholder="Buscar empleado..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-white border border-slate-200 focus:border-brand-500 text-xs font-bold placeholder-slate-400 outline-none transition"
@@ -326,7 +326,7 @@ export default function AbsencesView({ token, userRole }) {
             <table className="w-full text-left border-collapse select-none">
               <thead>
                 <tr className="bg-slate-50/70 border-b border-slate-200/60 dark:bg-slate-950/20 dark:border-slate-800/40 text-[10px] font-black text-slate-450 uppercase tracking-widest">
-                  <th className="px-6 py-4.5">Colaborador</th>
+                  <th className="px-6 py-4.5">Empleado</th>
                   <th className="px-6 py-4.5">Área / Puesto</th>
                   <th className="px-6 py-4.5">Fecha Novedad</th>
                   <th className="px-6 py-4.5">Tipo de Novedad</th>
@@ -380,7 +380,7 @@ export default function AbsencesView({ token, userRole }) {
                         onClick={() => handleOpenJustify(abs)}
                         className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-brand-500 hover:text-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-extrabold text-[10px] uppercase tracking-wider transition active:scale-95 shadow-sm"
                       >
-                        {userRole === 'Administrador' ? 'Evaluar/Editar' : 'Ver Novedad'}
+                        {(userRole === 'Administrador' || userRole === 'Super Usuario') ? 'Evaluar/Editar' : 'Ver Novedad'}
                       </button>
                     </td>
                   </tr>
@@ -404,14 +404,14 @@ export default function AbsencesView({ token, userRole }) {
             <form onSubmit={handleAddSubmit} className="space-y-4">
               
               <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-1">Colaborador</label>
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-1">Empleado</label>
                 <select
                   required
                   value={addEmployeeId}
                   onChange={(e) => setAddEmployeeId(e.target.value)}
                   className="w-full px-3 py-2.5 rounded-xl border border-slate-250 bg-white focus:border-brand-500 text-xs font-bold outline-none transition"
                 >
-                  <option value="">Selecciona Colaborador</option>
+                  <option value="">Selecciona Empleado</option>
                   {employees.map(emp => (
                     <option key={emp.id} value={emp.id}>{emp.fullName} ({emp.department})</option>
                   ))}
@@ -524,7 +524,7 @@ export default function AbsencesView({ token, userRole }) {
                   <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-1">Evaluación / Estado</label>
                   <select
                     required
-                    disabled={userRole !== 'Administrador'}
+                    disabled={userRole !== 'Administrador' && userRole !== 'Super Usuario'}
                     value={justStatus}
                     onChange={(e) => setJustStatus(e.target.value)}
                     className="w-full px-3 py-2.5 rounded-xl border border-slate-250 bg-white focus:border-brand-500 text-xs font-bold outline-none transition disabled:opacity-50"
@@ -540,7 +540,7 @@ export default function AbsencesView({ token, userRole }) {
                     <input
                       type="checkbox"
                       id="justHasSupport"
-                      disabled={userRole !== 'Administrador'}
+                      disabled={userRole !== 'Administrador' && userRole !== 'Super Usuario'}
                       checked={justHasSupport}
                       onChange={(e) => setJustHasSupport(e.target.checked)}
                       className="w-4 h-4 text-brand-500 rounded border-slate-300 focus:ring-brand-500"
@@ -557,7 +557,7 @@ export default function AbsencesView({ token, userRole }) {
                 <textarea
                   placeholder="Detalles sobre por qué ocurrió..."
                   rows="2"
-                  disabled={userRole !== 'Administrador'}
+                  disabled={userRole !== 'Administrador' && userRole !== 'Super Usuario'}
                   value={justReason}
                   onChange={(e) => setJustReason(e.target.value)}
                   className="w-full px-3 py-2.5 rounded-xl border border-slate-250 bg-white focus:border-brand-500 text-xs font-bold outline-none transition placeholder-slate-400 disabled:opacity-50"
@@ -569,7 +569,7 @@ export default function AbsencesView({ token, userRole }) {
                 <textarea
                   placeholder="Observaciones de auditoría o de nómina..."
                   rows="2"
-                  disabled={userRole !== 'Administrador'}
+                  disabled={userRole !== 'Administrador' && userRole !== 'Super Usuario'}
                   value={justNotes}
                   onChange={(e) => setJustNotes(e.target.value)}
                   className="w-full px-3 py-2.5 rounded-xl border border-slate-250 bg-white focus:border-brand-500 text-xs font-bold outline-none transition placeholder-slate-400 disabled:opacity-50"
@@ -584,7 +584,7 @@ export default function AbsencesView({ token, userRole }) {
                 >
                   Cerrar
                 </button>
-                {userRole === 'Administrador' && (
+                {(userRole === 'Administrador' || userRole === 'Super Usuario') && (
                   <button
                     type="submit"
                     className="px-5 py-2 text-xs font-bold uppercase tracking-wider rounded-xl bg-brand-500 hover:bg-brand-600 text-white transition animate-pulse"

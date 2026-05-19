@@ -49,7 +49,7 @@ export default function AttendanceView({ token, userRole }) {
   const [successMsg, setSuccessMsg] = useState('');
 
   const exportToCSV = () => {
-    const headers = ['Colaborador', 'Area', 'Fecha', 'Ent. Manana', 'Sal. Manana', 'Ent. Tarde', 'Sal. Tarde', 'Horas Trabajadas', 'Estado', 'Observacion'];
+    const headers = ['Empleado', 'Area', 'Fecha', 'Ent. Manana', 'Sal. Manana', 'Ent. Tarde', 'Sal. Tarde', 'Horas Trabajadas', 'Estado', 'Observacion'];
     const csvRows = [headers.join(',')];
 
     records.forEach(rec => {
@@ -355,7 +355,7 @@ export default function AttendanceView({ token, userRole }) {
           </p>
         </div>
 
-        {userRole === 'Administrador' && (
+        {(userRole === 'Administrador' || userRole === 'Super Usuario') && (
           <button
             onClick={() => setShowManualModal(true)}
             className="flex items-center gap-2 bg-gradient-to-r from-brand-600 to-brand-500 hover:from-brand-500 hover:to-brand-450 text-white px-5 py-3 rounded-2xl text-xs font-bold uppercase tracking-wider shadow-lg shadow-brand-500/10 transition active:scale-[0.98]"
@@ -384,7 +384,7 @@ export default function AttendanceView({ token, userRole }) {
         {/* KPI: Total Activos */}
         <div className="bg-white border border-slate-200/60 rounded-3xl p-6 flex items-center justify-between shadow-sm relative overflow-hidden group">
           <div className="space-y-1 z-10">
-            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Colaboradores</span>
+            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Empleados</span>
             <div className="text-3xl font-black text-slate-850 dark:text-white leading-none">{stats.totalActiveEmployees}</div>
             <p className="text-[10px] font-bold text-slate-500">Total en nómina activa</p>
           </div>
@@ -442,7 +442,7 @@ export default function AttendanceView({ token, userRole }) {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <input
               type="text"
-              placeholder="Buscar colaborador..."
+              placeholder="Buscar empleado..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-slate-100/60 border border-slate-200 focus:border-brand-500 dark:bg-slate-950/40 dark:border-slate-800 dark:focus:border-brand-500 text-xs font-bold placeholder-slate-400 outline-none transition"
@@ -530,7 +530,7 @@ export default function AttendanceView({ token, userRole }) {
             <table className="w-full text-left border-collapse select-none">
               <thead>
                 <tr className="bg-slate-50/70 border-b border-slate-200/60 dark:bg-slate-950/20 dark:border-slate-800/40 text-[10px] font-black text-slate-450 uppercase tracking-widest">
-                  <th className="px-6 py-4.5">Colaborador</th>
+                  <th className="px-6 py-4.5">Empleado</th>
                   <th className="px-6 py-4.5">Área / Puesto</th>
                   <th className="px-6 py-4.5">Fecha</th>
                   <th className="px-6 py-4.5 text-center">Ent. Mañana</th>
@@ -541,7 +541,7 @@ export default function AttendanceView({ token, userRole }) {
                   <th className="px-6 py-4.5">Estado</th>
                   <th className="px-6 py-4.5">Dispositivo / IP</th>
                   <th className="px-6 py-4.5">Observación</th>
-                  {userRole === 'Administrador' && <th className="px-6 py-4.5 text-center">Acciones</th>}
+                  {(userRole === 'Administrador' || userRole === 'Super Usuario') && <th className="px-6 py-4.5 text-center">Acciones</th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-150 dark:divide-slate-800/40 text-xs font-medium text-slate-700 dark:text-slate-200">
@@ -586,7 +586,7 @@ export default function AttendanceView({ token, userRole }) {
                     <td className="px-6 py-4 max-w-[200px] truncate font-semibold text-slate-500 dark:text-slate-400" title={rec.notes}>
                       {rec.notes || <span className="text-slate-350 dark:text-slate-700 italic text-[11px]">Ninguna</span>}
                     </td>
-                    {userRole === 'Administrador' && (
+                    {(userRole === 'Administrador' || userRole === 'Super Usuario') && (
                       <td className="px-6 py-4 text-center">
                         <button
                           onClick={() => handleOpenNotes(rec)}
@@ -666,7 +666,7 @@ export default function AttendanceView({ token, userRole }) {
             </div>
             <h4 className="text-base font-black tracking-tight mt-4">Póster QR de Marcación</h4>
             <p className="text-xs text-brand-100 font-medium leading-relaxed">
-              Genera el QR de marcación móvil sin contacto. Los colaboradores lo escanean desde su celular para registrar sus 4 marcaciones.
+              Genera el QR de marcación móvil sin contacto. Los empleados lo escanean desde su celular para registrar sus 4 marcaciones.
             </p>
           </div>
           
@@ -704,14 +704,14 @@ export default function AttendanceView({ token, userRole }) {
             <form onSubmit={handleRegisterManual} className="space-y-4">
               {/* Empleado */}
               <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-1">Colaborador</label>
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-1">Empleado</label>
                 <select
                   required
                   value={manualEmployeeId}
                   onChange={(e) => setManualEmployeeId(e.target.value)}
                   className="w-full px-3 py-2.5 rounded-xl border border-slate-250 bg-white focus:border-brand-500 text-xs font-bold outline-none transition"
                 >
-                  <option value="">Selecciona Colaborador</option>
+                  <option value="">Selecciona Empleado</option>
                   {employees.map(emp => (
                     <option key={emp.id} value={emp.id}>{emp.fullName} ({emp.department})</option>
                   ))}

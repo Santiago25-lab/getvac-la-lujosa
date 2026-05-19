@@ -4,7 +4,7 @@ import { LayoutDashboard, Users, Settings, LogOut, CalendarCheck, UserCheck, Clo
 export default function Sidebar({ activeView, onViewChange, user, onLogout }) {
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'employees', label: 'Colaboradores', icon: Users },
+    { id: 'employees', label: 'Empleados', icon: Users },
     { id: 'attendance', label: 'Asistencia', icon: Clock },
     { id: 'permissions', label: 'Permisos', icon: FileText },
     { id: 'absences', label: 'Inasistencias', icon: AlertOctagon },
@@ -54,14 +54,14 @@ export default function Sidebar({ activeView, onViewChange, user, onLogout }) {
             );
           })}
           
-          {/* Botón "+ Agregar Colaborador" según captura */}
-          {user?.role === 'Administrador' && (
+          {/* Botón "+ Agregar Empleado" según captura */}
+          {(user?.role === 'Administrador' || user?.role === 'Super Usuario') && (
             <button
               onClick={() => onViewChange('employees')}
               className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-bold bg-brand-600 text-white shadow-md shadow-brand-600/10 hover:bg-brand-700 transition-all duration-200 mt-4 cursor-pointer"
             >
               <Plus className="w-4 h-4" />
-              <span>Agregar Colaborador</span>
+              <span>Agregar Empleado</span>
             </button>
           )}
 

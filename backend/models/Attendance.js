@@ -19,6 +19,14 @@ const Attendance = sequelize.define('Attendance', {
     type: DataTypes.STRING, // Almacenado como 'HH:MM:SS'
     allowNull: false,
   },
+  checkOutMorning: {
+    type: DataTypes.STRING, // Almacenado como 'HH:MM:SS'
+    allowNull: true,
+  },
+  checkInAfternoon: {
+    type: DataTypes.STRING, // Almacenado como 'HH:MM:SS'
+    allowNull: true,
+  },
   checkOut: {
     type: DataTypes.STRING, // Almacenado como 'HH:MM:SS'
     allowNull: true,

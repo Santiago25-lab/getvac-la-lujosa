@@ -29,6 +29,8 @@ export default function AttendanceView({ token, userRole }) {
   const [manualEmployeeId, setManualEmployeeId] = useState('');
   const [manualDate, setManualDate] = useState('');
   const [manualCheckIn, setManualCheckIn] = useState('08:00');
+  const [manualCheckOutMorning, setManualCheckOutMorning] = useState('');
+  const [manualCheckInAfternoon, setManualCheckInAfternoon] = useState('');
   const [manualCheckOut, setManualCheckOut] = useState('');
   const [manualStatus, setManualStatus] = useState('Presente');
   const [manualNotes, setManualNotes] = useState('');
@@ -37,6 +39,8 @@ export default function AttendanceView({ token, userRole }) {
   const [editNotes, setEditNotes] = useState('');
   const [editStatus, setEditStatus] = useState('');
   const [editCheckIn, setEditCheckIn] = useState('');
+  const [editCheckOutMorning, setEditCheckOutMorning] = useState('');
+  const [editCheckInAfternoon, setEditCheckInAfternoon] = useState('');
   const [editCheckOut, setEditCheckOut] = useState('');
 
   const [loading, setLoading] = useState(false);
@@ -44,19 +48,21 @@ export default function AttendanceView({ token, userRole }) {
   const [successMsg, setSuccessMsg] = useState('');
 
   const exportToCSV = () => {
-    const headers = ['Colaborador', 'Area', 'Fecha', 'Entrada', 'Salida', 'Horas', 'Estado', 'Observacion'];
+    const headers = ['Colaborador', 'Area', 'Fecha', 'Ent. Manana', 'Sal. Manana', 'Ent. Tarde', 'Sal. Tarde', 'Horas Trabajadas', 'Estado', 'Observacion'];
     const csvRows = [headers.join(',')];
 
     records.forEach(rec => {
       const row = [
-        rec.Employee?.fullName || '',
-        rec.Employee?.department || '',
-        rec.date ? new Date(rec.date).toLocaleDateString('es-ES') : '',
-        rec.checkIn?.substring(0, 5) || '',
-        rec.checkOut ? rec.checkOut.substring(0, 5) : '',
+        rec.employee?.fullName || '',
+        rec.employee?.department || '',
+        rec.date || '',
+        rec.checkIn || '',
+        rec.checkOutMorning || '',
+        rec.checkInAfternoon || '',
+        rec.checkOut || '',
         rec.workedHours || '',
         rec.status || '',
-        rec.observation || ''
+        rec.notes || ''
       ];
       csvRows.push(row.map(field => `"${field}"`).join(','));
     });
@@ -138,6 +144,8 @@ export default function AttendanceView({ token, userRole }) {
           employeeId: manualEmployeeId,
           date: manualDate,
           checkIn: manualCheckIn,
+          checkOutMorning: manualCheckOutMorning || null,
+          checkInAfternoon: manualCheckInAfternoon || null,
           checkOut: manualCheckOut || null,
           status: manualStatus,
           notes: manualNotes
@@ -158,6 +166,8 @@ export default function AttendanceView({ token, userRole }) {
       setManualEmployeeId('');
       setManualDate('');
       setManualCheckIn('08:00');
+      setManualCheckOutMorning('');
+      setManualCheckInAfternoon('');
       setManualCheckOut('');
       setManualStatus('Presente');
       setManualNotes('');
@@ -174,7 +184,9 @@ export default function AttendanceView({ token, userRole }) {
     setSelectedRecord(record);
     setEditNotes(record.notes || '');
     setEditStatus(record.status);
-    setEditCheckIn(record.checkIn);
+    setEditCheckIn(record.checkIn || '');
+    setEditCheckOutMorning(record.checkOutMorning || '');
+    setEditCheckInAfternoon(record.checkInAfternoon || '');
     setEditCheckOut(record.checkOut || '');
     setShowNotesModal(true);
   };
@@ -195,6 +207,8 @@ export default function AttendanceView({ token, userRole }) {
           notes: editNotes,
           status: editStatus,
           checkIn: editCheckIn,
+          checkOutMorning: editCheckOutMorning || null,
+          checkInAfternoon: editCheckInAfternoon || null,
           checkOut: editCheckOut || null
         })
       });
@@ -421,9 +435,11 @@ export default function AttendanceView({ token, userRole }) {
                   <th className="px-6 py-4.5">Colaborador</th>
                   <th className="px-6 py-4.5">Área / Puesto</th>
                   <th className="px-6 py-4.5">Fecha</th>
-                  <th className="px-6 py-4.5">Entrada</th>
-                  <th className="px-6 py-4.5">Salida</th>
-                  <th className="px-6 py-4.5">Horas</th>
+                  <th className="px-6 py-4.5 text-center">Ent. Mañana</th>
+                  <th className="px-6 py-4.5 text-center">Sal. Mañana</th>
+                  <th className="px-6 py-4.5 text-center">Ent. Tarde</th>
+                  <th className="px-6 py-4.5 text-center">Sal. Tarde</th>
+                  <th className="px-6 py-4.5 text-center">Horas</th>
                   <th className="px-6 py-4.5">Estado</th>
                   <th className="px-6 py-4.5">Dispositivo / IP</th>
                   <th className="px-6 py-4.5">Observación</th>
@@ -444,13 +460,19 @@ export default function AttendanceView({ token, userRole }) {
                     <td className="px-6 py-4 font-bold text-slate-600 dark:text-slate-400">
                       {rec.date}
                     </td>
-                    <td className="px-6 py-4 font-extrabold text-emerald-600 dark:text-emerald-400 text-sm">
-                      {rec.checkIn?.substring(0, 5)}
+                    <td className="px-6 py-4 text-center font-extrabold text-emerald-600 dark:text-emerald-400 text-xs whitespace-nowrap">
+                      {rec.checkIn || '—'}
                     </td>
-                    <td className="px-6 py-4 font-extrabold text-slate-500 dark:text-slate-400 text-sm">
-                      {rec.checkOut ? rec.checkOut.substring(0, 5) : '—'}
+                    <td className="px-6 py-4 text-center font-extrabold text-slate-500 dark:text-slate-400 text-xs whitespace-nowrap">
+                      {rec.checkOutMorning || '—'}
                     </td>
-                    <td className="px-6 py-4 font-bold text-slate-700 dark:text-white text-sm">
+                    <td className="px-6 py-4 text-center font-extrabold text-emerald-500 dark:text-emerald-400 text-xs whitespace-nowrap">
+                      {rec.checkInAfternoon || '—'}
+                    </td>
+                    <td className="px-6 py-4 text-center font-extrabold text-slate-600 dark:text-slate-550 text-xs whitespace-nowrap">
+                      {rec.checkOut || '—'}
+                    </td>
+                    <td className="px-6 py-4 text-center font-bold text-slate-750 dark:text-white text-xs">
                       {rec.workedHours || 'N/A'}
                     </td>
                     <td className="px-6 py-4">
@@ -464,7 +486,7 @@ export default function AttendanceView({ token, userRole }) {
                       </div>
                     </td>
                     <td className="px-6 py-4 max-w-[200px] truncate font-semibold text-slate-500 dark:text-slate-400" title={rec.notes}>
-                      {rec.notes || <span className="text-slate-350 dark:text-slate-700 italic">Ninguna</span>}
+                      {rec.notes || <span className="text-slate-350 dark:text-slate-700 italic text-[11px]">Ninguna</span>}
                     </td>
                     {userRole === 'Administrador' && (
                       <td className="px-6 py-4 text-center">
@@ -602,10 +624,10 @@ export default function AttendanceView({ token, userRole }) {
                 />
               </div>
 
-              {/* Horas */}
+              {/* Horas (4 marcaciones diarias) */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-1">Entrada (HH:MM)</label>
+                  <label className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest pl-1">Entrada Mañana *</label>
                   <input
                     type="time"
                     required
@@ -615,7 +637,25 @@ export default function AttendanceView({ token, userRole }) {
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-1">Salida (HH:MM - Opc.)</label>
+                  <label className="text-[10px] font-bold text-slate-450 uppercase tracking-widest pl-1">Salida Mañana (Opc.)</label>
+                  <input
+                    type="time"
+                    value={manualCheckOutMorning}
+                    onChange={(e) => setManualCheckOutMorning(e.target.value)}
+                    className="w-full px-3 py-2.5 rounded-xl border border-slate-250 bg-white focus:border-brand-500 text-xs font-bold outline-none transition"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest pl-1">Entrada Tarde (Opc.)</label>
+                  <input
+                    type="time"
+                    value={manualCheckInAfternoon}
+                    onChange={(e) => setManualCheckInAfternoon(e.target.value)}
+                    className="w-full px-3 py-2.5 rounded-xl border border-slate-250 bg-white focus:border-brand-500 text-xs font-bold outline-none transition"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest pl-1">Salida Tarde (Opc.)</label>
                   <input
                     type="time"
                     value={manualCheckOut}
@@ -693,20 +733,37 @@ export default function AttendanceView({ token, userRole }) {
             </div>
 
             <form onSubmit={handleUpdateNotes} className="space-y-4">
-              {/* Horas */}
+              {/* Horas (4 marcaciones diarias) */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-1">Entrada (HH:MM)</label>
+                  <label className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest pl-1">Entrada Mañana</label>
                   <input
                     type="time"
-                    required
                     value={editCheckIn}
                     onChange={(e) => setEditCheckIn(e.target.value)}
                     className="w-full px-3 py-2.5 rounded-xl border border-slate-250 bg-white focus:border-brand-500 text-xs font-bold outline-none transition"
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-1">Salida (HH:MM)</label>
+                  <label className="text-[10px] font-bold text-slate-450 uppercase tracking-widest pl-1">Salida Mañana</label>
+                  <input
+                    type="time"
+                    value={editCheckOutMorning}
+                    onChange={(e) => setEditCheckOutMorning(e.target.value)}
+                    className="w-full px-3 py-2.5 rounded-xl border border-slate-250 bg-white focus:border-brand-500 text-xs font-bold outline-none transition"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest pl-1">Entrada Tarde</label>
+                  <input
+                    type="time"
+                    value={editCheckInAfternoon}
+                    onChange={(e) => setEditCheckInAfternoon(e.target.value)}
+                    className="w-full px-3 py-2.5 rounded-xl border border-slate-250 bg-white focus:border-brand-500 text-xs font-bold outline-none transition"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest pl-1">Salida Tarde</label>
                   <input
                     type="time"
                     value={editCheckOut}

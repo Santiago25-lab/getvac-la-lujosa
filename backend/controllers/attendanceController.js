@@ -349,11 +349,18 @@ export const getAttendanceStats = async (req, res) => {
   try {
     const todayStr = new Date().toISOString().split('T')[0];
 
-    const totalActiveEmployees = await Employee.count({ where: { status: 'activo' } });
+    const activeEmployees = await Employee.findAll({ where: { status: 'activo' } });
+    const totalActiveEmployees = activeEmployees.length;
     
-    // Obtener registros de hoy
+    // Obtener registros de hoy con el empleado incluido
     const todayRecords = await Attendance.findAll({
-      where: { date: todayStr }
+      where: { date: todayStr },
+      include: [{
+        model: Employee,
+        as: 'employee',
+        attributes: ['fullName', 'documentNumber', 'position', 'department']
+      }],
+      order: [['checkIn', 'DESC']]
     });
 
     const presentCount = todayRecords.filter(r => r.status === 'Presente' || r.status === 'Salida registrada' || r.status === 'Sin salida' || r.status === 'Tarde').length;
@@ -362,13 +369,24 @@ export const getAttendanceStats = async (req, res) => {
     
     const absentCount = Math.max(0, totalActiveEmployees - presentCount);
 
+    // Calcular qué empleados activos NO tienen registro hoy (Inasistentes)
+    const presentEmployeeIds = new Set(todayRecords.map(r => r.employeeId));
+    const absentEmployees = activeEmployees.filter(emp => !presentEmployeeIds.has(emp.id));
+
     res.json({
       totalActiveEmployees,
       presentToday: presentCount,
       absentToday: absentCount,
       lateToday: lateCount,
       checkoutToday: checkoutCount,
-      records: todayRecords
+      records: todayRecords,
+      absentEmployees: absentEmployees.map(emp => ({
+        id: emp.id,
+        fullName: emp.fullName,
+        documentNumber: emp.documentNumber,
+        position: emp.position,
+        department: emp.department
+      }))
     });
   } catch (error) {
     console.error('Error al obtener estadísticas de asistencia:', error);

@@ -97,7 +97,7 @@ export default function App() {
       {/* Contenedor Principal Derecho */}
       <div className="flex-1 flex flex-col h-full overflow-hidden">
         {/* Cabecera Horizontal */}
-        <Navbar activeView={activeView} />
+        <Navbar activeView={activeView} token={token} onViewChange={handleViewChange} />
 
         {/* Panel de Vistas Dinámicas */}
         <main className="flex-1 overflow-hidden flex flex-col">

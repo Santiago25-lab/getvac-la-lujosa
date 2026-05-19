@@ -222,7 +222,7 @@ export default function Dashboard({ token, onViewChange }) {
           </div>
         </div>
       </div>
-
+      
       {/* Actividad Horaria y Alertas */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 mt-8">
         {/* Actividad Horaria */}
@@ -242,60 +242,45 @@ export default function Dashboard({ token, onViewChange }) {
                 </tr>
               </thead>
               <tbody>
-                <tr className="border-b border-slate-50 last:border-b-0 hover:bg-slate-50 transition">
-                  <td className="py-3.5 pr-4 flex items-center gap-3">
-                    <div className="w-8 h-8 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center font-bold text-xs">
-                      AL
-                    </div>
-                    <div>
-                      <p className="font-bold text-slate-700">Alejandro López</p>
-                      <p className="text-[10px] text-slate-400 font-bold">ID: SF-2044</p>
-                    </div>
-                  </td>
-                  <td className="py-3.5 px-4 font-medium text-slate-500">Ingeniería</td>
-                  <td className="py-3.5 px-4 font-bold text-slate-700">08:02 AM</td>
-                  <td className="py-3.5 pl-4">
-                    <span className="inline-block px-2.5 py-1 text-xs font-bold rounded-lg bg-emerald-100 text-emerald-600">
-                      A tiempo
-                    </span>
-                  </td>
-                </tr>
-                <tr className="border-b border-slate-50 last:border-b-0 hover:bg-slate-50 transition">
-                  <td className="py-3.5 pr-4 flex items-center gap-3">
-                    <div className="w-8 h-8 bg-orange-100 text-orange-600 rounded-full flex items-center justify-center font-bold text-xs">
-                      MR
-                    </div>
-                    <div>
-                      <p className="font-bold text-slate-700">Mariana Rodríguez</p>
-                      <p className="text-[10px] text-slate-400 font-bold">ID: SF-1988</p>
-                    </div>
-                  </td>
-                  <td className="py-3.5 px-4 font-medium text-slate-500">Recursos Humanos</td>
-                  <td className="py-3.5 px-4 font-bold text-slate-700">09:15 AM</td>
-                  <td className="py-3.5 pl-4">
-                    <span className="inline-block px-2.5 py-1 text-xs font-bold rounded-lg bg-orange-100 text-orange-600">
-                      Retardo
-                    </span>
-                  </td>
-                </tr>
-                <tr className="border-b border-slate-50 last:border-b-0 hover:bg-slate-50 transition">
-                  <td className="py-3.5 pr-4 flex items-center gap-3">
-                    <div className="w-8 h-8 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center font-bold text-xs">
-                      CP
-                    </div>
-                    <div>
-                      <p className="font-bold text-slate-700">Carlos Pérez</p>
-                      <p className="text-[10px] text-slate-400 font-bold">ID: SF-2102</p>
-                    </div>
-                  </td>
-                  <td className="py-3.5 px-4 font-medium text-slate-500">Ventas</td>
-                  <td className="py-3.5 px-4 font-bold text-slate-700">08:30 AM</td>
-                  <td className="py-3.5 pl-4">
-                    <span className="inline-block px-2.5 py-1 text-xs font-bold rounded-lg bg-blue-100 text-blue-600">
-                      Permiso
-                    </span>
-                  </td>
-                </tr>
+                {attendanceStats?.records && attendanceStats.records.length > 0 ? (
+                  attendanceStats.records.slice(0, 5).map((rec) => {
+                    const emp = rec.employee || {};
+                    const initials = emp.fullName ? emp.fullName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : 'EM';
+                    
+                    // Determinar colores de estatus
+                    let statusClass = "bg-slate-100 text-slate-650";
+                    if (rec.status === "Presente") statusClass = "bg-emerald-100 text-emerald-600";
+                    else if (rec.status === "Tarde" || rec.status === "Retardo") statusClass = "bg-orange-100 text-orange-600";
+                    else if (rec.status === "Salida registrada" || rec.status === "Salida") statusClass = "bg-brand-100 text-brand-600";
+                    
+                    return (
+                      <tr key={rec.id} className="border-b border-slate-50 last:border-b-0 hover:bg-slate-50 transition">
+                        <td className="py-3.5 pr-4 flex items-center gap-3">
+                          <div className="w-8 h-8 bg-brand-100 text-brand-600 rounded-full flex items-center justify-center font-bold text-xs">
+                            {initials}
+                          </div>
+                          <div>
+                            <p className="font-bold text-slate-700">{emp.fullName || 'Empleado Desconocido'}</p>
+                            <p className="text-[10px] text-slate-400 font-bold">Doc: {emp.documentNumber || 'N/A'}</p>
+                          </div>
+                        </td>
+                        <td className="py-3.5 px-4 font-medium text-slate-500">{emp.department || 'N/A'}</td>
+                        <td className="py-3.5 px-4 font-bold text-slate-700">{rec.checkIn || '--'}</td>
+                        <td className="py-3.5 pl-4">
+                          <span className={`inline-block px-2.5 py-1 text-xs font-bold rounded-lg ${statusClass}`}>
+                            {rec.status}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })
+                ) : (
+                  <tr>
+                    <td colSpan="4" className="py-8 text-center text-xs font-bold text-slate-400">
+                      No se han registrado asistencias el día de hoy.
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
@@ -310,22 +295,29 @@ export default function Dashboard({ token, onViewChange }) {
               <span className="bg-rose-100 text-rose-600 text-[10px] font-black uppercase px-2 py-0.5 rounded-full animate-pulse">En Vivo</span>
             </div>
             <div className="space-y-4">
-              <div className="flex items-start gap-3 p-3 bg-slate-50 rounded-xl border border-slate-100">
-                <AlertTriangle className="w-5 h-5 text-rose-500 shrink-0 mt-0.5" />
-                <div>
-                  <p className="text-sm font-bold text-slate-700">Salto de Turno Detectado</p>
-                  <p className="text-xs text-slate-500 mt-0.5">Planta 04 - Sector C ha reportado falta de personal crítico.</p>
-                  <button onClick={() => onViewChange('absences')} className="text-xs font-bold text-rose-600 hover:text-rose-700 mt-1 cursor-pointer">Gestionar Ahora</button>
+              {attendanceStats?.absentEmployees && attendanceStats.absentEmployees.length > 0 ? (
+                attendanceStats.absentEmployees.slice(0, 3).map((emp) => (
+                  <div key={emp.id} className="flex items-start gap-3 p-3 bg-rose-50/50 rounded-xl border border-rose-100">
+                    <AlertTriangle className="w-5 h-5 text-rose-500 shrink-0 mt-0.5" />
+                    <div className="flex-1">
+                      <p className="text-sm font-bold text-slate-700">Falta de Asistencia</p>
+                      <p className="text-xs text-slate-550 mt-0.5">
+                        El empleado <span className="font-bold text-slate-700">{emp.fullName}</span> ({emp.department}) no ha registrado asistencia hoy.
+                      </p>
+                      <button 
+                        onClick={() => onViewChange('attendance')} 
+                        className="text-xs font-bold text-brand-600 hover:text-brand-700 mt-1 cursor-pointer"
+                      >
+                        Registrar Manualmente
+                      </button>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="py-6 text-center text-xs font-bold text-emerald-600 bg-emerald-50 rounded-xl border border-emerald-100">
+                  ¡Excelente! Todos los empleados activos registraron su asistencia hoy.
                 </div>
-              </div>
-              <div className="flex items-start gap-3 p-3 bg-slate-50 rounded-xl border border-slate-100">
-                <Clock className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
-                <div>
-                  <p className="text-sm font-bold text-slate-700">Nómina por Cerrar</p>
-                  <p className="text-xs text-slate-500 mt-0.5">Faltan 4 validaciones para el cierre de quincena.</p>
-                  <button onClick={() => onViewChange('permissions')} className="text-xs font-bold text-amber-600 hover:text-amber-700 mt-1 cursor-pointer">Validar Pendientes</button>
-                </div>
-              </div>
+              )}
             </div>
           </div>
 

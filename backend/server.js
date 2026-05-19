@@ -357,7 +357,7 @@ const seedDatabase = async () => {
 };
 
 // Sincronizar Base de Datos y levantar servidor
-sequelize.sync({ alter: true })
+sequelize.sync()
   .then(async () => {
     console.log('Conexión con la base de datos establecida exitosamente.');
     await seedDatabase();

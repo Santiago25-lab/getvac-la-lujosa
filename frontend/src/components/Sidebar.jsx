@@ -20,15 +20,15 @@ export default function Sidebar({ activeView, onViewChange, user, onLogout }) {
       {/* Encabezado Logo */}
       <div>
         <div className="h-20 flex items-center gap-3 px-6 border-b border-slate-200/60 bg-white">
-          <div className="p-2.5 bg-brand-600 rounded-xl text-white shadow-md shadow-brand-600/10">
-            <ClipboardSignature className="w-5 h-5" />
+          <div className="w-10 h-10 rounded-xl overflow-hidden shadow-sm flex items-center justify-center bg-white border border-slate-100 shrink-0">
+            <img src="/logo.png" alt="Logo La Lujosa" className="w-8 h-8 object-contain hover:scale-110 transition-transform duration-300" />
           </div>
           <div>
             <h1 className="text-base font-extrabold tracking-tight text-slate-900 leading-none">
-              StaffFlow
+              La Lujosa
             </h1>
-            <p className="text-[9px] text-brand-500 font-bold uppercase tracking-wider mt-0.5">
-              Gestión de RRHH
+            <p className="text-[9px] text-brand-600 font-extrabold uppercase tracking-wider mt-0.5">
+              Gestor de RRHH
             </p>
           </div>
         </div>

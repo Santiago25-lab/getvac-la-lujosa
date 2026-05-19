@@ -325,7 +325,7 @@ export default function Dashboard({ token, onViewChange }) {
           <div className="bg-emerald-900 text-white p-6 rounded-2xl shadow-sm">
             <h3 className="text-lg font-bold">¿Necesitas ayuda?</h3>
             <p className="text-xs text-emerald-100 mt-1">Nuestro equipo de soporte está listo para ayudarte con la configuración de turnos.</p>
-            <button onClick={() => alert('Soporte StaffFlow: Contactar a soporte@staffflow.com o al canal interno de Teams.')} className="w-full bg-white text-emerald-900 font-bold text-xs uppercase tracking-wider py-3 px-4 rounded-xl mt-4 hover:bg-emerald-50 transition cursor-pointer">
+            <button onClick={() => alert('Soporte La Lujosa: Contactar al administrador del sistema.')} className="w-full bg-white text-emerald-900 font-bold text-xs uppercase tracking-wider py-3 px-4 rounded-xl mt-4 hover:bg-emerald-50 transition cursor-pointer">
               Chat de Soporte
             </button>
           </div>

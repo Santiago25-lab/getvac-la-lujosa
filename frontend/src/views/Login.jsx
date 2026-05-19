@@ -65,7 +65,7 @@ export default function Login({ onLoginSuccess }) {
         {/* Logo superior */}
         <div className="text-center mb-8">
           <div className="inline-flex mb-3">
-            <img src="/logo.png" alt="Logo La Lujosa" className="w-24 h-24 object-contain" />
+            <img src="/logo.png" alt="Logo La Lujosa" className="w-36 h-36 object-contain hover:scale-105 transition-transform duration-300" />
           </div>
           <h2 className="text-3xl font-extrabold tracking-tight text-slate-800">
             GetVac La Lujosa

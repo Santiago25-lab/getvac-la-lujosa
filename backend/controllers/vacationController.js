@@ -110,7 +110,8 @@ export const getDashboardStats = async (req, res) => {
     });
 
     const settings = await Setting.findOne() || { daysRequiredForOneVacationDay: 24.333333333333332 };
-    const todayStr = new Date().toISOString().split('T')[0];
+    const now = new Date();
+    const todayStr = now.toLocaleDateString('en-CA', { timeZone: 'America/Bogota' });
     const today = new Date(todayStr + 'T00:00:00');
 
     let totalEmployees = 0;

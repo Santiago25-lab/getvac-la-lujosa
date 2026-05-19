@@ -43,9 +43,9 @@ export const registerPublicAttendance = async (req, res) => {
     }
 
     const now = new Date();
-    // Obtener fecha y hora del servidor
-    const dateStr = now.toISOString().split('T')[0];
-    const timeStr = now.toTimeString().split(' ')[0]; // 'HH:MM:SS'
+    // Obtener fecha y hora en la zona horaria del cliente (America/Bogota)
+    const dateStr = now.toLocaleDateString('en-CA', { timeZone: 'America/Bogota' });
+    const timeStr = now.toLocaleTimeString('en-US', { hour12: false, timeZone: 'America/Bogota' });
 
     // Obtener políticas horarias configuradas
     const settings = await Setting.findOne() || {
@@ -348,7 +348,8 @@ export const updateAttendanceNotes = async (req, res) => {
 // Obtener estadísticas de asistencia del día actual
 export const getAttendanceStats = async (req, res) => {
   try {
-    const todayStr = new Date().toISOString().split('T')[0];
+    const now = new Date();
+    const todayStr = now.toLocaleDateString('en-CA', { timeZone: 'America/Bogota' });
 
     const activeEmployees = await Employee.findAll({ where: { status: 'activo' } });
     const totalActiveEmployees = activeEmployees.length;
@@ -376,9 +377,9 @@ export const getAttendanceStats = async (req, res) => {
       workDays: '1,2,3,4,5'
     };
 
-    // 1. Verificar si hoy es día laboral
-    // new Date().getDay(): 0=Domingo, 1=Lunes, ..., 6=Sábado
-    const localDay = new Date().getDay();
+    // 1. Verificar si hoy es día laboral usando zona horaria de Bogotá
+    const localDate = new Date(now.toLocaleString('en-US', { timeZone: 'America/Bogota' }));
+    const localDay = localDate.getDay();
     const dayOfWeek = localDay === 0 ? 7 : localDay; // Mapear 0 a 7
     const workDaysArray = settings.workDays ? settings.workDays.split(',').map(Number) : [1,2,3,4,5];
     const isTodayWorkDay = workDaysArray.includes(dayOfWeek);
@@ -388,8 +389,7 @@ export const getAttendanceStats = async (req, res) => {
     const [officialH, officialM] = officialTime.split(':').map(Number);
     const limitMinutes = officialH * 60 + officialM + (settings.toleranceMinutes || 0);
 
-    const now = new Date();
-    const currentMinutes = now.getHours() * 60 + now.getMinutes();
+    const currentMinutes = localDate.getHours() * 60 + localDate.getMinutes();
 
     let absentEmployees = [];
     let absentCount = 0;

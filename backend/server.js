@@ -264,10 +264,11 @@ const seedDatabase = async () => {
       });
 
       // 5. Asistencias simuladas para hoy y ayer
-      const todayStr = new Date().toISOString().split('T')[0];
-      const yesterday = new Date();
+      const now = new Date();
+      const todayStr = now.toLocaleDateString('en-CA', { timeZone: 'America/Bogota' });
+      const yesterday = new Date(now.toLocaleString('en-US', { timeZone: 'America/Bogota' }));
       yesterday.setDate(yesterday.getDate() - 1);
-      const yesterdayStr = yesterday.toISOString().split('T')[0];
+      const yesterdayStr = yesterday.toLocaleDateString('en-CA', { timeZone: 'America/Bogota' });
 
       // Giancarlo: Entrada temprano ayer, Salida normal
       await Attendance.create({

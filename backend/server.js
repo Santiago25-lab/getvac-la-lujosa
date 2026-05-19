@@ -173,7 +173,7 @@ const seedDatabase = async () => {
 
     // 3. Crear empleados de prueba si no hay ninguno
     const empCount = await Employee.count();
-    if (empCount === 0) {
+    if (false && empCount === 0) { // Desactivado en producción para evitar falsos
       console.log('Sembrando empleados y datos de prueba...');
       const emp1 = await Employee.create({
         fullName: 'Giancarlo Rossi',

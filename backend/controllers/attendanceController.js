@@ -653,7 +653,7 @@ export const getEmployeeMonthlyReport = async (req, res) => {
         }
         notes = att.notes || '';
       } else {
-        if (hasVacation) {
+        if (hasVacation && isWorkDay) {
           status = 'Vacaciones';
           totalVacationsCount++;
         } else if (hasPermission) {

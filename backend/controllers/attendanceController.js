@@ -430,8 +430,41 @@ export const getAttendanceStats = async (req, res) => {
 
     // Si es día laboral y ya pasó la hora límite, determinamos las inasistencias reales
     if (isTodayWorkDay && currentMinutes >= limitMinutes) {
+      // Obtener vacaciones activas hoy
+      const todayVacations = await Vacation.findAll({
+        where: {
+          status: { [Op.in]: ['Programada', 'Activa', 'Completada'] },
+          startDate: { [Op.lte]: todayStr },
+          returnDate: { [Op.gt]: todayStr }
+        }
+      });
+      const vacationEmployeeIds = new Set(todayVacations.map(v => v.employeeId));
+
+      // Obtener permisos aprobados hoy
+      const todayPermissions = await Permission.findAll({
+        where: {
+          status: 'Aprobado',
+          startDate: { [Op.lte]: todayStr },
+          endDate: { [Op.gte]: todayStr }
+        }
+      });
+      const permissionEmployeeIds = new Set(todayPermissions.map(p => p.employeeId));
+
+      // Obtener inasistencias manuales registradas para hoy (ej. incapacidades)
+      const todayAbsences = await Absence.findAll({
+        where: { date: todayStr }
+      });
+      const absenceEmployeeIds = new Set(todayAbsences.map(a => a.employeeId));
+
       const presentEmployeeIds = new Set(todayRecords.map(r => r.employeeId));
-      absentEmployees = activeEmployees.filter(emp => !presentEmployeeIds.has(emp.id));
+      
+      // Un empleado está ausente si no está presente, y NO está de vacaciones, ni de permiso aprobado, ni tiene inasistencia manual/incapacidad
+      absentEmployees = activeEmployees.filter(emp => {
+        return !presentEmployeeIds.has(emp.id) &&
+               !vacationEmployeeIds.has(emp.id) &&
+               !permissionEmployeeIds.has(emp.id) &&
+               !absenceEmployeeIds.has(emp.id);
+      });
       absentCount = absentEmployees.length;
     }
 

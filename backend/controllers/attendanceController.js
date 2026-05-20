@@ -220,12 +220,6 @@ export const registerPublicAttendance = async (req, res) => {
   }
 };
 
-  } catch (error) {
-    console.error('Error al registrar asistencia por QR:', error);
-    res.status(500).json({ message: 'Error interno al procesar el registro.' });
-  }
-};
-
 
 // --- ENDPOINTS ADMINISTRATIVOS (Requiere Auth) ---
 

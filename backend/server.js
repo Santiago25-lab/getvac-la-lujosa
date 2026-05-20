@@ -3,11 +3,13 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import bcrypt from 'bcryptjs';
 import sequelize from './config/database.js';
-import { User, Employee, Vacation, Setting, Attendance, Permission, Absence } from './models/index.js';
+import { User, Employee, Vacation, Setting, Attendance, Permission, Absence, CompanyHoliday } from './models/index.js';
 import { authenticateToken, requireRole } from './middleware/authMiddleware.js';
 
 import { login, getProfile } from './controllers/authController.js';
 import { getSettings, updateSettings } from './controllers/settingsController.js';
+import { getCompanyHolidays, createCompanyHoliday, deleteCompanyHoliday } from './controllers/companyHolidayController.js';
+
 import {
   getEmployees,
   getEmployeeById,
@@ -29,7 +31,8 @@ import {
   getAttendanceRecords,
   registerManualAttendance,
   updateAttendanceNotes,
-  getAttendanceStats
+  getAttendanceStats,
+  getEmployeeMonthlyReport
 } from './controllers/attendanceController.js';
 
 import {
@@ -73,7 +76,7 @@ app.get('/api/auth/profile', authenticateToken, getProfile);
 
 // Configuración
 app.get('/api/settings', authenticateToken, getSettings);
-app.put('/api/settings', authenticateToken, requireRole(['Administrador', 'Super Usuario']), updateSettings);
+app.put('/api/settings', authenticateToken, requireRole('Super Usuario'), updateSettings);
 
 // Empleados
 app.get('/api/employees', authenticateToken, getEmployees);
@@ -97,10 +100,16 @@ app.post('/api/users', authenticateToken, requireRole('Super Usuario'), createUs
 app.put('/api/users/:id', authenticateToken, requireRole('Super Usuario'), updateUser);
 app.delete('/api/users/:id', authenticateToken, requireRole('Super Usuario'), deleteUser);
 
+// Días No Laborables Corporativos
+app.get('/api/company-holidays', authenticateToken, getCompanyHolidays);
+app.post('/api/company-holidays', authenticateToken, requireRole('Super Usuario'), createCompanyHoliday);
+app.delete('/api/company-holidays/:id', authenticateToken, requireRole('Super Usuario'), deleteCompanyHoliday);
+
 // Vacaciones
 app.post('/api/vacations', authenticateToken, registerVacation);
 app.delete('/api/vacations/:id', authenticateToken, deleteVacation);
 app.put('/api/vacations/:id/status', authenticateToken, requireRole(['Administrador', 'Super Usuario']), updateVacationStatus);
+
 
 // Asistencia Pública (Registros QR - Libres)
 app.get('/api/public/employees/validate/:documentNumber', validatePublicEmployee);
@@ -108,6 +117,7 @@ app.post('/api/public/attendance/register', registerPublicAttendance);
 
 // Asistencia Administrativa (RRHH - Protegida)
 app.get('/api/attendance', authenticateToken, getAttendanceRecords);
+app.get('/api/attendance/employee/:id/monthly', authenticateToken, getEmployeeMonthlyReport);
 app.post('/api/attendance/manual', authenticateToken, registerManualAttendance);
 app.put('/api/attendance/:id/notes', authenticateToken, updateAttendanceNotes);
 app.get('/api/attendance/stats', authenticateToken, getAttendanceStats);

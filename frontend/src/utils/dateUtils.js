@@ -1,13 +1,67 @@
+import { isColombianHoliday } from './colombianHolidays.js';
+
 /**
- * Calcula los días hábiles de vacaciones consumidos (excluyendo sábados y domingos).
+ * Verifica si un día específico cuenta como día de vacaciones hábil
+ * según la jornada de la empresa, festivos de Colombia y días especiales de la empresa.
+ * 
+ * @param {Date} dateObj 
+ * @param {string|Array} workDays 
+ * @param {Array} companyHolidays 
+ * @param {boolean} satCount 
+ * @param {boolean} sunCount 
+ * @returns {boolean}
+ */
+export const isVacationDayCheck = (dateObj, workDays = '1,2,3,4,5', companyHolidays = [], satCount = false, sunCount = false) => {
+  const dateStr = dateObj.toISOString().split('T')[0];
+  
+  // 1. Si es festivo nacional en Colombia, no cuenta
+  if (isColombianHoliday(dateStr)) {
+    return false;
+  }
+  
+  // 2. Si es día no laborable especial de la empresa, no cuenta
+  if (companyHolidays.includes(dateStr)) {
+    return false;
+  }
+  
+  // 3. Evaluar día de la semana
+  const day = dateObj.getDay(); // 0 = Domingo, 6 = Sábado
+  const dayOfWeek = day === 0 ? 7 : day; // Mapear 0 a 7
+  
+  const workDaysArray = typeof workDays === 'string'
+    ? workDays.split(',').map(Number)
+    : (Array.isArray(workDays) ? workDays.map(Number) : [1,2,3,4,5]);
+  
+  // Si está en la jornada de la empresa, cuenta como vacación.
+  // También si se forza el conteo de sábados/domingos.
+  let isWork = workDaysArray.includes(dayOfWeek);
+  if (day === 0 && sunCount) isWork = true;
+  if (day === 6 && satCount) isWork = true;
+  
+  return isWork;
+};
+
+/**
+ * Calcula los días hábiles de vacaciones consumidos.
  * El día de regreso representa el retorno al trabajo físico, por lo que el último día
  * de vacaciones real es el día anterior.
  * 
  * @param {string} startDateStr - Fecha de inicio (YYYY-MM-DD)
  * @param {string} returnDateStr - Fecha de regreso al trabajo (YYYY-MM-DD)
+ * @param {string|Array} workDays - Configuración de días laborables
+ * @param {Array} companyHolidays - Días no laborables especiales de la empresa
+ * @param {boolean} satCount 
+ * @param {boolean} sunCount 
  * @returns {number} Cantidad de días hábiles consumidos
  */
-export const calculateBusinessDays = (startDateStr, returnDateStr) => {
+export const calculateBusinessDays = (
+  startDateStr, 
+  returnDateStr, 
+  workDays = '1,2,3,4,5', 
+  companyHolidays = [], 
+  satCount = false, 
+  sunCount = false
+) => {
   if (!startDateStr || !returnDateStr) return 0;
   
   const start = new Date(startDateStr + 'T00:00:00');
@@ -19,8 +73,7 @@ export const calculateBusinessDays = (startDateStr, returnDateStr) => {
   let current = new Date(start);
   
   while (current < returnDate) {
-    const dayOfWeek = current.getDay();
-    if (dayOfWeek !== 0 && dayOfWeek !== 6) { // 0 = Domingo, 6 = Sábado
+    if (isVacationDayCheck(current, workDays, companyHolidays, satCount, sunCount)) {
       businessDays++;
     }
     current.setDate(current.getDate() + 1);
@@ -46,27 +99,38 @@ export const formatDateFriendly = (dateStr) => {
 
 /**
  * Calcula la fecha de regreso al trabajo (returnDate) a partir de la fecha de salida (startDate)
- * y la cantidad de días hábiles de vacaciones solicitados, omitiendo fines de semana.
+ * y la cantidad de días hábiles de vacaciones solicitados, omitiendo fines de semana no laborables,
+ * festivos de Colombia y días especiales de la empresa.
  * 
  * @param {string} startDateStr - Fecha de salida YYYY-MM-DD
  * @param {number} businessDaysNeeded - Días hábiles de vacaciones
+ * @param {string|Array} workDays - Configuración de días laborables
+ * @param {Array} companyHolidays - Días no laborables especiales de la empresa
+ * @param {boolean} satCount 
+ * @param {boolean} sunCount 
  * @returns {string} Fecha de retorno YYYY-MM-DD
  */
-export const calculateReturnDate = (startDateStr, businessDaysNeeded) => {
+export const calculateReturnDate = (
+  startDateStr, 
+  businessDaysNeeded, 
+  workDays = '1,2,3,4,5', 
+  companyHolidays = [], 
+  satCount = false, 
+  sunCount = false
+) => {
   if (!startDateStr || !businessDaysNeeded || businessDaysNeeded <= 0) return '';
   
   let current = new Date(startDateStr + 'T00:00:00');
   let addedDays = 0;
   
-  // Si la fecha de inicio es un fin de semana, avanzar al primer día hábil (lunes)
-  while (current.getDay() === 0 || current.getDay() === 6) {
+  // Si la fecha de inicio no es un día de vacaciones válido, avanzar hasta el primer día hábil
+  while (!isVacationDayCheck(current, workDays, companyHolidays, satCount, sunCount)) {
     current.setDate(current.getDate() + 1);
   }
   
   // Contar los días hábiles gozados
   while (addedDays < businessDaysNeeded) {
-    const dayOfWeek = current.getDay();
-    if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+    if (isVacationDayCheck(current, workDays, companyHolidays, satCount, sunCount)) {
       addedDays++;
     }
     if (addedDays < businessDaysNeeded) {
@@ -74,10 +138,10 @@ export const calculateReturnDate = (startDateStr, businessDaysNeeded) => {
     }
   }
   
-  // El día de retorno es el siguiente día hábil disponible después del último día gozado
+  // El día de retorno es el siguiente día hábil laborable disponible después del último día gozado
   do {
     current.setDate(current.getDate() + 1);
-  } while (current.getDay() === 0 || current.getDay() === 6);
+  } while (!isVacationDayCheck(current, workDays, companyHolidays, satCount, sunCount));
   
   return current.toISOString().split('T')[0];
 };

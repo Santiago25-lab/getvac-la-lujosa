@@ -7,6 +7,10 @@ async function seedSuperuser() {
     await sequelize.authenticate();
     console.log('Conexión a la base de datos establecida.');
 
+    // Sincronizar todos los modelos con la base de datos
+    await sequelize.sync({ alter: true });
+    console.log('Base de datos sincronizada (alter: true).');
+
     // Verificar si ya existe el superusuario
     const existingUser = await User.findOne({ where: { username: 'superadmin' } });
     if (existingUser) {

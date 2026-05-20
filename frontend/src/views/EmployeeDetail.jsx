@@ -20,6 +20,18 @@ export default function EmployeeDetail({ token, employeeId, onViewChange, userRo
   const [bookingError, setBookingError] = useState('');
   const [bookingLoading, setBookingLoading] = useState(false);
   const [requestedDays, setRequestedDays] = useState('');
+  const [companyHolidays, setCompanyHolidays] = useState([]);
+
+  // Configuración de la Empresa
+  const [settings, setSettings] = useState(null);
+
+  // Estados para Reporte Mensual de Asistencia
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+  const [reportYear, setReportYear] = useState(new Date().getFullYear());
+  const [reportMonth, setReportMonth] = useState(new Date().getMonth() + 1);
+  const [reportData, setReportData] = useState(null);
+  const [reportLoading, setReportLoading] = useState(false);
+  const [reportError, setReportError] = useState('');
 
   // Estados para Edición de Empleado
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -72,15 +84,420 @@ export default function EmployeeDetail({ token, employeeId, onViewChange, userRo
     }
   };
 
+  const fetchSettings = async () => {
+    try {
+      const response = await fetch(`${API_URL}/api/settings`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setSettings(data);
+      }
+    } catch (err) {
+      console.error('Error al cargar configuración:', err);
+    }
+  };
+
+  const fetchCompanyHolidays = async () => {
+    try {
+      const response = await fetch(`${API_URL}/api/company-holidays`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setCompanyHolidays(data.map(h => h.date));
+      }
+    } catch (err) {
+      console.error('Error al cargar días no laborables de la empresa:', err);
+    }
+  };
+
   useEffect(() => {
     fetchEmployeeData();
     fetchDepartments();
+    fetchSettings();
+    fetchCompanyHolidays();
   }, [employeeId, token]);
+
+  const fetchMonthlyReport = async (year, month) => {
+    setReportLoading(true);
+    setReportError('');
+    try {
+      const response = await fetch(`${API_URL}/api/attendance/employee/${employeeId}/monthly?year=${year}&month=${month}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.message || 'Error al cargar el reporte mensual.');
+      }
+      setReportData(data);
+    } catch (err) {
+      console.error(err);
+      setReportError(err.message || 'Error al obtener el reporte.');
+    } finally {
+      setReportLoading(false);
+    }
+  };
+
+  const openMonthlyReportModal = () => {
+    const now = new Date();
+    const currYear = now.getFullYear();
+    const currMonth = now.getMonth() + 1;
+    setReportYear(currYear);
+    setReportMonth(currMonth);
+    setIsReportModalOpen(true);
+    fetchMonthlyReport(currYear, currMonth);
+  };
+
+  const handlePrintReport = () => {
+    if (!reportData) return;
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      alert('Por favor permita las ventanas emergentes (popups) para poder imprimir el reporte.');
+      return;
+    }
+
+    const { employee: empData, summary, dailyDetails } = reportData;
+    const monthNames = [
+      "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+      "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
+    ];
+    const monthName = monthNames[reportMonth - 1];
+
+    const dailyDetailsHtml = dailyDetails.map(d => {
+      let badgeClass = 'status-libre';
+      if (d.status === 'Presente') badgeClass = 'status-presente';
+      else if (d.status === 'Retardo') badgeClass = 'status-retardo';
+      else if (d.status === 'Inasistencia') badgeClass = 'status-inasistencia';
+      else if (d.status === 'Vacaciones') badgeClass = 'status-vacaciones';
+      else if (d.status === 'Permiso') badgeClass = 'status-permiso';
+
+      return `
+        <tr>
+          <td style="font-weight: 700;">${d.date}</td>
+          <td style="text-transform: capitalize;">${d.dayName}</td>
+          <td style="font-weight: 700; color: ${d.checkIn !== '-' ? '#15803d' : 'inherit'};">${d.checkIn}</td>
+          <td style="font-weight: 700; color: ${d.checkOut !== '-' ? '#475569' : 'inherit'};">${d.checkOut}</td>
+          <td style="font-weight: 700; color: #0f172a;">${d.workedHours}</td>
+          <td><span class="status-badge ${badgeClass}">${d.status}</span></td>
+          <td style="font-style: italic; color: #64748b;">${d.notes || '-'}</td>
+        </tr>
+      `;
+    }).join('');
+
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Reporte Mensual de Horas - ${empData.fullName}</title>
+        <meta charset="utf-8" />
+        <style>
+          @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap');
+          body {
+            font-family: 'Inter', sans-serif;
+            color: #1e293b;
+            margin: 0;
+            padding: 40px;
+            background-color: #ffffff;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+          }
+          .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+          }
+          .company-info h1 {
+            font-size: 24px;
+            font-weight: 900;
+            margin: 0;
+            color: #0f172a;
+            letter-spacing: -0.025em;
+          }
+          .company-info p {
+            font-size: 11px;
+            font-weight: 600;
+            color: #64748b;
+            margin: 4px 0 0 0;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+          }
+          .report-title {
+            text-align: right;
+          }
+          .report-title h2 {
+            font-size: 18px;
+            font-weight: 800;
+            margin: 0;
+            color: #4f46e5;
+          }
+          .report-title p {
+            font-size: 12px;
+            font-weight: 600;
+            color: #64748b;
+            margin: 6px 0 0 0;
+          }
+          .employee-details {
+            background-color: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 30px;
+            display: grid;
+            grid-template-cols: 1fr 1fr;
+            gap: 12px 24px;
+          }
+          .detail-item {
+            font-size: 13px;
+          }
+          .detail-label {
+            font-weight: 600;
+            color: #64748b;
+            margin-right: 6px;
+          }
+          .detail-value {
+            font-weight: 700;
+            color: #0f172a;
+          }
+          .summary-grid {
+            display: grid;
+            grid-template-cols: repeat(4, 1fr);
+            gap: 16px;
+            margin-bottom: 35px;
+          }
+          .summary-card {
+            border: 1px solid #e2e8f0;
+            background-color: #ffffff;
+            border-radius: 16px;
+            padding: 16px;
+            text-align: center;
+          }
+          .summary-card-primary {
+            background-color: #f5f3ff;
+            border-color: #ddd6fe;
+          }
+          .summary-value {
+            font-size: 20px;
+            font-weight: 900;
+            margin: 0;
+            color: #0f172a;
+          }
+          .summary-card-primary .summary-value {
+            color: #4f46e5;
+          }
+          .summary-label {
+            font-size: 10px;
+            font-weight: 700;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-top: 6px;
+            display: block;
+          }
+          table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 11px;
+            margin-bottom: 30px;
+          }
+          th {
+            background-color: #f1f5f9;
+            color: #475569;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            padding: 10px 12px;
+            border-bottom: 2px solid #cbd5e1;
+            text-align: left;
+          }
+          td {
+            padding: 10px 12px;
+            border-bottom: 1px solid #e2e8f0;
+            color: #334155;
+            font-weight: 500;
+          }
+          tr:hover {
+            background-color: #f8fafc;
+          }
+          .status-badge {
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: 800;
+            font-size: 9px;
+            text-transform: uppercase;
+          }
+          .status-presente { background-color: #dcfce7; color: #15803d; }
+          .status-retardo { background-color: #fef9c3; color: #a16207; }
+          .status-inasistencia { background-color: #fee2e2; color: #b91c1c; }
+          .status-vacaciones { background-color: #e0f2fe; color: #0369a1; }
+          .status-permiso { background-color: #f3e8ff; color: #6b21a8; }
+          .status-libre { background-color: #f1f5f9; color: #475569; }
+          .footer {
+            margin-top: 60px;
+            display: flex;
+            justify-content: space-between;
+            font-size: 11px;
+            color: #64748b;
+            border-top: 1px solid #e2e8f0;
+            padding-top: 20px;
+          }
+          .signatures {
+            margin-top: 80px;
+            display: grid;
+            grid-template-cols: 1fr 1fr;
+            gap: 80px;
+            text-align: center;
+          }
+          .signature-line {
+            border-top: 1px solid #94a3b8;
+            padding-top: 8px;
+            font-size: 12px;
+            font-weight: 600;
+            color: #475569;
+          }
+          @media print {
+            body {
+              padding: 0;
+            }
+            .no-print {
+              display: none;
+            }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <div class="company-info">
+            <h1>${settings?.companyName || 'STAFFFLOW RH'}</h1>
+            <p>NIT: ${settings?.companyNit || '900.123.456-7'} &bull; Tel: ${settings?.companyPhone || '-'} &bull; Correo: ${settings?.companyEmail || '-'}</p>
+          </div>
+          <div class="report-title">
+            <h2>Reporte Mensual de Horas</h2>
+            <p>Periodo: ${monthName} de ${reportYear}</p>
+          </div>
+        </div>
+
+        <div class="employee-details">
+          <div class="detail-item">
+            <span class="detail-label">Colaborador:</span>
+            <span class="detail-value">${empData.fullName}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Cédula:</span>
+            <span class="detail-value">${empData.documentNumber}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Cargo:</span>
+            <span class="detail-value">${empData.position}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Departamento/Área:</span>
+            <span class="detail-value">${empData.department}</span>
+          </div>
+        </div>
+
+        <div class="summary-grid">
+          <div class="summary-card summary-card-primary">
+            <h3 class="summary-value">${summary.workedHours}</h3>
+            <span class="summary-label">Horas Reales</span>
+          </div>
+          <div class="summary-card">
+            <h3 class="summary-value">${summary.expectedHours}</h3>
+            <span class="summary-label">Horas Esperadas</span>
+          </div>
+          <div class="summary-card" style="border-color: ${summary.diffHoursDecimal >= 0 ? '#bbf7d0' : '#fecaca'}; background-color: ${summary.diffHoursDecimal >= 0 ? '#f0fdf4' : '#fef2f2'};">
+            <h3 class="summary-value" style="color: ${summary.diffHoursDecimal >= 0 ? '#15803d' : '#b91c1c'};">${summary.diffHoursDecimal >= 0 ? '+' : ''}${summary.diffHoursDecimal}h</h3>
+            <span class="summary-label">Balance de Horas</span>
+          </div>
+          <div class="summary-card">
+            <h3 class="summary-value">${summary.daysWorked} / ${summary.daysWorked + summary.absencesCount}</h3>
+            <span class="summary-label">Días Laborados</span>
+          </div>
+        </div>
+
+        <div class="summary-grid" style="grid-template-cols: repeat(4, 1fr); margin-top: -20px; margin-bottom: 35px;">
+          <div class="summary-card" style="padding: 10px 16px;">
+            <h4 style="margin: 0; font-size: 16px; color: #a16207;">${summary.tardinessCount}</h4>
+            <span class="summary-label" style="font-size: 8px;">Retardos</span>
+          </div>
+          <div class="summary-card" style="padding: 10px 16px;">
+            <h4 style="margin: 0; font-size: 16px; color: #b91c1c;">${summary.absencesCount}</h4>
+            <span class="summary-label" style="font-size: 8px;">Inasistencias</span>
+          </div>
+          <div class="summary-card" style="padding: 10px 16px;">
+            <h4 style="margin: 0; font-size: 16px; color: #6b21a8;">${summary.permissionsCount}</h4>
+            <span class="summary-label" style="font-size: 8px;">Permisos</span>
+          </div>
+          <div class="summary-card" style="padding: 10px 16px;">
+            <h4 style="margin: 0; font-size: 16px; color: #0369a1;">${summary.vacationsCount}</h4>
+            <span class="summary-label" style="font-size: 8px;">Vacaciones (Días)</span>
+          </div>
+        </div>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Fecha</th>
+              <th>Día</th>
+              <th>Entrada</th>
+              <th>Salida</th>
+              <th>Horas Trabajadas</th>
+              <th>Estado</th>
+              <th>Observaciones / Novedad</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${dailyDetailsHtml}
+          </tbody>
+        </table>
+
+        <div class="signatures">
+          <div>
+            <div style="height: 60px;"></div>
+            <div class="signature-line">Firma del Colaborador</div>
+          </div>
+          <div>
+            <div style="height: 60px;"></div>
+            <div class="signature-line">Firma de Gestión Humana</div>
+          </div>
+        </div>
+
+        <div class="footer">
+          <span>Generado automáticamente por StaffFlow RH - ${new Date().toLocaleString()}</span>
+          <span>Página 1 de 1</span>
+        </div>
+
+        <script>
+          window.onload = function() {
+            setTimeout(function() {
+              window.print();
+            }, 300);
+          };
+        </script>
+      </body>
+      </html>
+    `;
+
+    printWindow.document.open();
+    printWindow.document.write(htmlContent);
+    printWindow.document.close();
+  };
 
   // Escuchar cambios de fecha para calcular días hábiles en tiempo real
   useEffect(() => {
     if (startDate && returnDate) {
-      const days = calculateBusinessDays(startDate, returnDate);
+      const days = calculateBusinessDays(
+        startDate,
+        returnDate,
+        settings?.workDays || '1,2,3,4,5',
+        companyHolidays,
+        settings?.vacationsSaturdaysCount || false,
+        settings?.vacationsSundaysCount || false
+      );
       setBookingDays(days);
       
       if (employee && days > employee.vacationStats.availableDays) {
@@ -92,7 +509,7 @@ export default function EmployeeDetail({ token, employeeId, onViewChange, userRo
       setBookingDays(0);
       setBookingError('');
     }
-  }, [startDate, returnDate, employee]);
+  }, [startDate, returnDate, employee, settings, companyHolidays]);
 
   const handleBookVacation = async (e) => {
     e.preventDefault();
@@ -102,7 +519,7 @@ export default function EmployeeDetail({ token, employeeId, onViewChange, userRo
     }
 
     if (bookingDays === 0) {
-      setBookingError('El periodo seleccionado no contiene ningún día hábil (lunes a viernes).');
+      setBookingError('El periodo seleccionado no contiene ningún día hábil laborable.');
       return;
     }
 
@@ -547,7 +964,14 @@ export default function EmployeeDetail({ token, employeeId, onViewChange, userRo
                             const newStart = e.target.value;
                             setStartDate(newStart);
                             if (newStart && requestedDays > 0) {
-                              const nextReturn = calculateReturnDate(newStart, parseInt(requestedDays));
+                              const nextReturn = calculateReturnDate(
+                                newStart,
+                                parseInt(requestedDays),
+                                settings?.workDays || '1,2,3,4,5',
+                                companyHolidays,
+                                settings?.vacationsSaturdaysCount || false,
+                                settings?.vacationsSundaysCount || false
+                              );
                               setReturnDate(nextReturn);
                             }
                           }}
@@ -566,7 +990,14 @@ export default function EmployeeDetail({ token, employeeId, onViewChange, userRo
                             const days = e.target.value;
                             setRequestedDays(days);
                             if (startDate && days > 0) {
-                              const nextReturn = calculateReturnDate(startDate, parseInt(days));
+                              const nextReturn = calculateReturnDate(
+                                startDate,
+                                parseInt(days),
+                                settings?.workDays || '1,2,3,4,5',
+                                companyHolidays,
+                                settings?.vacationsSaturdaysCount || false,
+                                settings?.vacationsSundaysCount || false
+                              );
                               setReturnDate(nextReturn);
                             } else {
                               setReturnDate('');
@@ -720,14 +1151,23 @@ export default function EmployeeDetail({ token, employeeId, onViewChange, userRo
           {/* Contenido de la pestaña: ASISTENCIA */}
           {activeTab === 'asistencia' && (
             <div className="bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/40 rounded-3xl p-6 shadow-sm space-y-5 animate-fade-in">
-              <div className="flex items-center gap-2.5 border-b border-slate-100 dark:border-slate-800/40 pb-4">
-                <div className="p-1.5 rounded-lg bg-brand-500/10 text-brand-500">
-                  <Clock className="w-5 h-5" />
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800/40 pb-4">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-1.5 rounded-lg bg-brand-500/10 text-brand-500">
+                    <Clock className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-slate-850 dark:text-white">Auditoría Horaria de Asistencias</h3>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 font-semibold mt-0.5">Historial de entradas, salidas e IPs registradas en la estación.</p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="text-base font-bold text-slate-850 dark:text-white">Auditoría Horaria de Asistencias</h3>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 font-semibold mt-0.5">Historial de entradas, salidas e IPs registradas en la estación.</p>
-                </div>
+                <button
+                  onClick={() => openMonthlyReportModal()}
+                  className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-brand-500 hover:bg-brand-600 text-white font-bold text-xs shadow-md transition cursor-pointer self-start sm:self-center"
+                >
+                  <FileText className="w-4 h-4" />
+                  <span>Ver Horas Trabajadas del Mes</span>
+                </button>
               </div>
 
               {!employee.attendances || employee.attendances.length === 0 ? (
@@ -1047,6 +1487,227 @@ export default function EmployeeDetail({ token, employeeId, onViewChange, userRo
                 {editFormLoading ? 'Guardando...' : 'Guardar Cambios'}
               </button>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL REPORTE HORARIO MENSUAL PREMIUM */}
+      {isReportModalOpen && (
+        <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 select-none animate-fade-in">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-5xl shadow-2xl border border-slate-200/50 dark:border-slate-800/40 p-6 space-y-6 max-h-[90vh] overflow-y-auto">
+            {/* Header */}
+            <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800/40">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-xl bg-brand-500/10 text-brand-500">
+                  <FileText className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-black text-slate-850 dark:text-white tracking-tight">
+                    Reporte Mensual de Horas Trabajadas
+                  </h3>
+                  <p className="text-xs text-slate-500 font-semibold mt-0.5">
+                    Resumen del desempeño de asistencia para {employee.fullName}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => { setIsReportModalOpen(false); setReportData(null); }}
+                className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-650 transition cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Selectores de Fecha y Botón de Impresión */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-50 dark:bg-slate-950/20 p-4 rounded-2xl border border-slate-100 dark:border-slate-850/50">
+              <div className="flex items-center gap-3">
+                <div className="flex flex-col gap-1">
+                  <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Año</label>
+                  <select
+                    value={reportYear}
+                    onChange={(e) => {
+                      const yr = parseInt(e.target.value);
+                      setReportYear(yr);
+                      fetchMonthlyReport(yr, reportMonth);
+                    }}
+                    className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl py-1.5 px-3 text-xs font-bold outline-none"
+                  >
+                    {[2024, 2025, 2026, 2027, 2028].map(y => (
+                      <option key={y} value={y}>{y}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Mes</label>
+                  <select
+                    value={reportMonth}
+                    onChange={(e) => {
+                      const mth = parseInt(e.target.value);
+                      setReportMonth(mth);
+                      fetchMonthlyReport(reportYear, mth);
+                    }}
+                    className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl py-1.5 px-3 text-xs font-bold outline-none"
+                  >
+                    {[
+                      { v: 1, n: 'Enero' },
+                      { v: 2, n: 'Febrero' },
+                      { v: 3, n: 'Marzo' },
+                      { v: 4, n: 'Abril' },
+                      { v: 5, n: 'Mayo' },
+                      { v: 6, n: 'Junio' },
+                      { v: 7, n: 'Julio' },
+                      { v: 8, n: 'Agosto' },
+                      { v: 9, n: 'Septiembre' },
+                      { v: 10, n: 'Octubre' },
+                      { v: 11, n: 'Noviembre' },
+                      { v: 12, n: 'Diciembre' }
+                    ].map(m => (
+                      <option key={m.v} value={m.v}>{m.n}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {reportData && (
+                <button
+                  onClick={handlePrintReport}
+                  className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-850 dark:bg-slate-800 dark:hover:bg-slate-750 text-white font-bold text-xs shadow-md transition cursor-pointer"
+                >
+                  <FileText className="w-4 h-4" />
+                  <span>Imprimir Reporte (Firma)</span>
+                </button>
+              )}
+            </div>
+
+            {/* Contenido Principal */}
+            {reportLoading ? (
+              <div className="py-20 flex flex-col items-center justify-center">
+                <div className="w-10 h-10 border-4 border-brand-500 border-t-transparent rounded-full animate-spin mb-4" />
+                <p className="text-xs font-bold text-slate-400">Procesando registros de asistencia mensual...</p>
+              </div>
+            ) : reportError ? (
+              <div className="p-4 bg-rose-500/10 border border-rose-500/20 text-rose-500 rounded-2xl text-xs font-semibold flex items-center gap-2.5">
+                <AlertTriangle className="w-4 h-4 shrink-0" />
+                <span>{reportError}</span>
+              </div>
+            ) : reportData ? (
+              <div className="space-y-6">
+                
+                {/* KPIs */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="p-4 rounded-2xl bg-brand-500/5 dark:bg-brand-500/10 border border-brand-200/20 dark:border-brand-900/30 text-center">
+                    <span className="block text-xl font-black text-brand-600 dark:text-brand-400 leading-none">
+                      {reportData.summary.workedHours}
+                    </span>
+                    <span className="text-[9px] font-bold text-slate-450 uppercase tracking-wider mt-1.5 block">
+                      Horas Trabajadas
+                    </span>
+                  </div>
+                  <div className="p-4 rounded-2xl bg-slate-100 dark:bg-slate-800/40 border border-slate-200/30 dark:border-slate-750 text-center">
+                    <span className="block text-xl font-black text-slate-700 dark:text-slate-350 leading-none">
+                      {reportData.summary.expectedHours}
+                    </span>
+                    <span className="text-[9px] font-bold text-slate-450 uppercase tracking-wider mt-1.5 block">
+                      Horas Esperadas
+                    </span>
+                  </div>
+                  <div className={`p-4 rounded-2xl border text-center ${
+                    reportData.summary.diffHoursDecimal >= 0 
+                      ? 'bg-emerald-500/5 border-emerald-200/30 text-emerald-600 dark:text-emerald-450' 
+                      : 'bg-rose-500/5 border-rose-200/30 text-rose-600 dark:text-rose-450'
+                  }`}>
+                    <span className="block text-xl font-black leading-none">
+                      {reportData.summary.diffHoursDecimal >= 0 ? '+' : ''}{reportData.summary.diffHoursDecimal}h
+                    </span>
+                    <span className="text-[9px] font-bold text-slate-450 uppercase tracking-wider mt-1.5 block">
+                      Balance (Dif)
+                    </span>
+                  </div>
+                  <div className="p-4 rounded-2xl bg-slate-100 dark:bg-slate-800/40 border border-slate-200/30 dark:border-slate-750 text-center">
+                    <span className="block text-xl font-black text-slate-700 dark:text-slate-350 leading-none">
+                      {reportData.summary.daysWorked} / {reportData.summary.daysWorked + reportData.summary.absencesCount}
+                    </span>
+                    <span className="text-[9px] font-bold text-slate-450 uppercase tracking-wider mt-1.5 block">
+                      Días Asistidos
+                    </span>
+                  </div>
+                </div>
+
+                {/* KPI Extra: Detalles del mes */}
+                <div className="grid grid-cols-4 gap-4">
+                  <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-950/20 border border-slate-100 dark:border-slate-850/50 text-center">
+                    <span className="block text-base font-extrabold text-amber-600 leading-none">{reportData.summary.tardinessCount}</span>
+                    <span className="text-[8px] font-bold text-slate-455 uppercase tracking-wider mt-1 block">Retardos</span>
+                  </div>
+                  <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-950/20 border border-slate-100 dark:border-slate-850/50 text-center">
+                    <span className="block text-base font-extrabold text-rose-600 leading-none">{reportData.summary.absencesCount}</span>
+                    <span className="text-[8px] font-bold text-slate-455 uppercase tracking-wider mt-1 block">Inasistencias</span>
+                  </div>
+                  <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-950/20 border border-slate-100 dark:border-slate-850/50 text-center">
+                    <span className="block text-base font-extrabold text-purple-600 leading-none">{reportData.summary.permissionsCount}</span>
+                    <span className="text-[8px] font-bold text-slate-455 uppercase tracking-wider mt-1 block">Permisos</span>
+                  </div>
+                  <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-950/20 border border-slate-100 dark:border-slate-850/50 text-center">
+                    <span className="block text-base font-extrabold text-sky-600 leading-none">{reportData.summary.vacationsCount}</span>
+                    <span className="text-[8px] font-bold text-slate-455 uppercase tracking-wider mt-1 block">Vacaciones</span>
+                  </div>
+                </div>
+
+                {/* Tabla Detallada */}
+                <div className="border border-slate-200/60 dark:border-slate-800/40 rounded-2xl overflow-hidden">
+                  <div className="overflow-x-auto max-h-[350px] overflow-y-auto">
+                    <table className="w-full text-left text-xs border-collapse">
+                      <thead className="sticky top-0 bg-slate-50 dark:bg-slate-900 z-10">
+                        <tr className="text-slate-450 font-black border-b border-slate-200/60 dark:border-slate-800/40 uppercase tracking-widest text-[9px]">
+                          <th className="py-3 px-4">Fecha</th>
+                          <th className="py-3 px-4">Día</th>
+                          <th className="py-3 px-4">Entrada</th>
+                          <th className="py-3 px-4">Salida</th>
+                          <th className="py-3 px-4 text-center">Horas</th>
+                          <th className="py-3 px-4 text-center">Estado</th>
+                          <th className="py-3 px-4">Observaciones</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 dark:divide-slate-850 font-semibold text-slate-700 dark:text-slate-250 font-sans">
+                        {reportData.dailyDetails.map((day, idx) => {
+                          let badgeClass = 'bg-slate-50 text-slate-500 border-slate-200 dark:bg-slate-800/40 dark:text-slate-400 dark:border-slate-750';
+                          if (day.status === 'Presente') {
+                            badgeClass = 'bg-emerald-50 text-emerald-700 border-emerald-250 dark:bg-emerald-950/20 dark:text-emerald-450 dark:border-emerald-900/50';
+                          } else if (day.status === 'Retardo') {
+                            badgeClass = 'bg-amber-50 text-amber-700 border-amber-250 dark:bg-amber-950/20 dark:text-amber-455 dark:border-amber-900/50';
+                          } else if (day.status === 'Inasistencia') {
+                            badgeClass = 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/20 dark:text-rose-450 dark:border-rose-900/50';
+                          } else if (day.status === 'Vacaciones') {
+                            badgeClass = 'bg-sky-50 text-sky-700 border-sky-200 dark:bg-sky-950/20 dark:text-sky-400 dark:border-sky-900/50';
+                          } else if (day.status === 'Permiso') {
+                            badgeClass = 'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950/20 dark:text-purple-400 dark:border-purple-900/50';
+                          }
+
+                          return (
+                            <tr key={idx} className="hover:bg-slate-50/50 dark:hover:bg-slate-850/30 transition">
+                              <td className="py-2.5 px-4 font-bold text-slate-900 dark:text-white">{day.date}</td>
+                              <td className="py-2.5 px-4 text-xs text-slate-450 capitalize font-medium">{day.dayName}</td>
+                              <td className="py-2.5 px-4 font-extrabold text-emerald-600 dark:text-emerald-400">{day.checkIn}</td>
+                              <td className="py-2.5 px-4 font-extrabold text-slate-500 dark:text-slate-400">{day.checkOut}</td>
+                              <td className="py-2.5 px-4 text-center font-bold text-slate-850 dark:text-slate-100">{day.workedHours}</td>
+                              <td className="py-2.5 px-4 text-center">
+                                <span className={`inline-block px-2 py-0.5 border rounded-full text-[9px] font-black uppercase tracking-wider ${badgeClass}`}>
+                                  {day.status}
+                                </span>
+                              </td>
+                              <td className="py-2.5 px-4 text-xs font-medium text-slate-400 max-w-[180px] truncate" title={day.notes}>
+                                {day.notes || '-'}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+              </div>
+            ) : null}
           </div>
         </div>
       )}

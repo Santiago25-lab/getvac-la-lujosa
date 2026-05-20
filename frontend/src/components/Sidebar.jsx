@@ -8,10 +8,10 @@ export default function Sidebar({ activeView, onViewChange, user, onLogout }) {
     { id: 'attendance', label: 'Asistencia', icon: Clock },
     { id: 'permissions', label: 'Permisos', icon: FileText },
     { id: 'absences', label: 'Inasistencias', icon: AlertOctagon },
-    { id: 'settings', label: 'Configuración', icon: Settings },
   ];
 
   if (user?.role === 'Super Usuario') {
+    menuItems.push({ id: 'settings', label: 'Configuración', icon: Settings });
     menuItems.push({ id: 'superuser', label: 'Panel Super', icon: ShieldCheck });
   }
 

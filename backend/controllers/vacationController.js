@@ -1,9 +1,10 @@
-import { Employee, Vacation, Setting } from '../models/index.js';
+import { Employee, Vacation, Setting, CompanyHoliday } from '../models/index.js';
 import { calculateEmployeeVacationStats } from './employeeController.js';
 import { Op } from 'sequelize';
+import { isColombianHoliday } from '../utils/colombianHolidays.js';
 
-// Helper para calcular días hábiles excluyendo sábados y domingos
-export const calculateBusinessDays = (startDateStr, returnDateStr) => {
+// Helper para calcular días hábiles excluyendo sábados y domingos de manera dinámica
+export const calculateBusinessDays = (startDateStr, returnDateStr, satCount = false, sunCount = false, companyHolidays = []) => {
   const start = new Date(startDateStr + 'T00:00:00');
   const returnDate = new Date(returnDateStr + 'T00:00:00');
   
@@ -15,8 +16,25 @@ export const calculateBusinessDays = (startDateStr, returnDateStr) => {
   // Se recorre desde el día de inicio hasta el día ANTERIOR a la fecha de regreso.
   // El "returnDate" representa el día en que el empleado vuelve a laborar físicamente.
   while (current < returnDate) {
-    const dayOfWeek = current.getDay();
-    if (dayOfWeek !== 0 && dayOfWeek !== 6) { // 0 = Domingo, 6 = Sábado
+    const dayOfWeek = current.getDay(); // 0 = Domingo, 6 = Sábado
+    const dateStr = current.toISOString().split('T')[0];
+    
+    let isWorkDay = true;
+    if (dayOfWeek === 0 && !sunCount) {
+      isWorkDay = false;
+    }
+    if (dayOfWeek === 6 && !satCount) {
+      isWorkDay = false;
+    }
+    
+    // Si es un festivo colombiano, o un día no laborable especial de la empresa, no es día laborable
+    if (isWorkDay) {
+      if (isColombianHoliday(dateStr) || companyHolidays.includes(dateStr)) {
+        isWorkDay = false;
+      }
+    }
+    
+    if (isWorkDay) {
       businessDays++;
     }
     current.setDate(current.getDate() + 1);
@@ -51,8 +69,25 @@ export const registerVacation = async (req, res) => {
       return res.status(400).json({ message: 'La fecha de regreso debe ser posterior a la fecha de inicio.' });
     }
 
+    // Obtener políticas horarias
+    const settings = await Setting.findOne() || {
+      vacationsSaturdaysCount: false,
+      vacationsSundaysCount: false
+    };
+
+    // Obtener días no laborables especiales de la empresa
+    const dbHolidays = await CompanyHoliday.findAll({ raw: true });
+    const companyHolidaysList = dbHolidays.map(h => h.date);
+
     // Calcular días hábiles
-    const businessDays = calculateBusinessDays(startDate, returnDate);
+    const businessDays = calculateBusinessDays(
+      startDate, 
+      returnDate, 
+      settings.vacationsSaturdaysCount, 
+      settings.vacationsSundaysCount,
+      companyHolidaysList
+    );
+
     if (businessDays === 0) {
       return res.status(400).json({ message: 'El intervalo seleccionado no contiene días hábiles laborables.' });
     }

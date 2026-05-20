@@ -26,9 +26,20 @@ const User = sequelize.define('User', {
     allowNull: false,
   },
   role: {
-    type: DataTypes.ENUM('Administrador', 'Recursos Humanos', 'Super Usuario'),
+    type: DataTypes.STRING,
     defaultValue: 'Recursos Humanos',
     allowNull: false,
+    validate: {
+      isIn: [['Administrador', 'Recursos Humanos', 'Super Usuario']]
+    }
+  },
+  status: {
+    type: DataTypes.STRING,
+    defaultValue: 'activo',
+    allowNull: false,
+    validate: {
+      isIn: [['activo', 'inactivo']]
+    }
   },
 }, {
   timestamps: true,

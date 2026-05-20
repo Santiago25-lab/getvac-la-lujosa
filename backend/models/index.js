@@ -8,6 +8,7 @@ import Permission from './Permission.js';
 import Absence from './Absence.js';
 import Department from './Department.js';
 import AuditLog from './AuditLog.js';
+import CompanyHoliday from './CompanyHoliday.js';
 
 // Relaciones
 Employee.hasMany(Vacation, { foreignKey: 'employeeId', as: 'vacations', onDelete: 'CASCADE' });
@@ -32,5 +33,7 @@ export {
   Permission,
   Absence,
   Department,
-  AuditLog
+  AuditLog,
+  CompanyHoliday
 };
+

@@ -20,6 +20,10 @@ export const login = async (req, res) => {
       return res.status(401).json({ message: 'Usuario o contraseña incorrectos.' });
     }
 
+    if (user.status === 'inactivo') {
+      return res.status(403).json({ message: 'Su cuenta ha sido desactivada. Comuníquese con el Super Usuario.' });
+    }
+
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       return res.status(401).json({ message: 'Usuario o contraseña incorrectos.' });

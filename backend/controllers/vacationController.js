@@ -3,8 +3,15 @@ import { calculateEmployeeVacationStats } from './employeeController.js';
 import { Op } from 'sequelize';
 import { isColombianHoliday } from '../utils/colombianHolidays.js';
 
-// Helper para calcular días hábiles excluyendo sábados y domingos de manera dinámica
-export const calculateBusinessDays = (startDateStr, returnDateStr, satCount = false, sunCount = false, companyHolidays = []) => {
+// Helper para calcular días hábiles excluyendo fines de semana no laborables, festivos y días especiales
+export const calculateBusinessDays = (
+  startDateStr, 
+  returnDateStr, 
+  workDays = '1,2,3,4,5', 
+  companyHolidays = [], 
+  satCount = false, 
+  sunCount = false
+) => {
   const start = new Date(startDateStr + 'T00:00:00');
   const returnDate = new Date(returnDateStr + 'T00:00:00');
   
@@ -13,28 +20,29 @@ export const calculateBusinessDays = (startDateStr, returnDateStr, satCount = fa
   let businessDays = 0;
   let current = new Date(start);
   
+  const workDaysArray = typeof workDays === 'string'
+    ? workDays.split(',').map(Number)
+    : (Array.isArray(workDays) ? workDays.map(Number) : [1,2,3,4,5]);
+  
   // Se recorre desde el día de inicio hasta el día ANTERIOR a la fecha de regreso.
   // El "returnDate" representa el día en que el empleado vuelve a laborar físicamente.
   while (current < returnDate) {
-    const dayOfWeek = current.getDay(); // 0 = Domingo, 6 = Sábado
+    const day = current.getDay(); // 0 = Domingo, 6 = Sábado
+    const dayOfWeek = day === 0 ? 7 : day; // Mapear 0 a 7
     const dateStr = current.toISOString().split('T')[0];
     
-    let isWorkDay = true;
-    if (dayOfWeek === 0 && !sunCount) {
-      isWorkDay = false;
-    }
-    if (dayOfWeek === 6 && !satCount) {
-      isWorkDay = false;
-    }
+    let isWork = workDaysArray.includes(dayOfWeek);
+    if (day === 0 && sunCount) isWork = true;
+    if (day === 6 && satCount) isWork = true;
     
     // Si es un festivo colombiano, o un día no laborable especial de la empresa, no es día laborable
-    if (isWorkDay) {
+    if (isWork) {
       if (isColombianHoliday(dateStr) || companyHolidays.includes(dateStr)) {
-        isWorkDay = false;
+        isWork = false;
       }
     }
     
-    if (isWorkDay) {
+    if (isWork) {
       businessDays++;
     }
     current.setDate(current.getDate() + 1);
@@ -72,7 +80,8 @@ export const registerVacation = async (req, res) => {
     // Obtener políticas horarias
     const settings = await Setting.findOne() || {
       vacationsSaturdaysCount: false,
-      vacationsSundaysCount: false
+      vacationsSundaysCount: false,
+      workDays: '1,2,3,4,5'
     };
 
     // Obtener días no laborables especiales de la empresa
@@ -83,9 +92,10 @@ export const registerVacation = async (req, res) => {
     const businessDays = calculateBusinessDays(
       startDate, 
       returnDate, 
+      settings.workDays || '1,2,3,4,5',
+      companyHolidaysList,
       settings.vacationsSaturdaysCount, 
-      settings.vacationsSundaysCount,
-      companyHolidaysList
+      settings.vacationsSundaysCount
     );
 
     if (businessDays === 0) {

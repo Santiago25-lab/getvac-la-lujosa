@@ -372,10 +372,11 @@ sequelize.sync()
   .then(async () => {
     console.log('Conexión con la base de datos establecida exitosamente.');
     await seedDatabase();
-    app.listen(PORT, () => {
-      console.log(`Servidor backend corriendo en http://localhost:${PORT}`);
+    app.listen(PORT, '0.0.0.0', () => {
+      console.log(`Servidor backend corriendo en el puerto ${PORT}`);
     });
   })
   .catch(err => {
     console.error('No se pudo conectar a la base de datos:', err);
+    process.exit(1); // Finalizar con error para que Render lo reinicie/registre bien
   });

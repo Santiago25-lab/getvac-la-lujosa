@@ -5,9 +5,8 @@ export default function Sidebar({ activeView, onViewChange, user, onLogout }) {
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'employees', label: 'Empleados', icon: Users },
-    { id: 'attendance', label: 'Asistencia', icon: Clock },
+    { id: 'attendance', label: 'Asistencias & Faltas', icon: Clock },
     { id: 'permissions', label: 'Permisos', icon: FileText },
-    { id: 'absences', label: 'Inasistencias', icon: AlertOctagon },
   ];
 
   if (user?.role === 'Super Usuario') {

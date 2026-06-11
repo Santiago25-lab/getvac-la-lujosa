@@ -79,22 +79,24 @@ export default function Dashboard({ token, onViewChange }) {
   return (
     <div className="flex-1 p-8 overflow-y-auto space-y-8 select-none animate-fade-in bg-slate-50/50">
       
-      {/* Banner de Bienvenida */}
-      <div className="bg-gradient-to-r from-brand-600 to-brand-500 text-white p-8 rounded-3xl shadow-lg shadow-brand-500/10">
-        <h1 className="text-3xl font-extrabold tracking-tight mb-2">Panel de Control General</h1>
-        <p className="text-sm text-brand-100 font-medium max-w-2xl">
-          Bienvenido de nuevo. Hoy tienes una tasa de asistencia del 94%. Revisa las alertas de saldo pendientes y las solicitudes de permisos que requieren tu atención inmediata.
-        </p>
-        <div className="flex gap-3 mt-6">
+      {/* Título de Página en vez de Banner Gigante */}
+      <div className="flex justify-between items-center bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
+        <div>
+          <h1 className="text-2xl font-black tracking-tight text-slate-800">Panel de Control General</h1>
+          <p className="text-sm text-slate-500 font-medium mt-1">
+            Resumen en tiempo real de tu equipo y novedades.
+          </p>
+        </div>
+        <div className="flex gap-3">
           <button 
             onClick={() => onViewChange('attendance')}
-            className="bg-white text-brand-600 px-5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider hover:bg-brand-50 transition active:scale-95 cursor-pointer shadow-md shadow-brand-600/5"
+            className="bg-slate-50 text-slate-600 border border-slate-200 px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider hover:bg-slate-100 transition active:scale-95 cursor-pointer"
           >
             Ver Reporte Diario
           </button>
           <button 
             onClick={() => onViewChange('employees')}
-            className="bg-brand-700/50 text-white border border-brand-400/30 px-5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider hover:bg-brand-700 transition active:scale-95 cursor-pointer"
+            className="bg-brand-600 text-white px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider hover:bg-brand-700 transition active:scale-95 cursor-pointer shadow-md shadow-brand-600/20"
           >
             Gestionar Equipo
           </button>
@@ -102,68 +104,48 @@ export default function Dashboard({ token, onViewChange }) {
       </div>
 
       {/* Tarjetas Estadísticas Nivel 1 */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mt-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mt-6">
         {/* Total Empleados */}
-        <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex flex-col justify-between">
-          <div className="flex justify-between items-start">
-            <div>
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-wide">Total Empleados</p>
-              <h3 className="text-2xl font-black text-slate-800 mt-1">{stats?.totalEmployees || 0}</h3>
-            </div>
-            <div className="p-2 bg-indigo-50 text-indigo-500 rounded-lg">
-              <Users className="w-5 h-5" />
-            </div>
+        <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex items-center justify-between">
+          <div>
+            <p className="text-xs font-bold text-slate-400 uppercase tracking-wide">Total Empleados</p>
+            <h3 className="text-3xl font-black text-slate-800 mt-1">{stats?.totalEmployees || 0}</h3>
           </div>
-          <div className="mt-4 flex items-center gap-1.5 text-xs font-bold text-emerald-600">
-            <span className="bg-emerald-50 px-1.5 py-0.5 rounded-md">+12 este mes</span>
+          <div className="p-3 bg-indigo-50 text-indigo-500 rounded-xl">
+            <Users className="w-6 h-6" />
           </div>
         </div>
         
         {/* Días Pendientes */}
-        <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex flex-col justify-between">
-          <div className="flex justify-between items-start">
-            <div>
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-wide">Días Pendientes</p>
-              <h3 className="text-2xl font-black text-slate-800 mt-1">{stats?.totalPendingDays || 0}</h3>
-            </div>
-            <div className="p-2 bg-orange-50 text-orange-500 rounded-lg">
-              <Clock className="w-5 h-5" />
-            </div>
+        <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex items-center justify-between">
+          <div>
+            <p className="text-xs font-bold text-slate-400 uppercase tracking-wide">Días Pendientes</p>
+            <h3 className="text-3xl font-black text-slate-800 mt-1">{Math.floor(stats?.totalPendingDays || 0)}</h3>
           </div>
-          <div className="mt-4 flex items-center gap-1.5 text-xs font-bold text-amber-600">
-            <span className="bg-amber-50 px-1.5 py-0.5 rounded-md">Requiere revisión</span>
+          <div className="p-3 bg-orange-50 text-orange-500 rounded-xl">
+            <Clock className="w-6 h-6" />
           </div>
         </div>
 
         {/* En Vacaciones */}
-        <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex flex-col justify-between">
-          <div className="flex justify-between items-start">
-            <div>
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-wide">En Vacaciones</p>
-              <h3 className="text-2xl font-black text-slate-800 mt-1">{stats?.currentlyOnVacationCount || 0}</h3>
-            </div>
-            <div className="p-2 bg-emerald-50 text-emerald-500 rounded-lg">
-              <UserMinus className="w-5 h-5" />
-            </div>
+        <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex items-center justify-between">
+          <div>
+            <p className="text-xs font-bold text-slate-400 uppercase tracking-wide">En Vacaciones</p>
+            <h3 className="text-3xl font-black text-slate-800 mt-1">{stats?.currentlyOnVacationCount || 0}</h3>
           </div>
-          <div className="mt-4 flex items-center gap-1.5 text-xs font-bold text-slate-500">
-            <span className="bg-slate-100 px-1.5 py-0.5 rounded-md">8 regresan el lunes</span>
+          <div className="p-3 bg-emerald-50 text-emerald-500 rounded-xl">
+            <UserMinus className="w-6 h-6" />
           </div>
         </div>
 
         {/* Alertas de Saldo */}
-        <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex flex-col justify-between">
-          <div className="flex justify-between items-start">
-            <div>
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-wide">Alertas de Saldo</p>
-              <h3 className="text-2xl font-black text-slate-800 mt-1">{stats?.lowBalanceEmployeesCount || 0}</h3>
-            </div>
-            <div className="p-2 bg-rose-50 text-rose-500 rounded-lg">
-              <AlertTriangle className="w-5 h-5" />
-            </div>
+        <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex items-center justify-between">
+          <div>
+            <p className="text-xs font-bold text-slate-400 uppercase tracking-wide">Alertas de Saldo</p>
+            <h3 className="text-3xl font-black text-rose-600 mt-1">{stats?.lowBalanceEmployeesCount || 0}</h3>
           </div>
-          <div className="mt-4 flex items-center gap-1.5 text-xs font-bold text-rose-600">
-            <span className="bg-rose-50 px-1.5 py-0.5 rounded-md">Crítico: Nómina</span>
+          <div className="p-3 bg-rose-50 text-rose-500 rounded-xl">
+            <AlertTriangle className="w-6 h-6" />
           </div>
         </div>
       </div>
@@ -171,54 +153,46 @@ export default function Dashboard({ token, onViewChange }) {
       {/* Tarjetas de Asistencia Nivel 2 */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mt-6">
         {/* Presentes Hoy */}
-        <div className="bg-emerald-500 text-white p-6 rounded-2xl shadow-sm flex flex-col justify-between">
-          <div className="flex justify-between items-start">
-            <div>
-              <p className="text-xs font-bold uppercase tracking-wide text-emerald-100">Presentes Hoy</p>
-              <h3 className="text-3xl font-black mt-1">{attendanceStats?.presentToday || 0}</h3>
-            </div>
-            <div className="p-1.5 bg-emerald-400/30 rounded-lg">
-              <UserCheck className="w-5 h-5" />
-            </div>
+        <div className="bg-white p-6 rounded-2xl border border-emerald-100 shadow-sm flex items-center justify-between hover:shadow-md transition">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-wide text-slate-400">Presentes Hoy</p>
+            <h3 className="text-3xl font-black text-slate-800 mt-1">{attendanceStats?.presentToday || 0}</h3>
+          </div>
+          <div className="p-3 bg-emerald-50 text-emerald-500 rounded-xl">
+            <UserCheck className="w-6 h-6" />
           </div>
         </div>
 
         {/* Retardos */}
-        <div className="bg-orange-500 text-white p-6 rounded-2xl shadow-sm flex flex-col justify-between">
-          <div className="flex justify-between items-start">
-            <div>
-              <p className="text-xs font-bold uppercase tracking-wide text-orange-100">Retardos</p>
-              <h3 className="text-3xl font-black mt-1">{attendanceStats?.lateToday || 0}</h3>
-            </div>
-            <div className="p-1.5 bg-orange-400/30 rounded-lg">
-              <Clock className="w-5 h-5" />
-            </div>
+        <div className="bg-white p-6 rounded-2xl border border-orange-100 shadow-sm flex items-center justify-between hover:shadow-md transition">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-wide text-slate-400">Retardos</p>
+            <h3 className="text-3xl font-black text-slate-800 mt-1">{attendanceStats?.lateToday || 0}</h3>
+          </div>
+          <div className="p-3 bg-orange-50 text-orange-500 rounded-xl">
+            <Clock className="w-6 h-6" />
           </div>
         </div>
 
         {/* Sin Registro */}
-        <div className="bg-pink-500 text-white p-6 rounded-2xl shadow-sm flex flex-col justify-between">
-          <div className="flex justify-between items-start">
-            <div>
-              <p className="text-xs font-bold uppercase tracking-wide text-pink-100">Sin Registro</p>
-              <h3 className="text-3xl font-black mt-1">{attendanceStats?.absentToday || 0}</h3>
-            </div>
-            <div className="p-1.5 bg-pink-400/30 rounded-lg">
-              <UserX className="w-5 h-5" />
-            </div>
+        <div className="bg-white p-6 rounded-2xl border border-rose-100 shadow-sm flex items-center justify-between hover:shadow-md transition">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-wide text-slate-400">Sin Registro</p>
+            <h3 className="text-3xl font-black text-rose-600 mt-1">{attendanceStats?.absentToday || 0}</h3>
+          </div>
+          <div className="p-3 bg-rose-50 text-rose-500 rounded-xl">
+            <UserX className="w-6 h-6" />
           </div>
         </div>
 
         {/* Permisos Pendientes */}
-        <div className="bg-brand-500 text-white p-6 rounded-2xl shadow-sm flex flex-col justify-between">
-          <div className="flex justify-between items-start">
-            <div>
-              <p className="text-xs font-bold uppercase tracking-wide text-brand-100">Permisos Pendientes</p>
-              <h3 className="text-3xl font-black mt-1">{pendingPermissionsCount}</h3>
-            </div>
-            <div className="p-1.5 bg-brand-400/30 rounded-lg">
-              <ClipboardSignature className="w-5 h-5" />
-            </div>
+        <div className="bg-white p-6 rounded-2xl border border-brand-100 shadow-sm flex items-center justify-between hover:shadow-md transition">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-wide text-slate-400">Permisos Pendientes</p>
+            <h3 className="text-3xl font-black text-brand-600 mt-1">{pendingPermissionsCount}</h3>
+          </div>
+          <div className="p-3 bg-brand-50 text-brand-500 rounded-xl">
+            <ClipboardSignature className="w-6 h-6" />
           </div>
         </div>
       </div>

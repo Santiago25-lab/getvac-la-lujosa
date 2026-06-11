@@ -22,6 +22,12 @@ export default function EmployeeDetail({ token, employeeId, onViewChange, userRo
   const [requestedDays, setRequestedDays] = useState('');
   const [companyHolidays, setCompanyHolidays] = useState([]);
 
+  // Nuevos campos legales de Fase 1 (Vacaciones)
+  const [tipoDisfrute, setTipoDisfrute] = useState('Físico');
+  const [vacationStatus, setVacationStatus] = useState('Programada');
+  const [fechaNotificacion, setFechaNotificacion] = useState('');
+  const [responsableAprobacion, setResponsableAprobacion] = useState('');
+
   // Configuración de la Empresa
   const [settings, setSettings] = useState(null);
 
@@ -542,7 +548,11 @@ export default function EmployeeDetail({ token, employeeId, onViewChange, userRo
           employeeId: employee.id,
           startDate,
           returnDate,
-          notes
+          notes,
+          tipoDisfrute,
+          status: vacationStatus,
+          fechaNotificacion: fechaNotificacion || null,
+          responsableAprobacion: responsableAprobacion || null
         })
       });
 
@@ -557,6 +567,10 @@ export default function EmployeeDetail({ token, employeeId, onViewChange, userRo
       setReturnDate('');
       setRequestedDays('');
       setNotes('');
+      setTipoDisfrute('Físico');
+      setVacationStatus('Programada');
+      setFechaNotificacion('');
+      setResponsableAprobacion('');
       setBookingDays(0);
       fetchEmployeeData();
     } catch (err) {
@@ -1020,6 +1034,55 @@ export default function EmployeeDetail({ token, employeeId, onViewChange, userRo
                       </div>
                     </div>
 
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                      <div className="space-y-1.5 md:col-span-1">
+                        <label className="text-[10px] font-bold text-slate-450 uppercase tracking-widest pl-1">Tipo de Disfrute</label>
+                        <select
+                          value={tipoDisfrute}
+                          onChange={(e) => setTipoDisfrute(e.target.value)}
+                          className="w-full bg-white border border-slate-200 rounded-2xl py-2.5 px-4 text-xs outline-none focus:border-brand-500 transition font-bold"
+                        >
+                          <option value="Físico">Físico</option>
+                          <option value="Dinero">Dinero</option>
+                          <option value="Mixto">Mixto</option>
+                        </select>
+                      </div>
+
+                      <div className="space-y-1.5 md:col-span-1">
+                        <label className="text-[10px] font-bold text-slate-450 uppercase tracking-widest pl-1">Estado</label>
+                        <select
+                          value={vacationStatus}
+                          onChange={(e) => setVacationStatus(e.target.value)}
+                          className="w-full bg-white border border-slate-200 rounded-2xl py-2.5 px-4 text-xs outline-none focus:border-brand-500 transition font-bold"
+                        >
+                          <option value="Programada">Programada</option>
+                          <option value="Aprobada">Aprobada</option>
+                          <option value="En disfrute">En disfrute</option>
+                        </select>
+                      </div>
+
+                      <div className="space-y-1.5 md:col-span-1">
+                        <label className="text-[10px] font-bold text-slate-450 uppercase tracking-widest pl-1">Responsable Aprobación</label>
+                        <input
+                          type="text"
+                          value={responsableAprobacion}
+                          onChange={(e) => setResponsableAprobacion(e.target.value)}
+                          placeholder="Nombre o Cargo"
+                          className="w-full bg-white border border-slate-200 rounded-2xl py-2.5 px-4 text-xs outline-none focus:border-brand-500 transition font-bold"
+                        />
+                      </div>
+
+                      <div className="space-y-1.5 md:col-span-1">
+                        <label className="text-[10px] font-bold text-slate-450 uppercase tracking-widest pl-1">Fecha de Notificación</label>
+                        <input
+                          type="date"
+                          value={fechaNotificacion}
+                          onChange={(e) => setFechaNotificacion(e.target.value)}
+                          className="w-full bg-white border border-slate-200 rounded-2xl py-2.5 px-4 text-xs outline-none focus:border-brand-500 transition font-bold"
+                        />
+                      </div>
+                    </div>
+
                     <div className="space-y-1.5">
                       <label className="text-[10px] font-bold text-slate-450 uppercase tracking-widest pl-1">Notas / Observaciones</label>
                       <textarea
@@ -1078,6 +1141,7 @@ export default function EmployeeDetail({ token, employeeId, onViewChange, userRo
                           <th className="pb-3 pr-4">Salida</th>
                           <th className="pb-3 px-4">Regreso</th>
                           <th className="pb-3 px-4 text-center">Consumidos</th>
+                          <th className="pb-3 px-4 text-center">Disfrute</th>
                           <th className="pb-3 px-4 text-center">Estado</th>
                           <th className="pb-3 px-4">Notas</th>
                           <th className="pb-3 pl-4 text-right">Acción</th>
@@ -1091,6 +1155,17 @@ export default function EmployeeDetail({ token, employeeId, onViewChange, userRo
                             <td className="py-3.5 px-4 text-center">
                               <span className="inline-block px-2 py-0.5 text-[10px] font-black rounded bg-slate-100 dark:bg-slate-800 text-slate-650 dark:text-slate-350">
                                 {vac.businessDays} hábiles
+                              </span>
+                            </td>
+                            <td className="py-3.5 px-4 text-center">
+                              <span className={`inline-block px-2.5 py-0.5 text-[9px] font-black border rounded-full select-none uppercase tracking-wider ${
+                                vac.tipoDisfrute === 'Dinero'
+                                  ? 'bg-amber-50 text-amber-700 border-amber-200'
+                                  : vac.tipoDisfrute === 'Mixto'
+                                    ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
+                                    : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                              }`}>
+                                {vac.tipoDisfrute || 'Físico'}
                               </span>
                             </td>
                             <td className="py-3.5 px-4 text-center">

@@ -1,6 +1,27 @@
 import { isColombianHoliday } from './colombianHolidays.js';
 
 /**
+ * Formatea una hora en formato de 24 horas (HH:MM:SS o HH:MM) a 12 horas (HH:MM AM/PM).
+ * 
+ * @param {string} timeStr - Hora en formato 24h (ej: "14:30" o "14:30:00")
+ * @returns {string} Hora formateada (ej: "02:30 PM")
+ */
+export const formatTimeTo12Hour = (timeStr) => {
+  if (!timeStr || timeStr === '--' || timeStr === '-') return timeStr;
+  const parts = timeStr.split(':');
+  if (parts.length < 2) return timeStr;
+  
+  let hour = parseInt(parts[0], 10);
+  const minute = parts[1];
+  const ampm = hour >= 12 ? 'PM' : 'AM';
+  
+  hour = hour % 12 || 12; // Convierte 0 a 12
+  const paddedHour = hour < 10 ? `0${hour}` : hour;
+  
+  return `${paddedHour}:${minute} ${ampm}`;
+};
+
+/**
  * Verifica si un día específico cuenta como día de vacaciones hábil
  * según la jornada de la empresa, festivos de Colombia y días especiales de la empresa.
  * 

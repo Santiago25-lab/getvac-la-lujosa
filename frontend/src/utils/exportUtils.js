@@ -49,9 +49,9 @@ export const exportEmployeesToPDF = (employees) => {
   doc.setFont('helvetica', 'bold');
   doc.text('GESTVAC — REPORTES GENERALES DE VACACIONES', 14, 18);
   
-  doc.setFontSize(10);
-  doc.setFont('helvetica', 'normal');
-  doc.text(`Generado el: ${new Date().toLocaleDateString('es-ES')} a las ${new Date().toLocaleTimeString('es-ES')}`, 215, 18);
+  doc.setFontSize(8);
+  doc.setTextColor(150, 150, 150);
+  doc.text(`Generado el: ${new Date().toLocaleDateString('es-ES')} a las ${new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', hour12: true })}`, 215, 18);
   
   // Subtítulo
   doc.setTextColor(55, 65, 81);

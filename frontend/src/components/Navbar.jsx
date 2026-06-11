@@ -83,7 +83,7 @@ export default function Navbar({ activeView, token, onViewChange }) {
       hour: '2-digit',
       minute: '2-digit',
       second: '2-digit',
-      hour12: false
+      hour12: true
     });
     return `${dateStr.charAt(0).toUpperCase() + dateStr.slice(1)} | ${timeStr}`;
   };

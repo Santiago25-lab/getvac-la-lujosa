@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Clock, Search, Calendar, Filter, Users, UserCheck, AlertOctagon, UserX, Plus, Edit3, MessageSquare, ClipboardSignature, Download } from 'lucide-react';
 import { API_URL } from '../config.js';
+import { formatTimeTo12Hour } from '../utils/dateUtils.js';
 
 export default function AttendanceView({ token, userRole }) {
   const [records, setRecords] = useState([]);
@@ -559,16 +560,16 @@ export default function AttendanceView({ token, userRole }) {
                       {rec.date}
                     </td>
                     <td className="px-6 py-4 text-center font-extrabold text-emerald-600 dark:text-emerald-400 text-xs whitespace-nowrap">
-                      {rec.checkIn || '—'}
+                      {formatTimeTo12Hour(rec.checkIn) || '—'}
                     </td>
                     <td className="px-6 py-4 text-center font-extrabold text-slate-500 dark:text-slate-400 text-xs whitespace-nowrap">
-                      {rec.checkOutMorning || '—'}
+                      {formatTimeTo12Hour(rec.checkOutMorning) || '—'}
                     </td>
                     <td className="px-6 py-4 text-center font-extrabold text-emerald-500 dark:text-emerald-400 text-xs whitespace-nowrap">
-                      {rec.checkInAfternoon || '—'}
+                      {formatTimeTo12Hour(rec.checkInAfternoon) || '—'}
                     </td>
                     <td className="px-6 py-4 text-center font-extrabold text-slate-600 dark:text-slate-550 text-xs whitespace-nowrap">
-                      {rec.checkOut || '—'}
+                      {formatTimeTo12Hour(rec.checkOut) || '—'}
                     </td>
                     <td className="px-6 py-4 text-center font-bold text-slate-750 dark:text-white text-xs">
                       {rec.workedHours || 'N/A'}

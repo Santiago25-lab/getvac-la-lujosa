@@ -433,7 +433,7 @@ export const getAttendanceStats = async (req, res) => {
       // Obtener vacaciones activas hoy
       const todayVacations = await Vacation.findAll({
         where: {
-          status: { [Op.in]: ['Programada', 'Activa', 'Completada'] },
+          status: { [Op.in]: ['Programada', 'En disfrute', 'Finalizada'] },
           startDate: { [Op.lte]: todayStr },
           returnDate: { [Op.gt]: todayStr }
         }
@@ -598,7 +598,7 @@ export const getEmployeeMonthlyReport = async (req, res) => {
     const vacations = await Vacation.findAll({
       where: {
         employeeId: id,
-        status: { [Op.in]: ['Programada', 'Activa', 'Completada'] },
+        status: { [Op.in]: ['Programada', 'En disfrute', 'Finalizada'] },
         [Op.or]: [
           { startDate: { [Op.between]: [startDateStr, endDateStr] } },
           { returnDate: { [Op.between]: [startDateStr, endDateStr] } },

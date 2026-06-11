@@ -604,7 +604,7 @@ export default function EmployeeDetail({ token, employeeId, onViewChange, userRo
   };
 
   const handleUpdateVacationStatus = async (vacationId, nextStatus) => {
-    const actionText = nextStatus === 'Activa' ? 'marcar que el empleado ya salió de vacaciones' : 'marcar que el empleado ya volvió a sus labores';
+    const actionText = nextStatus === 'En disfrute' ? 'marcar que el empleado ya salió de vacaciones' : 'marcar que el empleado ya volvió a sus labores';
     if (!window.confirm(`¿Deseas ${actionText}?`)) {
       return;
     }
@@ -1172,7 +1172,7 @@ export default function EmployeeDetail({ token, employeeId, onViewChange, userRo
                               <span className={`inline-block px-2.5 py-0.5 text-[9px] font-black border rounded-full select-none uppercase tracking-wider ${
                                 vac.status === 'Programada'
                                   ? 'bg-brand-50 text-brand-700 border-brand-200'
-                                  : vac.status === 'Activa'
+                                  : vac.status === 'En disfrute'
                                     ? 'bg-amber-50 text-amber-700 border-amber-250 dark:bg-amber-950/20 dark:text-amber-455 dark:border-amber-900/50'
                                     : 'bg-emerald-50 text-emerald-700 border-emerald-250 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/50'
                               }`}>
@@ -1187,16 +1187,16 @@ export default function EmployeeDetail({ token, employeeId, onViewChange, userRo
                                 <>
                                   {vac.status === 'Programada' && (
                                     <button
-                                      onClick={() => handleUpdateVacationStatus(vac.id, 'Activa')}
+                                      onClick={() => handleUpdateVacationStatus(vac.id, 'En disfrute')}
                                       className="inline-flex px-2 py-1 rounded bg-amber-500 hover:bg-amber-600 text-white text-[9px] font-bold transition uppercase tracking-wide"
                                       title="Marcar salida de vacaciones"
                                     >
                                       Ya salió
                                     </button>
                                   )}
-                                  {vac.status === 'Activa' && (
+                                  {vac.status === 'En disfrute' && (
                                     <button
-                                      onClick={() => handleUpdateVacationStatus(vac.id, 'Completada')}
+                                      onClick={() => handleUpdateVacationStatus(vac.id, 'Finalizada')}
                                       className="inline-flex px-2 py-1 rounded bg-emerald-600 hover:bg-emerald-700 text-white text-[9px] font-bold transition uppercase tracking-wide"
                                       title="Confirmar retorno del empleado"
                                     >

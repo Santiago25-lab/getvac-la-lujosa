@@ -468,21 +468,64 @@ export const getAttendanceStats = async (req, res) => {
       absentCount = absentEmployees.length;
     }
 
-    res.json({
-      totalActiveEmployees,
-      presentToday: presentCount,
-      absentToday: absentCount,
-      lateToday: lateCount,
-      checkoutToday: checkoutCount,
-      records: todayRecords,
-      absentEmployees: absentEmployees.map(emp => ({
-        id: emp.id,
-        fullName: emp.fullName,
-        documentNumber: emp.documentNumber,
-        position: emp.position,
-        department: emp.department
-      }))
-    });
+      // --- Calcular Tendencia Semanal ---
+      const localNow = new Date(now.toLocaleString('en-US', { timeZone: 'America/Bogota' }));
+      const dayOfWk = localNow.getDay() === 0 ? 7 : localNow.getDay();
+      
+      const monday = new Date(localNow);
+      monday.setDate(localNow.getDate() - dayOfWk + 1);
+      const mondayStr = monday.toLocaleDateString('en-CA', { timeZone: 'America/Bogota' });
+      
+      const friday = new Date(monday);
+      friday.setDate(monday.getDate() + 4);
+      const fridayStr = friday.toLocaleDateString('en-CA', { timeZone: 'America/Bogota' });
+  
+      const weekRecords = await Attendance.findAll({
+        where: {
+          date: {
+            [Op.between]: [mondayStr, fridayStr]
+          }
+        }
+      });
+  
+      const dayNames = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie'];
+      const weeklyTrend = dayNames.map((dayName, index) => {
+        const d = new Date(monday);
+        d.setDate(monday.getDate() + index);
+        const dStr = d.toLocaleDateString('en-CA', { timeZone: 'America/Bogota' });
+        
+        const dayRecs = weekRecords.filter(r => r.date === dStr);
+        if (dayRecs.length === 0) {
+          return { day: dayName, onTime: 0, late: 0 };
+        }
+  
+        const total = dayRecs.length;
+        const late = dayRecs.filter(r => r.status === 'Tarde').length;
+        const onTime = total - late;
+  
+        return {
+          day: dayName,
+          onTime: Math.round((onTime / total) * 100),
+          late: Math.round((late / total) * 100)
+        };
+      });
+  
+      res.json({
+        totalActiveEmployees,
+        presentToday: presentCount,
+        absentToday: absentCount,
+        lateToday: lateCount,
+        checkoutToday: checkoutCount,
+        records: todayRecords,
+        weeklyTrend,
+        absentEmployees: absentEmployees.map(emp => ({
+          id: emp.id,
+          fullName: emp.fullName,
+          documentNumber: emp.documentNumber,
+          position: emp.position,
+          department: emp.department
+        }))
+      });
   } catch (error) {
     console.error('Error al obtener estadísticas de asistencia:', error);
     res.status(500).json({ message: 'Error al calcular estadísticas.' });

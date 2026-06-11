@@ -10,7 +10,8 @@ export default function AttendanceView({ token, userRole }) {
     presentToday: 0,
     absentToday: 0,
     lateToday: 0,
-    checkoutToday: 0
+    checkoutToday: 0,
+    weeklyTrend: []
   });
   const [employees, setEmployees] = useState([]); // Para el combobox del registro manual
   
@@ -631,13 +632,13 @@ export default function AttendanceView({ token, userRole }) {
             
             {/* Visual Bars Container */}
             <div className="h-36 flex items-end justify-between px-4 pt-4 border-b border-slate-100">
-              {[
-                { day: 'Lun', onTime: 92, late: 8 },
-                { day: 'Mar', onTime: 88, late: 12 },
-                { day: 'Mié', onTime: 95, late: 5 },
-                { day: 'Jue', onTime: 90, late: 10 },
-                { day: 'Vie', onTime: 85, late: 15 }
-              ].map((item, index) => (
+              {(stats.weeklyTrend && stats.weeklyTrend.length > 0 ? stats.weeklyTrend : [
+                { day: 'Lun', onTime: 0, late: 0 },
+                { day: 'Mar', onTime: 0, late: 0 },
+                { day: 'Mié', onTime: 0, late: 0 },
+                { day: 'Jue', onTime: 0, late: 0 },
+                { day: 'Vie', onTime: 0, late: 0 }
+              ]).map((item, index) => (
                 <div key={index} className="flex flex-col items-center gap-2 w-12">
                   <div className="flex gap-1.5 items-end h-24">
                     <div 

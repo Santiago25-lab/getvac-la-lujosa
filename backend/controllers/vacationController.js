@@ -51,7 +51,7 @@ export const calculateBusinessDays = (
 };
 
 export const registerVacation = async (req, res) => {
-  const { employeeId, startDate, returnDate, notes } = req.body;
+  const { employeeId, startDate, returnDate, notes, tipoDisfrute, calendarDays, fechaNotificacion, responsableAprobacion } = req.body;
 
   try {
     if (!employeeId || !startDate || !returnDate) {
@@ -118,7 +118,11 @@ export const registerVacation = async (req, res) => {
       startDate,
       returnDate,
       businessDays,
-      notes
+      notes,
+      tipoDisfrute,
+      calendarDays,
+      fechaNotificacion,
+      responsableAprobacion
     });
 
     res.status(201).json({
@@ -238,8 +242,8 @@ export const updateVacationStatus = async (req, res) => {
   const { status } = req.body;
 
   try {
-    if (!['Programada', 'Activa', 'Completada'].includes(status)) {
-      return res.status(400).json({ message: 'Estado inválido. Debe ser Programada, Activa o Completada.' });
+    if (!['Pendiente', 'Aprobada', 'Programada', 'En disfrute', 'Suspendida', 'Finalizada', 'Cancelada'].includes(status)) {
+      return res.status(400).json({ message: 'Estado de vacación inválido.' });
     }
 
     const vacation = await Vacation.findByPk(id);

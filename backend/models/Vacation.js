@@ -27,8 +27,37 @@ const Vacation = sequelize.define('Vacation', {
     type: DataTypes.TEXT,
     allowNull: true,
   },
+  tipoDisfrute: {
+    type: DataTypes.ENUM('Físico', 'Dinero', 'Mixto'),
+    allowNull: false,
+    defaultValue: 'Físico',
+  },
+  calendarDays: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+  },
+  fechaNotificacion: {
+    type: DataTypes.DATEONLY,
+    allowNull: true,
+  },
+  responsableAprobacion: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  fechaSuspension: {
+    type: DataTypes.DATEONLY,
+    allowNull: true,
+  },
+  motivoSuspension: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+  },
+  fechaReanudacion: {
+    type: DataTypes.DATEONLY,
+    allowNull: true,
+  },
   status: {
-    type: DataTypes.ENUM('Programada', 'Activa', 'Completada'),
+    type: DataTypes.ENUM('Pendiente', 'Aprobada', 'Programada', 'En disfrute', 'Suspendida', 'Finalizada', 'Cancelada'),
     allowNull: false,
     defaultValue: 'Programada',
   },

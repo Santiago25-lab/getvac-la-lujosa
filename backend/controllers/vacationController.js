@@ -112,6 +112,13 @@ export const registerVacation = async (req, res) => {
       });
     }
 
+    const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Bogota' });
+    const today = new Date(todayStr + 'T00:00:00');
+    let initialStatus = 'Programada';
+    if (start <= today) {
+      initialStatus = 'En disfrute';
+    }
+
     // Crear registro de vacaciones
     const vacation = await Vacation.create({
       employeeId,
@@ -122,7 +129,8 @@ export const registerVacation = async (req, res) => {
       tipoDisfrute,
       calendarDays,
       fechaNotificacion,
-      responsableAprobacion
+      responsableAprobacion,
+      status: initialStatus
     });
 
     res.status(201).json({

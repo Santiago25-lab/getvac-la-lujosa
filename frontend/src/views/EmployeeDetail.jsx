@@ -24,7 +24,6 @@ export default function EmployeeDetail({ token, employeeId, onViewChange, userRo
 
   // Nuevos campos legales de Fase 1 (Vacaciones)
   const [tipoDisfrute, setTipoDisfrute] = useState('Físico');
-  const [vacationStatus, setVacationStatus] = useState('Programada');
   const [fechaNotificacion, setFechaNotificacion] = useState('');
   const [responsableAprobacion, setResponsableAprobacion] = useState('');
 
@@ -550,7 +549,6 @@ export default function EmployeeDetail({ token, employeeId, onViewChange, userRo
           returnDate,
           notes,
           tipoDisfrute,
-          status: vacationStatus,
           fechaNotificacion: fechaNotificacion || null,
           responsableAprobacion: responsableAprobacion || null
         })
@@ -568,7 +566,6 @@ export default function EmployeeDetail({ token, employeeId, onViewChange, userRo
       setRequestedDays('');
       setNotes('');
       setTipoDisfrute('Físico');
-      setVacationStatus('Programada');
       setFechaNotificacion('');
       setResponsableAprobacion('');
       setBookingDays(0);
@@ -1034,7 +1031,7 @@ export default function EmployeeDetail({ token, employeeId, onViewChange, userRo
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <div className="space-y-1.5 md:col-span-1">
                         <label className="text-[10px] font-bold text-slate-450 uppercase tracking-widest pl-1">Tipo de Disfrute</label>
                         <select
@@ -1045,19 +1042,6 @@ export default function EmployeeDetail({ token, employeeId, onViewChange, userRo
                           <option value="Físico">Físico</option>
                           <option value="Dinero">Dinero</option>
                           <option value="Mixto">Mixto</option>
-                        </select>
-                      </div>
-
-                      <div className="space-y-1.5 md:col-span-1">
-                        <label className="text-[10px] font-bold text-slate-450 uppercase tracking-widest pl-1">Estado</label>
-                        <select
-                          value={vacationStatus}
-                          onChange={(e) => setVacationStatus(e.target.value)}
-                          className="w-full bg-white border border-slate-200 rounded-2xl py-2.5 px-4 text-xs outline-none focus:border-brand-500 transition font-bold"
-                        >
-                          <option value="Programada">Programada</option>
-                          <option value="Aprobada">Aprobada</option>
-                          <option value="En disfrute">En disfrute</option>
                         </select>
                       </div>
 
@@ -1183,28 +1167,6 @@ export default function EmployeeDetail({ token, employeeId, onViewChange, userRo
                               {vac.notes || 'Sin observaciones'}
                             </td>
                             <td className="py-3.5 pl-4 text-right space-x-2">
-                              {(userRole === 'Administrador' || userRole === 'Super Usuario') && (
-                                <>
-                                  {vac.status === 'Programada' && (
-                                    <button
-                                      onClick={() => handleUpdateVacationStatus(vac.id, 'En disfrute')}
-                                      className="inline-flex px-2 py-1 rounded bg-amber-500 hover:bg-amber-600 text-white text-[9px] font-bold transition uppercase tracking-wide"
-                                      title="Marcar salida de vacaciones"
-                                    >
-                                      Ya salió
-                                    </button>
-                                  )}
-                                  {vac.status === 'En disfrute' && (
-                                    <button
-                                      onClick={() => handleUpdateVacationStatus(vac.id, 'Finalizada')}
-                                      className="inline-flex px-2 py-1 rounded bg-emerald-600 hover:bg-emerald-700 text-white text-[9px] font-bold transition uppercase tracking-wide"
-                                      title="Confirmar retorno del empleado"
-                                    >
-                                      Ya volvió
-                                    </button>
-                                  )}
-                                </>
-                              )}
                               <button
                                 onClick={() => handleDeleteVacation(vac.id, vac.businessDays)}
                                 className="inline-flex p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500 hover:text-white text-rose-500 transition duration-150"

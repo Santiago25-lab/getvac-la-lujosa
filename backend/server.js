@@ -58,6 +58,7 @@ import {
 import { getAuditLogs } from './controllers/auditLogController.js';
 import { getUsers, createUser, updateUser, deleteUser } from './controllers/userController.js';
 import { auditMiddleware } from './middleware/auditMiddleware.js';
+import { startVacationCronJob } from './jobs/vacationUpdater.js';
 
 dotenv.config();
 
@@ -67,6 +68,9 @@ const PORT = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json());
 app.use(auditMiddleware);
+
+// Iniciar Cron Jobs
+startVacationCronJob();
 
 // --- Rutas de la API ---
 

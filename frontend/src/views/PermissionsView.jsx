@@ -25,6 +25,7 @@ export default function PermissionsView({ token, userRole }) {
   const [reqEndDate, setReqEndDate] = useState('');
   const [reqReason, setReqReason] = useState('');
   const [reqNotes, setReqNotes] = useState('');
+  const [reqCoverage, setReqCoverage] = useState('Jornada Completa');
 
   // Formulario de Revisión (Aprobación/Rechazo)
   const [reviewNotes, setReviewNotes] = useState('');
@@ -90,7 +91,8 @@ export default function PermissionsView({ token, userRole }) {
           startDate: reqStartDate,
           endDate: reqEndDate,
           reason: reqReason,
-          notes: reqNotes
+          notes: reqNotes,
+          coverage: reqCoverage
         })
       });
 
@@ -111,6 +113,7 @@ export default function PermissionsView({ token, userRole }) {
       setReqEndDate('');
       setReqReason('');
       setReqNotes('');
+      setReqCoverage('Jornada Completa');
 
       loadData();
 
@@ -394,6 +397,20 @@ export default function PermissionsView({ token, userRole }) {
                 </select>
               </div>
 
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-1">Cobertura de Permiso</label>
+                <select
+                  required
+                  value={reqCoverage}
+                  onChange={(e) => setReqCoverage(e.target.value)}
+                  className="w-full px-3 py-2.5 rounded-xl border border-slate-250 bg-white focus:border-brand-500 text-xs font-bold outline-none transition"
+                >
+                  <option value="Jornada Completa">Jornada Completa</option>
+                  <option value="Jornada Mañana">Jornada Mañana (Solo Mañana)</option>
+                  <option value="Jornada Tarde">Jornada Tarde (Solo Tarde)</option>
+                </select>
+              </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
                   <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-1">Desde Fecha</label>
@@ -473,6 +490,7 @@ export default function PermissionsView({ token, userRole }) {
               <div className="border border-slate-150 p-4 rounded-2xl bg-slate-50 text-xs space-y-2">
                 <div><span className="font-bold text-slate-450 uppercase tracking-wider">Empleado:</span> <span className="font-extrabold text-slate-900 text-sm pl-1">{selectedPermission?.employee?.fullName}</span></div>
                 <div><span className="font-bold text-slate-450 uppercase tracking-wider">Tipo:</span> <span className="font-extrabold text-brand-600 pl-1">{selectedPermission?.type}</span></div>
+                <div><span className="font-bold text-slate-450 uppercase tracking-wider">Cobertura:</span> <span className="font-extrabold text-amber-600 pl-1">{selectedPermission?.coverage || 'Jornada Completa'}</span></div>
                 <div className="grid grid-cols-2 gap-2 pt-1 border-t border-slate-200/40 mt-1">
                   <div><span className="font-bold text-slate-450">Desde:</span> <span className="font-bold text-slate-800">{selectedPermission?.startDate}</span></div>
                   <div><span className="font-bold text-slate-450">Hasta:</span> <span className="font-bold text-slate-800">{selectedPermission?.endDate}</span></div>

@@ -40,6 +40,11 @@ const Permission = sequelize.define('Permission', {
     type: DataTypes.TEXT,
     allowNull: true,
   },
+  coverage: {
+    type: DataTypes.ENUM('Jornada Completa', 'Jornada Mañana', 'Jornada Tarde'),
+    defaultValue: 'Jornada Completa',
+    allowNull: false,
+  },
 }, {
   timestamps: true,
 });

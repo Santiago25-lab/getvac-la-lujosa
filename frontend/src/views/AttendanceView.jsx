@@ -645,35 +645,49 @@ export default function AttendanceView({ token, userRole }) {
                           // Determinar estado combinado
                           let stateKey = 'ausente';
                           let isHalfDayPermission = false;
+                          let halfDayType = null; // 'Mañana' o 'Tarde'
+
+                          if (perm && perm.coverage !== 'Jornada Completa') {
+                            isHalfDayPermission = true;
+                            halfDayType = perm.coverage === 'Jornada Mañana' ? 'Mañana' : 'Tarde';
+                          }
 
                           if (att) {
                             if (att.status === 'Tarde') stateKey = 'tarde';
                             else if (att.status === 'Salida registrada') stateKey = 'completado';
                             else stateKey = 'presente';
-                            // Si también tiene permiso → permiso parcial (mañana)
-                            if (perm) isHalfDayPermission = true;
                           } else if (absence?.type === 'incapacidad') {
                             stateKey = 'incapacidad';
                           } else if (perm) {
-                            stateKey = 'permiso';
+                            if (isHalfDayPermission) {
+                              stateKey = 'ausente'; // Fila gris (ausente), pero tendrá etiquetas especiales
+                            } else {
+                              stateKey = 'permiso'; // Jornada completa
+                            }
                           }
 
                           const cfg = statusConfig[stateKey];
                           const isFullJustified = ['vacaciones','incapacidad','permiso'].includes(stateKey);
-                          const rowClass = `flex items-center gap-3 md:gap-4 px-6 py-3.5 hover:brightness-[0.98] transition group ${cfg.rowBg}`;
+                          // Si es permiso parcial, usamos una fila gris suave especial
+                          const rowClass = `flex items-center gap-3 md:gap-4 px-6 py-3.5 hover:brightness-[0.98] transition group ${isHalfDayPermission && !att ? 'bg-slate-100/70 text-slate-500' : cfg.rowBg}`;
 
                           // Definir qué mostrar en cada slot de tiempo
                           const renderTimeSlot = (time, slotType) => {
-                            // Si es incapacidad, vacaciones o permiso completo → mostrar badge en todos los slots
-                            if (isFullJustified && !isHalfDayPermission) {
-                              return <TagBadge label={cfg.label.split(' ')[1] || cfg.label} style={cfg.badge} />;
-                            }
-                            // Permiso parcial: solo en slots de mañana si tiene asistencia en tarde
-                            if (isHalfDayPermission && !att) {
-                              if (slotType === 'checkIn' || slotType === 'checkOutMorning') {
-                                return <TagBadge label="Permiso" style={statusConfig.permiso.badge} />;
+                            // Permiso parcial (esté presente o no la otra media jornada)
+                            if (isHalfDayPermission) {
+                              if (halfDayType === 'Mañana' && (slotType === 'checkIn' || slotType === 'checkOutMorning')) {
+                                return <TagBadge label="Permiso Mañana" style="bg-amber-50 text-amber-700 border-amber-200" />;
+                              }
+                              if (halfDayType === 'Tarde' && (slotType === 'checkInAfternoon' || slotType === 'checkOut')) {
+                                return <TagBadge label="Permiso Tarde" style="bg-amber-50 text-amber-700 border-amber-200" />;
                               }
                             }
+
+                            // Si es incapacidad, vacaciones o permiso completo → mostrar badge en todos los slots
+                            if (isFullJustified) {
+                              return <TagBadge label={cfg.label.split(' ')[1] || cfg.label} style={cfg.badge} />;
+                            }
+
                             if (!time) return <Dash />;
                             const isEntry = slotType === 'checkIn' || slotType === 'checkInAfternoon';
                             return <span className={`text-xs font-black ${isEntry ? 'text-emerald-600' : 'text-slate-500'}`}>{formatTimeTo12Hour(time)}</span>;

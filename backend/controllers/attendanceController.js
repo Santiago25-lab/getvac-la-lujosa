@@ -510,12 +510,42 @@ export const getAttendanceStats = async (req, res) => {
 
       const presentEmployeeIds = new Set(todayRecords.map(r => r.employeeId));
       
-      // Un empleado está ausente si no está presente, y NO está de vacaciones, ni de permiso aprobado, ni tiene inasistencia manual/incapacidad
-      absentEmployees = activeEmployees.filter(emp => {
-        return !presentEmployeeIds.has(emp.id) &&
-               !vacationEmployeeIds.has(emp.id) &&
-               !permissionEmployeeIds.has(emp.id) &&
-               !absenceEmployeeIds.has(emp.id);
+      // Un empleado está ausente si no está presente, y NO está de vacaciones, ni de permiso aprobado de jornada completa, ni tiene inasistencia/incapacidad
+      absentEmployees = [];
+      activeEmployees.forEach(emp => {
+        const hasPresent = presentEmployeeIds.has(emp.id);
+        const hasVacation = vacationEmployeeIds.has(emp.id);
+        const hasAbsence = absenceEmployeeIds.has(emp.id);
+        const empPerms = todayPermissions.filter(p => p.employeeId === emp.id);
+
+        if (hasPresent || hasVacation || hasAbsence) {
+          return; // No está ausente
+        }
+
+        // Si tiene permiso de jornada completa aprobado, no es inasistencia
+        const hasFullPermission = empPerms.some(p => p.coverage === 'Jornada Completa');
+        if (hasFullPermission) {
+          return;
+        }
+
+        // Si tiene permiso de media jornada
+        const morningPerm = empPerms.find(p => p.coverage === 'Jornada Mañana');
+        const afternoonPerm = empPerms.find(p => p.coverage === 'Jornada Tarde');
+
+        if (morningPerm) {
+          absentEmployees.push({
+            ...emp.toJSON(),
+            absenceDetail: 'Tiene permiso en la mañana'
+          });
+        } else if (afternoonPerm) {
+          absentEmployees.push({
+            ...emp.toJSON(),
+            absenceDetail: 'Tiene permiso en la tarde'
+          });
+        } else {
+          // No tiene ningún permiso aprobado
+          absentEmployees.push(emp);
+        }
       });
       absentCount = absentEmployees.length;
     }
@@ -575,7 +605,8 @@ export const getAttendanceStats = async (req, res) => {
           fullName: emp.fullName,
           documentNumber: emp.documentNumber,
           position: emp.position,
-          department: emp.department
+          department: emp.department,
+          absenceDetail: emp.absenceDetail || null
         }))
       });
   } catch (error) {

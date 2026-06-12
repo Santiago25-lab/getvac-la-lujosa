@@ -270,23 +270,40 @@ export default function Dashboard({ token, onViewChange }) {
             </div>
             <div className="space-y-4">
               {attendanceStats?.absentEmployees && attendanceStats.absentEmployees.length > 0 ? (
-                attendanceStats.absentEmployees.slice(0, 3).map((emp) => (
-                  <div key={emp.id} className="flex items-start gap-3 p-3 bg-rose-50/50 rounded-xl border border-rose-100">
-                    <AlertTriangle className="w-5 h-5 text-rose-500 shrink-0 mt-0.5" />
-                    <div className="flex-1">
-                      <p className="text-sm font-bold text-slate-700">Falta de Asistencia</p>
-                      <p className="text-xs text-slate-550 mt-0.5">
-                        El empleado <span className="font-bold text-slate-700">{emp.fullName}</span> ({emp.department}) no ha registrado asistencia hoy.
-                      </p>
-                      <button 
-                        onClick={() => onViewChange('attendance')} 
-                        className="text-xs font-bold text-brand-600 hover:text-brand-700 mt-1 cursor-pointer"
-                      >
-                        Registrar Manualmente
-                      </button>
+                attendanceStats.absentEmployees.slice(0, 3).map((emp) => {
+                  const isPermit = !!emp.absenceDetail;
+                  return (
+                    <div key={emp.id} className={`flex items-start gap-3 p-3 rounded-xl border ${isPermit ? 'bg-amber-50/50 border-amber-200' : 'bg-rose-50/50 border-rose-100'}`}>
+                      {isPermit ? (
+                        <Calendar className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+                      ) : (
+                        <AlertTriangle className="w-5 h-5 text-rose-500 shrink-0 mt-0.5" />
+                      )}
+                      <div className="flex-1">
+                        <p className="text-sm font-bold text-slate-700">
+                          {isPermit ? 'Permiso de Media Jornada' : 'Falta de Asistencia'}
+                        </p>
+                        <p className="text-xs text-slate-550 mt-0.5">
+                          {isPermit ? (
+                            <>
+                              El empleado <span className="font-bold text-slate-700">{emp.fullName}</span> ({emp.department}) tiene una novedad: <span className="font-bold text-amber-700">{emp.absenceDetail}</span>.
+                            </>
+                          ) : (
+                            <>
+                              El empleado <span className="font-bold text-slate-700">{emp.fullName}</span> ({emp.department}) no ha registrado asistencia hoy.
+                            </>
+                          )}
+                        </p>
+                        <button 
+                          onClick={() => onViewChange('attendance')} 
+                          className="text-xs font-bold text-brand-600 hover:text-brand-700 mt-1 cursor-pointer"
+                        >
+                          {isPermit ? 'Ver en Asistencia' : 'Registrar Manualmente'}
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                ))
+                  );
+                })
               ) : (
                 <div className="py-6 text-center text-xs font-bold text-emerald-600 bg-emerald-50 rounded-xl border border-emerald-100">
                   ¡Excelente! Todos los empleados activos registraron su asistencia hoy.

@@ -46,7 +46,7 @@ export const getPermissions = async (req, res) => {
 
 // Crear solicitud de permiso
 export const createPermission = async (req, res) => {
-  const { employeeId, type, startDate, endDate, reason, notes } = req.body;
+  const { employeeId, type, startDate, endDate, reason, notes, coverage } = req.body;
 
   try {
     if (!employeeId || !type || !startDate || !endDate || !reason) {
@@ -60,6 +60,7 @@ export const createPermission = async (req, res) => {
       endDate,
       reason,
       notes: notes || '',
+      coverage: coverage || 'Jornada Completa',
       status: 'Pendiente'
     });
 
@@ -76,7 +77,7 @@ export const createPermission = async (req, res) => {
 // Editar permiso
 export const updatePermission = async (req, res) => {
   const { id } = req.params;
-  const { type, startDate, endDate, reason, notes } = req.body;
+  const { type, startDate, endDate, reason, notes, coverage } = req.body;
 
   try {
     const permission = await Permission.findByPk(id);
@@ -93,6 +94,7 @@ export const updatePermission = async (req, res) => {
     if (endDate) permission.endDate = endDate;
     if (reason) permission.reason = reason;
     if (notes !== undefined) permission.notes = notes;
+    if (coverage) permission.coverage = coverage;
 
     await permission.save();
 

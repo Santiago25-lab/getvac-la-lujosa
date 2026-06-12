@@ -372,9 +372,48 @@ const seedDatabase = async () => {
 };
 
 // Sincronizar Base de Datos y levantar servidor
-sequelize.sync({ alter: true })
+sequelize.sync()
   .then(async () => {
     console.log('Conexión con la base de datos establecida exitosamente.');
+
+    // ── Migraciones manuales de esquema (seguras en producción) ──────────────
+    try {
+      const qi = sequelize.getQueryInterface();
+
+      // 1. Añadir columna 'coverage' a Permissions si no existe
+      const permCols = await qi.describeTable('Permissions').catch(() => null);
+      if (permCols && !permCols.coverage) {
+        await sequelize.query(
+          `ALTER TABLE Permissions ADD COLUMN coverage VARCHAR(50) NOT NULL DEFAULT 'Jornada Completa'`
+        );
+        console.log('✅ Migration: columna coverage añadida a Permissions.');
+      }
+
+      // 2. Permitir NULL en checkIn de Attendance
+      const attCols = await qi.describeTable('Attendances').catch(() => null);
+      if (attCols && attCols.checkIn && !attCols.checkIn.allowNull) {
+        await sequelize.query(
+          `ALTER TABLE Attendances MODIFY COLUMN checkIn VARCHAR(255) NULL`
+        );
+        console.log('✅ Migration: checkIn en Attendances ahora permite NULL.');
+      }
+
+      // 3. Añadir valor 'Salida registrada (Sin entrada)' al ENUM status de Attendances
+      if (attCols && attCols.status) {
+        const currentEnum = attCols.status.type || '';
+        if (!currentEnum.includes('Sin entrada')) {
+          await sequelize.query(
+            `ALTER TABLE Attendances MODIFY COLUMN status ENUM('Presente','Tarde','Ausente','Salida registrada','Salida registrada (Sin entrada)','Sin salida') NOT NULL DEFAULT 'Presente'`
+          );
+          console.log('✅ Migration: ENUM status de Attendances actualizado.');
+        }
+      }
+
+    } catch (migErr) {
+      console.warn('⚠️ Migraciones opcionales con advertencia (no crítico):', migErr.message);
+    }
+    // ─────────────────────────────────────────────────────────────────────────
+
     await seedDatabase();
     app.listen(PORT, '0.0.0.0', () => {
       console.log(`Servidor backend corriendo en el puerto ${PORT}`);

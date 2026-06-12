@@ -121,6 +121,7 @@ export const registerPublicAttendance = async (req, res) => {
           record = await Attendance.create({
             employeeId: employee.id,
             date: dateStr,
+            checkIn: '',
             checkOut: timeStr,
             status: 'Salida registrada (Sin entrada)',
             ipAddress,
@@ -206,7 +207,7 @@ export const registerPublicAttendance = async (req, res) => {
         const createObj = {
           employeeId: employee.id,
           date: dateStr,
-          checkIn: null,
+          checkIn: targetSlot === 'checkIn' ? timeStr : '',
           checkOutMorning: null,
           checkInAfternoon: null,
           checkOut: null,
@@ -215,7 +216,9 @@ export const registerPublicAttendance = async (req, res) => {
           userAgent,
           notes: ''
         };
-        createObj[targetSlot] = timeStr;
+        if (targetSlot !== 'checkIn') {
+          createObj[targetSlot] = timeStr;
+        }
         
         if (targetSlot === 'checkIn') {
           const limitSeconds = inMSec + (settings.toleranceMinutes * 60);

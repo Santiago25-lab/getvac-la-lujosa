@@ -17,7 +17,7 @@ const Attendance = sequelize.define('Attendance', {
   },
   checkIn: {
     type: DataTypes.STRING, // Almacenado como 'HH:MM:SS'
-    allowNull: false,
+    allowNull: true,
   },
   checkOutMorning: {
     type: DataTypes.STRING, // Almacenado como 'HH:MM:SS'
@@ -32,7 +32,7 @@ const Attendance = sequelize.define('Attendance', {
     allowNull: true,
   },
   status: {
-    type: DataTypes.ENUM('Presente', 'Tarde', 'Ausente', 'Salida registrada', 'Sin salida'),
+    type: DataTypes.ENUM('Presente', 'Tarde', 'Ausente', 'Salida registrada', 'Salida registrada (Sin entrada)', 'Sin salida'),
     defaultValue: 'Presente',
     allowNull: false,
   },

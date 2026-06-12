@@ -433,7 +433,7 @@ export default function AttendanceView({ token, userRole }) {
 
       </div>
 
-      {/* Contenedor de Tabla y Filtros */}
+      {/* Contenedor de Registros Agrupados por Fecha */}
       <div className="bg-white border border-slate-200/60 rounded-3xl shadow-sm overflow-hidden flex flex-col">
         
         {/* Barra de Filtros */}
@@ -508,7 +508,7 @@ export default function AttendanceView({ token, userRole }) {
           {/* Botón Exportar */}
           <button
             onClick={exportToCSV}
-            className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition shadow-md shadow-emerald-500/10 hover:shadow-emerald-500/20"
+            className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition shadow-md shadow-emerald-500/10 hover:shadow-emerald-500/20 col-span-full sm:col-span-1"
           >
             <Download className="w-4 h-4" />
             <span>Exportar CSV</span>
@@ -516,7 +516,7 @@ export default function AttendanceView({ token, userRole }) {
 
         </div>
 
-        {/* Tabla */}
+        {/* Lista agrupada por fecha */}
         <div className="flex-1 overflow-x-auto">
           {loading ? (
             <div className="py-20 flex justify-center items-center">
@@ -528,85 +528,143 @@ export default function AttendanceView({ token, userRole }) {
               <h4 className="text-sm font-black text-slate-700 dark:text-slate-300">Sin Registros de Asistencia</h4>
               <p className="text-xs text-slate-450">No se encontraron marcaciones con los filtros seleccionados.</p>
             </div>
-          ) : (
-            <table className="w-full text-left border-collapse select-none">
-              <thead>
-                <tr className="bg-slate-50/70 border-b border-slate-200/60 dark:bg-slate-950/20 dark:border-slate-800/40 text-[10px] font-black text-slate-450 uppercase tracking-widest">
-                  <th className="px-6 py-4.5">Empleado</th>
-                  <th className="px-6 py-4.5">Área / Puesto</th>
-                  <th className="px-6 py-4.5">Fecha</th>
-                  <th className="px-6 py-4.5 text-center">Ent. Mañana</th>
-                  <th className="px-6 py-4.5 text-center">Sal. Mañana</th>
-                  <th className="px-6 py-4.5 text-center">Ent. Tarde</th>
-                  <th className="px-6 py-4.5 text-center">Sal. Tarde</th>
-                  <th className="px-6 py-4.5 text-center">Horas</th>
-                  <th className="px-6 py-4.5">Estado</th>
-                  <th className="px-6 py-4.5">Dispositivo / IP</th>
-                  <th className="px-6 py-4.5">Observación</th>
-                  {(userRole === 'Administrador' || userRole === 'Super Usuario') && <th className="px-6 py-4.5 text-center">Acciones</th>}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-150 dark:divide-slate-800/40 text-xs font-medium text-slate-700 dark:text-slate-200">
-                {records.map(rec => (
-                  <tr key={rec.id} className="hover:bg-slate-50/40 dark:hover:bg-slate-950/5 transition">
-                    <td className="px-6 py-4">
-                      <div className="font-extrabold text-slate-850 dark:text-white text-sm">{rec.employee?.fullName}</div>
-                      <div className="text-[10px] text-slate-400 font-bold tracking-wider">{rec.employee?.documentNumber}</div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="font-bold">{rec.employee?.department}</div>
-                      <div className="text-[10px] text-slate-400 font-semibold">{rec.employee?.position}</div>
-                    </td>
-                    <td className="px-6 py-4 font-bold text-slate-600 dark:text-slate-400">
-                      {rec.date}
-                    </td>
-                    <td className="px-6 py-4 text-center font-extrabold text-emerald-600 dark:text-emerald-400 text-xs whitespace-nowrap">
-                      {formatTimeTo12Hour(rec.checkIn) || '—'}
-                    </td>
-                    <td className="px-6 py-4 text-center font-extrabold text-slate-500 dark:text-slate-400 text-xs whitespace-nowrap">
-                      {formatTimeTo12Hour(rec.checkOutMorning) || '—'}
-                    </td>
-                    <td className="px-6 py-4 text-center font-extrabold text-emerald-500 dark:text-emerald-400 text-xs whitespace-nowrap">
-                      {formatTimeTo12Hour(rec.checkInAfternoon) || '—'}
-                    </td>
-                    <td className="px-6 py-4 text-center font-extrabold text-slate-600 dark:text-slate-550 text-xs whitespace-nowrap">
-                      {formatTimeTo12Hour(rec.checkOut) || '—'}
-                    </td>
-                    <td className="px-6 py-4 text-center font-bold text-slate-750 dark:text-white text-xs">
-                      {rec.workedHours || 'N/A'}
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className={`inline-block px-3 py-1 rounded-full text-[10px] font-black border uppercase tracking-wider ${getStatusBadgeClass(rec.status)}`}>
-                        {rec.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="font-bold truncate max-w-[120px] text-slate-500" title={rec.userAgent}>
-                        {rec.ipAddress}
+          ) : (() => {
+            // Agrupar registros por fecha
+            const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Bogota' });
+            const grouped = records.reduce((acc, rec) => {
+              const date = rec.date;
+              if (!acc[date]) acc[date] = [];
+              acc[date].push(rec);
+              return acc;
+            }, {});
+            const sortedDates = Object.keys(grouped).sort((a, b) => b.localeCompare(a));
+
+            return (
+              <div className="divide-y divide-slate-100 dark:divide-slate-800/40">
+                {sortedDates.map(date => {
+                  const dayRecords = grouped[date];
+                  const isToday = date === todayStr;
+                  const dateObj = new Date(date + 'T12:00:00');
+                  const dayLabel = dateObj.toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+                  const presentCount = dayRecords.filter(r => r.status === 'Presente' || r.status === 'Salida registrada').length;
+                  const lateCount = dayRecords.filter(r => r.status === 'Tarde').length;
+
+                  return (
+                    <div key={date}>
+                      {/* Subtítulo de fecha */}
+                      <div className={`flex items-center justify-between px-6 py-3.5 ${isToday ? 'bg-brand-50/60 border-l-4 border-brand-500' : 'bg-slate-50/60 border-l-4 border-slate-200'}`}>
+                        <div className="flex items-center gap-3">
+                          <div className={`p-2 rounded-xl ${isToday ? 'bg-brand-100 text-brand-700' : 'bg-slate-100 text-slate-500'}`}>
+                            <Calendar className="w-3.5 h-3.5" />
+                          </div>
+                          <div>
+                            <span className={`text-xs font-black uppercase tracking-widest ${isToday ? 'text-brand-700' : 'text-slate-600 dark:text-slate-400'}`}>
+                              {isToday ? '🟢 HOY — ' : ''}{dayLabel}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] font-black bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">{presentCount} presentes</span>
+                          {lateCount > 0 && <span className="text-[10px] font-black bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">{lateCount} tarde</span>}
+                          <span className="text-[10px] font-semibold text-slate-400">{dayRecords.length} registros</span>
+                        </div>
                       </div>
-                    </td>
-                    <td className="px-6 py-4 max-w-[200px] truncate font-semibold text-slate-500 dark:text-slate-400" title={rec.notes}>
-                      {rec.notes || <span className="text-slate-350 dark:text-slate-700 italic text-[11px]">Ninguna</span>}
-                    </td>
-                    {(userRole === 'Administrador' || userRole === 'Super Usuario') && (
-                      <td className="px-6 py-4 text-center">
-                        <button
-                          onClick={() => handleOpenNotes(rec)}
-                          className="p-2 rounded-lg bg-slate-100 hover:bg-brand-500 hover:text-white dark:bg-slate-800 text-slate-400 hover:shadow-md transition active:scale-90"
-                          title="Editar Asistencia"
-                        >
-                          <Edit3 className="w-4 h-4" />
-                        </button>
-                      </td>
-                    )}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
+
+                      {/* Filas del día */}
+                      <div className="divide-y divide-slate-50 dark:divide-slate-800/20">
+                        {dayRecords.map(rec => {
+                          const statusMap = {
+                            'Presente': { dot: 'bg-emerald-500', badge: 'bg-emerald-50 text-emerald-700 border-emerald-200', label: 'Presente' },
+                            'Salida registrada': { dot: 'bg-brand-500', badge: 'bg-brand-50 text-brand-700 border-brand-200', label: 'Completado' },
+                            'Tarde': { dot: 'bg-amber-500', badge: 'bg-amber-50 text-amber-700 border-amber-200', label: 'Retardo' },
+                            'Ausente': { dot: 'bg-rose-500', badge: 'bg-rose-50 text-rose-700 border-rose-200', label: 'Ausente' },
+                          };
+                          const s = statusMap[rec.status] || { dot: 'bg-slate-300', badge: 'bg-slate-50 text-slate-600 border-slate-200', label: rec.status };
+
+                          return (
+                            <div key={rec.id} className="flex items-center gap-4 px-6 py-4 hover:bg-slate-50/50 dark:hover:bg-slate-950/5 transition group">
+                              {/* Avatar + Status dot */}
+                              <div className="relative shrink-0">
+                                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-slate-200 to-slate-300 dark:from-slate-700 dark:to-slate-800 flex items-center justify-center text-sm font-black text-slate-600 dark:text-slate-300">
+                                  {rec.employee?.fullName?.charAt(0) || '?'}
+                                </div>
+                                <span className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 ${s.dot} rounded-full border-2 border-white`} />
+                              </div>
+
+                              {/* Nombre y área */}
+                              <div className="flex-1 min-w-0">
+                                <div className="font-extrabold text-slate-850 dark:text-white text-sm truncate">{rec.employee?.fullName}</div>
+                                <div className="text-[10px] text-slate-400 font-bold tracking-wide">{rec.employee?.department} · {rec.employee?.position}</div>
+                              </div>
+
+                              {/* Marcaciones */}
+                              <div className="hidden md:flex items-center gap-5 shrink-0">
+                                <div className="text-center min-w-[60px]">
+                                  <div className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Entrada</div>
+                                  <div className={`text-xs font-black ${rec.checkIn ? 'text-emerald-600' : 'text-slate-300'}`}>
+                                    {formatTimeTo12Hour(rec.checkIn) || '—'}
+                                  </div>
+                                </div>
+                                <div className="text-center min-w-[60px]">
+                                  <div className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Sal. Mañana</div>
+                                  <div className={`text-xs font-bold ${rec.checkOutMorning ? 'text-slate-600' : 'text-slate-300'}`}>
+                                    {formatTimeTo12Hour(rec.checkOutMorning) || '—'}
+                                  </div>
+                                </div>
+                                <div className="text-center min-w-[60px]">
+                                  <div className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Ent. Tarde</div>
+                                  <div className={`text-xs font-bold ${rec.checkInAfternoon ? 'text-emerald-500' : 'text-slate-300'}`}>
+                                    {formatTimeTo12Hour(rec.checkInAfternoon) || '—'}
+                                  </div>
+                                </div>
+                                <div className="text-center min-w-[60px]">
+                                  <div className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Salida</div>
+                                  <div className={`text-xs font-bold ${rec.checkOut ? 'text-slate-600' : 'text-slate-300'}`}>
+                                    {formatTimeTo12Hour(rec.checkOut) || '—'}
+                                  </div>
+                                </div>
+                                <div className="text-center min-w-[52px]">
+                                  <div className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Horas</div>
+                                  <div className="text-xs font-extrabold text-slate-700 dark:text-white">{rec.workedHours || 'N/A'}</div>
+                                </div>
+                              </div>
+
+                              {/* Badge de estado */}
+                              <span className={`hidden sm:inline-block shrink-0 px-2.5 py-1 rounded-full text-[10px] font-black border uppercase tracking-wider ${s.badge}`}>
+                                {s.label}
+                              </span>
+
+                              {/* Observación */}
+                              {rec.notes && (
+                                <div className="hidden lg:block shrink-0 max-w-[140px]" title={rec.notes}>
+                                  <div className="text-[10px] font-semibold text-slate-400 italic truncate">📝 {rec.notes}</div>
+                                </div>
+                              )}
+
+                              {/* Acción editar */}
+                              {(userRole === 'Administrador' || userRole === 'Super Usuario') && (
+                                <button
+                                  onClick={() => handleOpenNotes(rec)}
+                                  className="shrink-0 p-2 rounded-xl bg-slate-100/50 opacity-0 group-hover:opacity-100 hover:bg-brand-500 hover:text-white dark:bg-slate-800 text-slate-400 transition active:scale-90"
+                                  title="Editar Asistencia"
+                                >
+                                  <Edit3 className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })()}
         </div>
 
       </div>
+
 
       {/* Sección Gráfico y Reloj QR en la parte inferior */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

@@ -65,153 +65,205 @@ export const registerPublicAttendance = async (req, res) => {
     const ipAddress = req.ip || req.headers['x-forwarded-for'] || '127.0.0.1';
     const userAgent = req.headers['user-agent'] || 'Desconocido';
 
-    if (!record) {
-      // --- REGISTRO 1: ENTRADA ---
-      const officialTime = settings.isSplitShift && settings.checkInTimeMorning ? settings.checkInTimeMorning : settings.checkInTime;
-      const [officialH, officialM] = officialTime.split(':').map(Number);
-      const limitSeconds = officialH * 3600 + officialM * 60 + (settings.toleranceMinutes * 60);
+    const [nowH, nowM, nowS] = timeStr.split(':').map(Number);
+    const nowSeconds = nowH * 3600 + nowM * 60 + nowS;
 
-      const [nowH, nowM, nowS] = timeStr.split(':').map(Number);
-      const nowSeconds = nowH * 3600 + nowM * 60 + nowS;
+    if (!settings.isSplitShift) {
+      // --- JORNADA CONTINUA ---
+      const officialIn = settings.checkInTime || '08:00';
+      const officialOut = settings.checkOutTime || '17:00';
+      const [inH, inM] = officialIn.split(':').map(Number);
+      const [outH, outM] = officialOut.split(':').map(Number);
+      
+      const inSeconds = inH * 3600 + inM * 60;
+      const outSeconds = outH * 3600 + outM * 60;
+      const midPoint = (inSeconds + outSeconds) / 2;
 
-      const status = nowSeconds > limitSeconds ? 'Tarde' : 'Presente';
+      // Si es antes del punto medio, asumimos que es Entrada. Si es después, Salida.
+      if (nowSeconds < midPoint) {
+        if (record && record.checkIn) {
+          // Ya tiene entrada
+          return res.status(400).json({ message: 'Ya has registrado tu entrada para el día de hoy.' });
+        }
+        
+        const limitSeconds = inSeconds + (settings.toleranceMinutes * 60);
+        const status = nowSeconds > limitSeconds ? 'Tarde' : 'Presente';
 
-      record = await Attendance.create({
-        employeeId: employee.id,
-        date: dateStr,
-        checkIn: timeStr,
-        checkOutMorning: null,
-        checkInAfternoon: null,
-        checkOut: null,
-        status,
-        ipAddress,
-        userAgent,
-        notes: ''
-      });
+        if (!record) {
+          record = await Attendance.create({
+            employeeId: employee.id,
+            date: dateStr,
+            checkIn: timeStr,
+            status,
+            ipAddress,
+            userAgent,
+            notes: ''
+          });
+        } else {
+          record.checkIn = timeStr;
+          record.status = status;
+          record.ipAddress = ipAddress;
+          record.userAgent = userAgent;
+          await record.save();
+        }
+
+        return res.json({
+          type: 'entrada',
+          message: status === 'Tarde'
+            ? `Entrada registrada con RETARDO a las ${timeStr}`
+            : `Entrada registrada a las ${timeStr}`,
+          record: { ...record.toJSON(), employeeName: employee.fullName }
+        });
+      } else {
+        // Marcación de salida
+        if (!record) {
+          // No tiene entrada pero está marcando salida directamente
+          record = await Attendance.create({
+            employeeId: employee.id,
+            date: dateStr,
+            checkOut: timeStr,
+            status: 'Salida registrada (Sin entrada)',
+            ipAddress,
+            userAgent,
+            notes: ''
+          });
+        } else {
+          if (record.checkOut) {
+            // Anti-spam 1 min
+            const [outH_rec, outM_rec, outS_rec] = record.checkOut.split(':').map(Number);
+            const recOutSec = outH_rec * 3600 + outM_rec * 60 + outS_rec;
+            if (nowSeconds - recOutSec < 60) {
+              return res.status(400).json({ message: 'Ya existe un registro de salida reciente. Por favor, espera al menos un minuto.' });
+            }
+            return res.status(400).json({ message: 'Ya has registrado tu salida para el día de hoy.' });
+          }
+          
+          record.checkOut = timeStr;
+          record.status = 'Salida registrada';
+          record.ipAddress = ipAddress;
+          record.userAgent = userAgent;
+          await record.save();
+        }
+
+        return res.json({
+          type: 'salida',
+          message: `Salida registrada correctamente a las ${timeStr}`,
+          record: { ...record.toJSON(), employeeName: employee.fullName }
+        });
+      }
+    } else {
+      // --- JORNADA PARTIDA (4 Slots) ---
+      const inTimeM = settings.checkInTimeMorning || '08:00';
+      const outTimeM = settings.checkOutTimeMorning || '12:00';
+      const inTimeA = settings.checkInTimeAfternoon || '14:00';
+      const outTimeA = settings.checkOutTimeAfternoon || '18:00';
+
+      const [inMH, inMM] = inTimeM.split(':').map(Number);
+      const [outMH, outMM] = outTimeM.split(':').map(Number);
+      const [inAH, inAM] = inTimeA.split(':').map(Number);
+      const [outAH, outAM] = outTimeA.split(':').map(Number);
+
+      const inMSec = inMH * 3600 + inMM * 60;
+      const outMSec = outMH * 3600 + outMM * 60;
+      const inASec = inAH * 3600 + inAM * 60;
+      const outASec = outAH * 3600 + outAM * 60;
+
+      // Definir los umbrales para decidir a qué slot corresponde la hora actual
+      // Umbral 1: Entre la salida de la mañana y la entrada de la tarde (Punto medio)
+      const midMorningLunch = (outMSec + inASec) / 2; 
+      // Umbral 2: Entre la entrada de la mañana y la salida de la mañana (Punto medio)
+      const midMorningShift = (inMSec + outMSec) / 2;
+      // Umbral 3: Entre la entrada de la tarde y la salida de la tarde (Punto medio)
+      const midAfternoonShift = (inASec + outASec) / 2;
+
+      let targetSlot = ''; // 'checkIn', 'checkOutMorning', 'checkInAfternoon', 'checkOut'
+
+      if (nowSeconds < midMorningShift) {
+        targetSlot = 'checkIn';
+      } else if (nowSeconds >= midMorningShift && nowSeconds < midMorningLunch) {
+        targetSlot = 'checkOutMorning';
+      } else if (nowSeconds >= midMorningLunch && nowSeconds < midAfternoonShift) {
+        targetSlot = 'checkInAfternoon';
+      } else {
+        targetSlot = 'checkOut';
+      }
+
+      // Validar si el slot ya está ocupado (Anti-spam 1 min o error)
+      if (record) {
+        const valVal = record[targetSlot];
+        if (valVal) {
+          const [vH, vM, vS] = valVal.split(':').map(Number);
+          const vSec = vH * 3600 + vM * 60 + vS;
+          if (nowSeconds - vSec < 60) {
+            return res.status(400).json({ message: 'Ya existe un registro reciente para esta jornada. Por favor, espera al menos un minuto.' });
+          }
+          return res.status(400).json({ message: `Ya has registrado la marcación de esta jornada.` });
+        }
+      }
+
+      // Preparar data de actualización o creación
+      if (!record) {
+        const createObj = {
+          employeeId: employee.id,
+          date: dateStr,
+          checkIn: null,
+          checkOutMorning: null,
+          checkInAfternoon: null,
+          checkOut: null,
+          status: 'Presente',
+          ipAddress,
+          userAgent,
+          notes: ''
+        };
+        createObj[targetSlot] = timeStr;
+        
+        if (targetSlot === 'checkIn') {
+          const limitSeconds = inMSec + (settings.toleranceMinutes * 60);
+          createObj.status = nowSeconds > limitSeconds ? 'Tarde' : 'Presente';
+        }
+
+        record = await Attendance.create(createObj);
+      } else {
+        record[targetSlot] = timeStr;
+        record.ipAddress = ipAddress;
+        record.userAgent = userAgent;
+
+        if (targetSlot === 'checkIn') {
+          const limitSeconds = inMSec + (settings.toleranceMinutes * 60);
+          record.status = nowSeconds > limitSeconds ? 'Tarde' : 'Presente';
+        }
+        await record.save();
+      }
+
+      // Mensajes descriptivos según el slot asignado
+      let responseMsg = '';
+      let responseType = 'entrada';
+      switch (targetSlot) {
+        case 'checkIn':
+          responseType = 'entrada';
+          responseMsg = record.status === 'Tarde' 
+            ? `Entrada Mañana registrada con RETARDO a las ${timeStr}`
+            : `Entrada Mañana registrada a las ${timeStr}`;
+          break;
+        case 'checkOutMorning':
+          responseType = 'salida';
+          responseMsg = `Salida Mañana registrada a las ${timeStr}`;
+          break;
+        case 'checkInAfternoon':
+          responseType = 'entrada';
+          responseMsg = `Entrada Tarde registrada a las ${timeStr}`;
+          break;
+        case 'checkOut':
+          responseType = 'salida';
+          responseMsg = `Salida Tarde registrada a las ${timeStr}`;
+          break;
+      }
 
       return res.json({
-        type: 'entrada',
-        message: status === 'Tarde'
-          ? `Entrada registrada con RETARDO a las ${timeStr}`
-          : `Entrada registrada a las ${timeStr}`,
-        record: {
-          ...record.toJSON(),
-          employeeName: employee.fullName
-        }
+        type: responseType,
+        message: responseMsg,
+        record: { ...record.toJSON(), employeeName: employee.fullName }
       });
-
-    } else {
-      // --- REGISTROS SIGUIENTES ---
-      const [nowH, nowM, nowS] = timeStr.split(':').map(Number);
-      const nowSeconds = nowH * 3600 + nowM * 60 + nowS;
-
-      if (!settings.isSplitShift) {
-        // --- JORNADA CONTINUA (2 marcaciones: Entrada -> Salida) ---
-        if (!record.checkOut) {
-          // Anti-spam de 1 minuto
-          const [inH, inM, inS] = record.checkIn.split(':').map(Number);
-          const checkInSeconds = inH * 3600 + inM * 60 + inS;
-
-          if (nowSeconds - checkInSeconds < 60) {
-            return res.status(400).json({ message: 'Ya existe un registro reciente. Por favor, espera al menos un minuto.' });
-          }
-
-          record.checkOut = timeStr;
-          record.status = 'Salida registrada';
-          record.ipAddress = ipAddress;
-          record.userAgent = userAgent;
-          await record.save();
-
-          return res.json({
-            type: 'salida',
-            message: `Salida registrada correctamente a las ${timeStr}`,
-            record: {
-              ...record.toJSON(),
-              employeeName: employee.fullName
-            }
-          });
-        }
-
-        return res.status(400).json({ message: 'Ya has completado tus registros de asistencia (Entrada y Salida) por el día de hoy.' });
-
-      } else {
-        // --- JORNADA PARTIDA (4 marcaciones: Entrada M. -> Salida M. -> Entrada T. -> Salida T.) ---
-        
-        // 1. Salida Mañana (Almuerzo)
-        if (!record.checkOutMorning) {
-          const [inH, inM, inS] = record.checkIn.split(':').map(Number);
-          const checkInSeconds = inH * 3600 + inM * 60 + inS;
-
-          if (nowSeconds - checkInSeconds < 60) {
-            return res.status(400).json({ message: 'Ya existe un registro reciente. Por favor, espera al menos un minuto.' });
-          }
-
-          record.checkOutMorning = timeStr;
-          record.ipAddress = ipAddress;
-          record.userAgent = userAgent;
-          await record.save();
-
-          return res.json({
-            type: 'salida',
-            message: `Salida Mañana (Almuerzo) registrada correctamente a las ${timeStr}`,
-            record: {
-              ...record.toJSON(),
-              employeeName: employee.fullName
-            }
-          });
-        }
-        
-        // 2. Entrada Tarde (Retorno Almuerzo)
-        if (!record.checkInAfternoon) {
-          const [outH, outM, outS] = record.checkOutMorning.split(':').map(Number);
-          const outMorningSeconds = outH * 3600 + outM * 60 + outS;
-
-          if (nowSeconds - outMorningSeconds < 60) {
-            return res.status(400).json({ message: 'Ya existe un registro reciente. Por favor, espera al menos un minuto.' });
-          }
-
-          record.checkInAfternoon = timeStr;
-          record.ipAddress = ipAddress;
-          record.userAgent = userAgent;
-          await record.save();
-
-          return res.json({
-            type: 'entrada',
-            message: `Entrada Tarde (Retorno Almuerzo) registrada correctamente a las ${timeStr}`,
-            record: {
-              ...record.toJSON(),
-              employeeName: employee.fullName
-            }
-          });
-        }
-
-        // 3. Salida Tarde (checkOut final)
-        if (!record.checkOut) {
-          const [inH, inM, inS] = record.checkInAfternoon.split(':').map(Number);
-          const inAfternoonSeconds = inH * 3600 + inM * 60 + inS;
-
-          if (nowSeconds - inAfternoonSeconds < 60) {
-            return res.status(400).json({ message: 'Ya existe un registro reciente. Por favor, espera al menos un minuto.' });
-          }
-
-          record.checkOut = timeStr;
-          record.status = 'Salida registrada';
-          record.ipAddress = ipAddress;
-          record.userAgent = userAgent;
-          await record.save();
-
-          return res.json({
-            type: 'salida',
-            message: `Salida Tarde registrada correctamente a las ${timeStr}`,
-            record: {
-              ...record.toJSON(),
-              employeeName: employee.fullName
-            }
-          });
-        }
-
-        return res.status(400).json({ message: 'Ya has completado tus 4 registros de asistencia por hoy.' });
-      }
     }
 
   } catch (error) {

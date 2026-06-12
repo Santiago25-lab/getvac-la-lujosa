@@ -5,6 +5,9 @@ import { formatTimeTo12Hour } from '../utils/dateUtils.js';
 
 export default function AttendanceView({ token, userRole }) {
   const [records, setRecords] = useState([]);
+  const [permissions, setPermissions] = useState([]);
+  const [absences, setAbsences] = useState([]);
+  const [vacations, setVacations] = useState([]);
   const [stats, setStats] = useState({
     totalActiveEmployees: 0,
     presentToday: 0,
@@ -186,10 +189,7 @@ export default function AttendanceView({ token, userRole }) {
       const statsRes = await fetch(`${API_URL}/api/attendance/stats`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
-      if (statsRes.ok) {
-        const statsData = await statsRes.json();
-        setStats(statsData);
-      }
+      if (statsRes.ok) setStats(await statsRes.json());
 
       // 2. Cargar Registros filtrados
       const queryParams = new URLSearchParams();
@@ -198,22 +198,33 @@ export default function AttendanceView({ token, userRole }) {
       if (status) queryParams.append('status', status);
       if (startDate) queryParams.append('startDate', startDate);
       if (endDate) queryParams.append('endDate', endDate);
-
-      const recordsRes = await fetch(`${API_URL}/api/attendance?${queryParams.toString()}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (recordsRes.ok) {
-        const recordsData = await recordsRes.json();
-        setRecords(recordsData);
+      // Si no hay filtro de fecha, cargar los últimos 7 días por defecto
+      if (!startDate && !endDate) {
+        const sevenDaysAgo = new Date();
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
+        queryParams.append('startDate', sevenDaysAgo.toLocaleDateString('en-CA', { timeZone: 'America/Bogota' }));
+        queryParams.append('endDate', new Date().toLocaleDateString('en-CA', { timeZone: 'America/Bogota' }));
       }
 
-      // 3. Cargar lista de empleados activos para el registro manual
-      const empRes = await fetch(`${API_URL}/api/employees`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
+      const [recordsRes, empRes, permRes, absRes, vacRes] = await Promise.all([
+        fetch(`${API_URL}/api/attendance?${queryParams.toString()}`, { headers: { 'Authorization': `Bearer ${token}` } }),
+        fetch(`${API_URL}/api/employees`, { headers: { 'Authorization': `Bearer ${token}` } }),
+        fetch(`${API_URL}/api/permissions`, { headers: { 'Authorization': `Bearer ${token}` } }),
+        fetch(`${API_URL}/api/absences`, { headers: { 'Authorization': `Bearer ${token}` } }),
+        fetch(`${API_URL}/api/dashboard/stats`, { headers: { 'Authorization': `Bearer ${token}` } }),
+      ]);
+
+      if (recordsRes.ok) setRecords(await recordsRes.json());
       if (empRes.ok) {
         const empData = await empRes.json();
         setEmployees(empData.filter(e => e.status === 'activo'));
+      }
+      if (permRes.ok) setPermissions(await permRes.json());
+      if (absRes.ok) setAbsences(await absRes.json());
+      if (vacRes.ok) {
+        const dashData = await vacRes.json();
+        // Extraer todas las vacaciones activas del dashboard stats
+        setVacations(dashData.currentlyOnVacation || []);
       }
 
     } catch (error) {
@@ -516,141 +527,219 @@ export default function AttendanceView({ token, userRole }) {
 
         </div>
 
-        {/* Lista agrupada por fecha */}
+        {/* Lista agrupada por fecha — todos los empleados por día */}
         <div className="flex-1 overflow-x-auto">
           {loading ? (
             <div className="py-20 flex justify-center items-center">
               <div className="w-10 h-10 border-4 border-t-transparent border-brand-500 rounded-full animate-spin" />
             </div>
-          ) : records.length === 0 ? (
+          ) : employees.length === 0 ? (
             <div className="py-20 text-center space-y-2">
               <div className="text-4xl">📭</div>
               <h4 className="text-sm font-black text-slate-700 dark:text-slate-300">Sin Registros de Asistencia</h4>
               <p className="text-xs text-slate-450">No se encontraron marcaciones con los filtros seleccionados.</p>
             </div>
           ) : (() => {
-            // Agrupar registros por fecha
             const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Bogota' });
-            const grouped = records.reduce((acc, rec) => {
-              const date = rec.date;
-              if (!acc[date]) acc[date] = [];
-              acc[date].push(rec);
-              return acc;
-            }, {});
-            const sortedDates = Object.keys(grouped).sort((a, b) => b.localeCompare(a));
+
+            // Determinar rango de fechas a mostrar (últimos 7 días si no hay filtro)
+            const allDates = new Set();
+            records.forEach(r => allDates.add(r.date));
+            if (allDates.size === 0) allDates.add(todayStr);
+            // Si hay filtro de fechas, incluir todos los días del rango
+            if (startDate && endDate) {
+              const cur = new Date(startDate + 'T12:00:00');
+              const end = new Date(endDate + 'T12:00:00');
+              while (cur <= end) {
+                allDates.add(cur.toLocaleDateString('en-CA', { timeZone: 'America/Bogota' }));
+                cur.setDate(cur.getDate() + 1);
+              }
+            } else {
+              // últimos 7 días siempre
+              for (let i = 0; i < 7; i++) {
+                const d = new Date();
+                d.setDate(d.getDate() - i);
+                allDates.add(d.toLocaleDateString('en-CA', { timeZone: 'America/Bogota' }));
+              }
+            }
+            const sortedDates = [...allDates].sort((a, b) => b.localeCompare(a));
+
+            // Helpers
+            const empHasPermission = (empId, dateStr) =>
+              permissions.find(p =>
+                p.employeeId === empId &&
+                p.status === 'Aprobado' &&
+                dateStr >= p.startDate &&
+                dateStr <= p.endDate
+              );
+            const empHasVacation = (empId, dateStr) =>
+              records.find(r => r.employeeId === empId && r.date === dateStr && r.status === 'Vacaciones') ||
+              false; // vacaciones se reflejan en el reporte
+            const empHasAbsence = (empId, dateStr) =>
+              absences.find(a => a.employeeId === empId && a.date === dateStr);
+
+            // Config de estado visual
+            const statusConfig = {
+              vacaciones:  { rowBg: 'bg-sky-50/70',    dot: 'bg-sky-400',    badge: 'bg-sky-100 text-sky-700 border-sky-200',    label: '🏖️ Vacaciones' },
+              incapacidad: { rowBg: 'bg-violet-50/70', dot: 'bg-violet-400', badge: 'bg-violet-100 text-violet-700 border-violet-200', label: '🏥 Incapacidad' },
+              permiso:     { rowBg: 'bg-amber-50/60',  dot: 'bg-amber-400',  badge: 'bg-amber-100 text-amber-700 border-amber-200',  label: '📋 Permiso' },
+              presente:    { rowBg: '',                 dot: 'bg-emerald-500', badge: 'bg-emerald-50 text-emerald-700 border-emerald-200', label: 'Presente' },
+              completado:  { rowBg: '',                 dot: 'bg-brand-500',  badge: 'bg-brand-50 text-brand-700 border-brand-200',   label: 'Completado' },
+              tarde:       { rowBg: 'bg-amber-50/30',  dot: 'bg-amber-500',  badge: 'bg-amber-50 text-amber-700 border-amber-200',  label: '⚡ Retardo' },
+              ausente:     { rowBg: 'bg-rose-50/40',   dot: 'bg-rose-400',   badge: 'bg-rose-50 text-rose-700 border-rose-200',    label: 'Ausente' },
+            };
+
+            const TagBadge = ({ label, style }) => (
+              <span className={`inline-flex items-center justify-center px-2 py-0.5 rounded-full text-[9px] font-black border uppercase tracking-wider whitespace-nowrap ${style}`}>{label}</span>
+            );
+            const Dash = () => <span className="text-slate-200 font-bold text-sm">—</span>;
 
             return (
               <div className="divide-y divide-slate-100 dark:divide-slate-800/40">
                 {sortedDates.map(date => {
-                  const dayRecords = grouped[date];
                   const isToday = date === todayStr;
                   const dateObj = new Date(date + 'T12:00:00');
                   const dayLabel = dateObj.toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-                  const presentCount = dayRecords.filter(r => r.status === 'Presente' || r.status === 'Salida registrada').length;
-                  const lateCount = dayRecords.filter(r => r.status === 'Tarde').length;
+
+                  // Empleados a mostrar (filtrar por búsqueda si hay)
+                  const filteredEmps = employees.filter(emp => {
+                    if (search) return emp.fullName.toLowerCase().includes(search.toLowerCase()) || emp.documentNumber.includes(search);
+                    if (department) return emp.department === department;
+                    return true;
+                  });
+
+                  const dayAttRecords = records.filter(r => r.date === date);
+                  const presentCount = dayAttRecords.filter(r => ['Presente', 'Salida registrada'].includes(r.status)).length;
+                  const lateCount = dayAttRecords.filter(r => r.status === 'Tarde').length;
+                  const permCount = filteredEmps.filter(e => empHasPermission(e.id, date) && !dayAttRecords.find(r => r.employeeId === e.id)).length;
 
                   return (
                     <div key={date}>
                       {/* Subtítulo de fecha */}
-                      <div className={`flex items-center justify-between px-6 py-3.5 ${isToday ? 'bg-brand-50/60 border-l-4 border-brand-500' : 'bg-slate-50/60 border-l-4 border-slate-200'}`}>
+                      <div className={`flex items-center justify-between px-6 py-3.5 sticky top-0 z-10 ${
+                        isToday ? 'bg-brand-50 border-l-4 border-brand-500' : 'bg-slate-50 border-l-4 border-slate-200'
+                      }`}>
                         <div className="flex items-center gap-3">
-                          <div className={`p-2 rounded-xl ${isToday ? 'bg-brand-100 text-brand-700' : 'bg-slate-100 text-slate-500'}`}>
+                          <div className={`p-1.5 rounded-xl ${isToday ? 'bg-brand-100 text-brand-700' : 'bg-slate-100 text-slate-500'}`}>
                             <Calendar className="w-3.5 h-3.5" />
                           </div>
-                          <div>
-                            <span className={`text-xs font-black uppercase tracking-widest ${isToday ? 'text-brand-700' : 'text-slate-600 dark:text-slate-400'}`}>
-                              {isToday ? '🟢 HOY — ' : ''}{dayLabel}
-                            </span>
-                          </div>
+                          <span className={`text-xs font-black uppercase tracking-widest ${isToday ? 'text-brand-700' : 'text-slate-600'}`}>
+                            {isToday ? '🟢 HOY — ' : ''}{dayLabel}
+                          </span>
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <span className="text-[10px] font-black bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">{presentCount} presentes</span>
-                          {lateCount > 0 && <span className="text-[10px] font-black bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">{lateCount} tarde</span>}
-                          <span className="text-[10px] font-semibold text-slate-400">{dayRecords.length} registros</span>
+                          {lateCount > 0 && <span className="text-[10px] font-black bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">{lateCount} retardos</span>}
+                          {permCount > 0 && <span className="text-[10px] font-black bg-amber-50 text-amber-600 border border-amber-200 px-2 py-0.5 rounded-full">{permCount} permisos</span>}
+                          <span className="text-[10px] font-semibold text-slate-400">{filteredEmps.length} empleados</span>
                         </div>
                       </div>
 
-                      {/* Filas del día */}
+                      {/* Fila por empleado */}
                       <div className="divide-y divide-slate-50 dark:divide-slate-800/20">
-                        {dayRecords.map(rec => {
-                          const statusMap = {
-                            'Presente': { dot: 'bg-emerald-500', badge: 'bg-emerald-50 text-emerald-700 border-emerald-200', label: 'Presente' },
-                            'Salida registrada': { dot: 'bg-brand-500', badge: 'bg-brand-50 text-brand-700 border-brand-200', label: 'Completado' },
-                            'Tarde': { dot: 'bg-amber-500', badge: 'bg-amber-50 text-amber-700 border-amber-200', label: 'Retardo' },
-                            'Ausente': { dot: 'bg-rose-500', badge: 'bg-rose-50 text-rose-700 border-rose-200', label: 'Ausente' },
+                        {filteredEmps.map(emp => {
+                          const att = dayAttRecords.find(r => r.employeeId === emp.id);
+                          const perm = empHasPermission(emp.id, date);
+                          const absence = empHasAbsence(emp.id, date);
+
+                          // Determinar estado combinado
+                          let stateKey = 'ausente';
+                          let isHalfDayPermission = false;
+
+                          if (att) {
+                            if (att.status === 'Tarde') stateKey = 'tarde';
+                            else if (att.status === 'Salida registrada') stateKey = 'completado';
+                            else stateKey = 'presente';
+                            // Si también tiene permiso → permiso parcial (mañana)
+                            if (perm) isHalfDayPermission = true;
+                          } else if (absence?.type === 'incapacidad') {
+                            stateKey = 'incapacidad';
+                          } else if (perm) {
+                            stateKey = 'permiso';
+                          }
+
+                          const cfg = statusConfig[stateKey];
+                          const isFullJustified = ['vacaciones','incapacidad','permiso'].includes(stateKey);
+                          const rowClass = `flex items-center gap-3 md:gap-4 px-6 py-3.5 hover:brightness-[0.98] transition group ${cfg.rowBg}`;
+
+                          // Definir qué mostrar en cada slot de tiempo
+                          const renderTimeSlot = (time, slotType) => {
+                            // Si es incapacidad, vacaciones o permiso completo → mostrar badge en todos los slots
+                            if (isFullJustified && !isHalfDayPermission) {
+                              return <TagBadge label={cfg.label.split(' ')[1] || cfg.label} style={cfg.badge} />;
+                            }
+                            // Permiso parcial: solo en slots de mañana si tiene asistencia en tarde
+                            if (isHalfDayPermission && !att) {
+                              if (slotType === 'checkIn' || slotType === 'checkOutMorning') {
+                                return <TagBadge label="Permiso" style={statusConfig.permiso.badge} />;
+                              }
+                            }
+                            if (!time) return <Dash />;
+                            const isEntry = slotType === 'checkIn' || slotType === 'checkInAfternoon';
+                            return <span className={`text-xs font-black ${isEntry ? 'text-emerald-600' : 'text-slate-500'}`}>{formatTimeTo12Hour(time)}</span>;
                           };
-                          const s = statusMap[rec.status] || { dot: 'bg-slate-300', badge: 'bg-slate-50 text-slate-600 border-slate-200', label: rec.status };
 
                           return (
-                            <div key={rec.id} className="flex items-center gap-4 px-6 py-4 hover:bg-slate-50/50 dark:hover:bg-slate-950/5 transition group">
-                              {/* Avatar + Status dot */}
+                            <div key={emp.id} className={rowClass}>
+                              {/* Avatar */}
                               <div className="relative shrink-0">
-                                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-slate-200 to-slate-300 dark:from-slate-700 dark:to-slate-800 flex items-center justify-center text-sm font-black text-slate-600 dark:text-slate-300">
-                                  {rec.employee?.fullName?.charAt(0) || '?'}
+                                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-slate-200 to-slate-300 flex items-center justify-center text-sm font-black text-slate-600">
+                                  {emp.fullName?.charAt(0)}
                                 </div>
-                                <span className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 ${s.dot} rounded-full border-2 border-white`} />
+                                <span className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 ${cfg.dot} rounded-full border-2 border-white`} />
                               </div>
 
-                              {/* Nombre y área */}
-                              <div className="flex-1 min-w-0">
-                                <div className="font-extrabold text-slate-850 dark:text-white text-sm truncate">{rec.employee?.fullName}</div>
-                                <div className="text-[10px] text-slate-400 font-bold tracking-wide">{rec.employee?.department} · {rec.employee?.position}</div>
+                              {/* Nombre */}
+                              <div className="w-44 shrink-0">
+                                <div className="font-extrabold text-slate-850 dark:text-white text-xs truncate">{emp.fullName}</div>
+                                <div className="text-[10px] text-slate-400 font-bold truncate">{emp.department}</div>
                               </div>
 
-                              {/* Marcaciones */}
-                              <div className="hidden md:flex items-center gap-5 shrink-0">
-                                <div className="text-center min-w-[60px]">
-                                  <div className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Entrada</div>
-                                  <div className={`text-xs font-black ${rec.checkIn ? 'text-emerald-600' : 'text-slate-300'}`}>
-                                    {formatTimeTo12Hour(rec.checkIn) || '—'}
+                              {/* Marcaciones con contexto */}
+                              <div className="hidden md:flex items-center gap-4 flex-1">
+                                {[
+                                  { label: 'Entrada', slot: 'checkIn', time: att?.checkIn },
+                                  { label: 'Sal. Mañana', slot: 'checkOutMorning', time: att?.checkOutMorning },
+                                  { label: 'Ent. Tarde', slot: 'checkInAfternoon', time: att?.checkInAfternoon },
+                                  { label: 'Salida', slot: 'checkOut', time: att?.checkOut },
+                                ].map(({ label, slot, time }) => (
+                                  <div key={slot} className="text-center min-w-[68px]">
+                                    <div className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">{label}</div>
+                                    <div className="flex justify-center">{renderTimeSlot(time, slot)}</div>
                                   </div>
-                                </div>
-                                <div className="text-center min-w-[60px]">
-                                  <div className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Sal. Mañana</div>
-                                  <div className={`text-xs font-bold ${rec.checkOutMorning ? 'text-slate-600' : 'text-slate-300'}`}>
-                                    {formatTimeTo12Hour(rec.checkOutMorning) || '—'}
-                                  </div>
-                                </div>
-                                <div className="text-center min-w-[60px]">
-                                  <div className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Ent. Tarde</div>
-                                  <div className={`text-xs font-bold ${rec.checkInAfternoon ? 'text-emerald-500' : 'text-slate-300'}`}>
-                                    {formatTimeTo12Hour(rec.checkInAfternoon) || '—'}
-                                  </div>
-                                </div>
-                                <div className="text-center min-w-[60px]">
-                                  <div className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Salida</div>
-                                  <div className={`text-xs font-bold ${rec.checkOut ? 'text-slate-600' : 'text-slate-300'}`}>
-                                    {formatTimeTo12Hour(rec.checkOut) || '—'}
-                                  </div>
-                                </div>
+                                ))}
+
+                                {/* Horas trabajadas */}
                                 <div className="text-center min-w-[52px]">
                                   <div className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Horas</div>
-                                  <div className="text-xs font-extrabold text-slate-700 dark:text-white">{rec.workedHours || 'N/A'}</div>
+                                  <div className="text-xs font-extrabold text-slate-700">
+                                    {att?.workedHours || (isFullJustified ? '—' : <span className="text-rose-400">0h</span>)}
+                                  </div>
                                 </div>
+
+                                {/* Notas / Motivo */}
+                                {(att?.notes || perm?.reason || absence?.reason) && (
+                                  <div className="hidden lg:block max-w-[130px]" title={att?.notes || perm?.reason || absence?.reason}>
+                                    <div className="text-[10px] font-semibold text-slate-400 italic truncate">📝 {att?.notes || perm?.reason || absence?.reason}</div>
+                                  </div>
+                                )}
                               </div>
 
-                              {/* Badge de estado */}
-                              <span className={`hidden sm:inline-block shrink-0 px-2.5 py-1 rounded-full text-[10px] font-black border uppercase tracking-wider ${s.badge}`}>
-                                {s.label}
-                              </span>
-
-                              {/* Observación */}
-                              {rec.notes && (
-                                <div className="hidden lg:block shrink-0 max-w-[140px]" title={rec.notes}>
-                                  <div className="text-[10px] font-semibold text-slate-400 italic truncate">📝 {rec.notes}</div>
-                                </div>
-                              )}
-
-                              {/* Acción editar */}
-                              {(userRole === 'Administrador' || userRole === 'Super Usuario') && (
-                                <button
-                                  onClick={() => handleOpenNotes(rec)}
-                                  className="shrink-0 p-2 rounded-xl bg-slate-100/50 opacity-0 group-hover:opacity-100 hover:bg-brand-500 hover:text-white dark:bg-slate-800 text-slate-400 transition active:scale-90"
-                                  title="Editar Asistencia"
-                                >
-                                  <Edit3 className="w-3.5 h-3.5" />
-                                </button>
-                              )}
+                              {/* Badge de estado general */}
+                              <div className="ml-auto flex items-center gap-2 shrink-0">
+                                <span className={`hidden sm:inline-flex px-2.5 py-1 rounded-full text-[10px] font-black border uppercase tracking-wider ${cfg.badge}`}>
+                                  {cfg.label}
+                                </span>
+                                {(userRole === 'Administrador' || userRole === 'Super Usuario') && att && (
+                                  <button
+                                    onClick={() => handleOpenNotes(att)}
+                                    className="p-1.5 rounded-xl opacity-0 group-hover:opacity-100 bg-slate-100 hover:bg-brand-500 hover:text-white text-slate-400 transition active:scale-90"
+                                    title="Editar"
+                                  >
+                                    <Edit3 className="w-3 h-3" />
+                                  </button>
+                                )}
+                              </div>
                             </div>
                           );
                         })}

@@ -445,6 +445,34 @@ sequelize.sync()
           });
           console.log('✅ Migration: columna appliesVacationCalculation añadida a Employees.');
         }
+        if (!empCols.isLegacy) {
+          await qi.addColumn('Employees', 'isLegacy', {
+            type: sequelize.Sequelize.BOOLEAN,
+            defaultValue: false
+          });
+          console.log('✅ Migration: columna isLegacy añadida a Employees.');
+        }
+        if (!empCols.lastVacationCutoffDate) {
+          await qi.addColumn('Employees', 'lastVacationCutoffDate', {
+            type: sequelize.Sequelize.DATEONLY,
+            allowNull: true
+          });
+          console.log('✅ Migration: columna lastVacationCutoffDate añadida a Employees.');
+        }
+        if (!empCols.lastVacationEnjoyedDate) {
+          await qi.addColumn('Employees', 'lastVacationEnjoyedDate', {
+            type: sequelize.Sequelize.DATEONLY,
+            allowNull: true
+          });
+          console.log('✅ Migration: columna lastVacationEnjoyedDate añadida a Employees.');
+        }
+        if (!empCols.initialPendingVacationBalance) {
+          await qi.addColumn('Employees', 'initialPendingVacationBalance', {
+            type: sequelize.Sequelize.DECIMAL(10, 2),
+            allowNull: true
+          });
+          console.log('✅ Migration: columna initialPendingVacationBalance añadida a Employees.');
+        }
       }
 
     } catch (migErr) {

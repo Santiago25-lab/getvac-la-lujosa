@@ -33,7 +33,11 @@ export default function EmployeeList({ token, userRole, onViewChange }) {
     phone: '',
     contractType: 'Término Fijo',
     baseSalary: '',
-    appliesVacationCalculation: true
+    appliesVacationCalculation: true,
+    isLegacy: false,
+    lastVacationCutoffDate: '',
+    lastVacationEnjoyedDate: '',
+    initialPendingVacationBalance: ''
   });
 
   const fetchEmployees = async () => {
@@ -93,7 +97,11 @@ export default function EmployeeList({ token, userRole, onViewChange }) {
       phone: emp.phone || '',
       contractType: emp.contractType || 'Término Fijo',
       baseSalary: emp.baseSalary || '',
-      appliesVacationCalculation: emp.appliesVacationCalculation !== false
+      appliesVacationCalculation: emp.appliesVacationCalculation !== false,
+      isLegacy: emp.isLegacy || false,
+      lastVacationCutoffDate: emp.lastVacationCutoffDate || '',
+      lastVacationEnjoyedDate: emp.lastVacationEnjoyedDate || '',
+      initialPendingVacationBalance: emp.initialPendingVacationBalance || ''
     });
     setEditingEmployeeId(emp.id);
     setIsEditMode(true);
@@ -112,7 +120,11 @@ export default function EmployeeList({ token, userRole, onViewChange }) {
       phone: '',
       contractType: 'Término Fijo',
       baseSalary: '',
-      appliesVacationCalculation: true
+      appliesVacationCalculation: true,
+      isLegacy: false,
+      lastVacationCutoffDate: '',
+      lastVacationEnjoyedDate: '',
+      initialPendingVacationBalance: ''
     });
     setEditingEmployeeId(null);
     setIsEditMode(false);
@@ -123,10 +135,15 @@ export default function EmployeeList({ token, userRole, onViewChange }) {
     e.preventDefault();
     setFormError('');
 
-    const { fullName, documentNumber, position, department, hireDate } = formData;
+    const { fullName, documentNumber, position, department, hireDate, isLegacy, lastVacationCutoffDate, initialPendingVacationBalance } = formData;
 
     if (!fullName.trim() || !documentNumber.trim() || !position.trim() || !department.trim() || !hireDate) {
       setFormError('Todos los campos son requeridos obligatoriamente.');
+      return;
+    }
+
+    if (isLegacy && (!lastVacationCutoffDate || initialPendingVacationBalance === '')) {
+      setFormError('Para empleados antiguos, debe especificar la fecha de corte y el saldo inicial.');
       return;
     }
 
@@ -166,7 +183,11 @@ export default function EmployeeList({ token, userRole, onViewChange }) {
         phone: '',
         contractType: 'Término Fijo',
         baseSalary: '',
-        appliesVacationCalculation: true
+        appliesVacationCalculation: true,
+        isLegacy: false,
+        lastVacationCutoffDate: '',
+        lastVacationEnjoyedDate: '',
+        initialPendingVacationBalance: ''
       });
       setIsModalOpen(false);
       setIsEditMode(false);
@@ -594,18 +615,74 @@ export default function EmployeeList({ token, userRole, onViewChange }) {
                 </div>
               </div>
 
-              <div className="flex items-center gap-3 bg-brand-50/50 p-4 rounded-2xl border border-brand-100/50">
-                <input
-                  type="checkbox"
-                  name="appliesVacationCalculation"
-                  checked={formData.appliesVacationCalculation}
-                  onChange={(e) => setFormData(prev => ({ ...prev, appliesVacationCalculation: e.target.checked }))}
-                  className="w-4 h-4 text-brand-500 rounded border-slate-300 focus:ring-brand-500 transition"
-                  id="calcCheckbox"
-                />
-                <label htmlFor="calcCheckbox" className="text-sm font-semibold text-slate-700 cursor-pointer select-none">
-                  Incluir en cálculo automático de vacaciones
-                </label>
+              <div className="flex flex-col gap-3 bg-brand-50/50 p-4 rounded-2xl border border-brand-100/50">
+                <div className="flex items-center gap-3">
+                  <input
+                    type="checkbox"
+                    name="appliesVacationCalculation"
+                    checked={formData.appliesVacationCalculation}
+                    onChange={(e) => setFormData(prev => ({ ...prev, appliesVacationCalculation: e.target.checked }))}
+                    className="w-4 h-4 text-brand-500 rounded border-slate-300 focus:ring-brand-500 transition"
+                    id="calcCheckbox"
+                  />
+                  <label htmlFor="calcCheckbox" className="text-sm font-semibold text-slate-700 cursor-pointer select-none">
+                    Incluir en cálculo automático de vacaciones
+                  </label>
+                </div>
+
+                <div className="flex items-center gap-3 mt-2">
+                  <input
+                    type="checkbox"
+                    name="isLegacy"
+                    checked={formData.isLegacy}
+                    onChange={(e) => setFormData(prev => ({ ...prev, isLegacy: e.target.checked }))}
+                    className="w-4 h-4 text-orange-500 rounded border-slate-300 focus:ring-orange-500 transition"
+                    id="legacyCheckbox"
+                  />
+                  <label htmlFor="legacyCheckbox" className="text-sm font-semibold text-slate-700 cursor-pointer select-none flex items-center gap-2">
+                    <UserCheck className="w-4 h-4 text-orange-500" />
+                    ¿Empleado antiguo? (Migración de saldos iniciales)
+                  </label>
+                </div>
+
+                {formData.isLegacy && (
+                  <div className="mt-2 p-3 bg-white border border-orange-200 rounded-xl space-y-4 shadow-sm animate-fade-in">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-slate-500 pl-1 uppercase tracking-wide">Fecha de Último Corte</label>
+                        <input
+                          type="date"
+                          name="lastVacationCutoffDate"
+                          value={formData.lastVacationCutoffDate}
+                          onChange={handleInputChange}
+                          className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-sm outline-none focus:border-orange-500 transition"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-slate-500 pl-1 uppercase tracking-wide">Última Vacación Disfrutada</label>
+                        <input
+                          type="date"
+                          name="lastVacationEnjoyedDate"
+                          value={formData.lastVacationEnjoyedDate}
+                          onChange={handleInputChange}
+                          className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-sm outline-none focus:border-orange-500 transition"
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-slate-500 pl-1 uppercase tracking-wide">Saldo Inicial (Días Pendientes)</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        name="initialPendingVacationBalance"
+                        value={formData.initialPendingVacationBalance}
+                        onChange={handleInputChange}
+                        placeholder="Ej: 7.5"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-sm outline-none focus:border-orange-500 transition"
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
 
               {formData.hireDate && formData.appliesVacationCalculation && (() => {

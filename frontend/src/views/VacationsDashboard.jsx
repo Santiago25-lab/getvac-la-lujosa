@@ -149,14 +149,50 @@ export default function VacationsDashboard({ token, userRole, onViewChange }) {
                           {emp.appliesVacationCalculation !== false ? 'Sí Aplica' : 'No Aplica'}
                         </span>
                       </td>
-                      <td className="py-4 px-4 text-center font-bold text-slate-700">
-                        {stats.accruedDays || 0}
+                      <td className="py-4 px-4 text-center">
+                        <div className="font-bold text-slate-700">
+                          {Math.floor(stats.accruedDays || 0)} días
+                        </div>
+                        <div className="text-[10px] text-slate-400 mt-0.5">
+                          +{(stats.accruedDays % 1).toFixed(2)} acumulado
+                        </div>
                       </td>
                       <td className="py-4 px-4 text-center font-bold text-slate-600">
-                        {stats.takenDays || 0}
+                        {stats.takenDays || 0} días
                       </td>
-                      <td className="py-4 px-4 text-center font-black text-rose-500">
-                        {stats.availableDays || 0}
+                      <td className="py-4 px-4 text-center">
+                        <div className="font-black text-rose-500">
+                          {Math.floor(stats.availableDays || 0)} días
+                        </div>
+                        <div className="text-[10px] text-rose-400 mt-0.5 mb-1.5">
+                          +{(stats.availableDays % 1).toFixed(2)} acumulado
+                        </div>
+                        
+                        {/* Alertas de Acumulación */}
+                        {(stats.availableDays >= 45) ? (
+                          <div className="inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-rose-100 text-rose-700 border border-rose-200 mt-1" title="Acumulación excesiva de vacaciones">
+                            🚨 Excesivo (+45d)
+                          </div>
+                        ) : (stats.availableDays >= 30) ? (
+                          <div className="inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-orange-100 text-orange-700 border border-orange-200 mt-1" title="Más de dos períodos vacacionales acumulados">
+                            ⚠ Crítico (+30d)
+                          </div>
+                        ) : (stats.availableDays >= 25) ? (
+                          <div className="inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-700 border border-amber-200 mt-1" title="Próximo a acumulación elevada">
+                            ⚠ Alerta (+25d)
+                          </div>
+                        ) : null}
+
+                        {/* Alertas de Tiempo sin Vacaciones */}
+                        {stats.monthsSinceLastVacation >= 24 ? (
+                          <div className="inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-rose-100 text-rose-700 border border-rose-200 mt-1 block" title="Más de 24 meses sin disfrutar vacaciones">
+                            🚨 {stats.monthsSinceLastVacation} meses sin salir
+                          </div>
+                        ) : stats.monthsSinceLastVacation >= 18 ? (
+                          <div className="inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-700 border border-amber-200 mt-1 block" title="Más de 18 meses sin disfrutar vacaciones">
+                            ⚠ {stats.monthsSinceLastVacation} meses sin salir
+                          </div>
+                        ) : null}
                       </td>
                       <td className="py-4 px-6 text-right font-black text-amber-600">
                         {formatCurrency(stats.economicValue || 0)}

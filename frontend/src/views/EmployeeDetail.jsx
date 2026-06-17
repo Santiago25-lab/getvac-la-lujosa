@@ -861,7 +861,7 @@ export default function EmployeeDetail({ token, employeeId, onViewChange, userRo
             <div className="grid grid-cols-2 gap-4">
               <div className="p-4 rounded-2xl bg-brand-500/5 border border-brand-200/20 text-center">
                 <span className="block text-2xl font-black text-brand-600 leading-none">{stats.accruedDays}</span>
-                <span className="text-[9px] font-bold text-slate-400 dark:text-slate-550 uppercase tracking-wider mt-1.5 block">Acumulados</span>
+                <span className="text-[9px] font-bold text-slate-400 dark:text-slate-550 uppercase tracking-wider mt-1.5 block">Días Causados Exactos</span>
               </div>
               <div className="p-4 rounded-2xl bg-amber-500/5 border border-amber-200/20 text-center">
                 <span className="block text-2xl font-black text-amber-600 dark:text-amber-400 leading-none">{stats.takenDays}</span>
@@ -874,9 +874,9 @@ export default function EmployeeDetail({ token, employeeId, onViewChange, userRo
                 ? 'bg-rose-500/10 border-rose-500/20' 
                 : 'bg-emerald-500/10 border-emerald-500/20'
             }`}>
-              <span className={`block text-4xl font-extrabold leading-none ${
+              <span className={`block text-3xl font-extrabold leading-none ${
                 isCriticalBalance ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-450'
-              }`}>{stats.availableDays}</span>
+              }`}>{stats.availableDays} <span className="text-xl">días exactos</span></span>
               <span className={`text-[10px] font-bold uppercase tracking-wider mt-1.5 block ${
                 isCriticalBalance ? 'text-rose-500' : 'text-emerald-500'
               }`}>Días Hábiles Disponibles</span>
@@ -1020,13 +1020,12 @@ export default function EmployeeDetail({ token, employeeId, onViewChange, userRo
                       </div>
 
                       <div className="space-y-1.5">
-                        <label className="text-[10px] font-bold text-slate-450 uppercase tracking-widest pl-1">Fecha de Regreso (Auto)</label>
+                        <label className="text-[10px] font-bold text-slate-450 uppercase tracking-widest pl-1">Fecha de Regreso (Auto / Manual)</label>
                         <input
                           type="date"
                           value={returnDate}
-                          readOnly
-                          disabled
-                          className="w-full bg-slate-150/40 dark:bg-slate-900/40 border border-slate-200/40 dark:border-slate-850/40 rounded-2xl py-2.5 px-4 text-xs outline-none text-slate-450 dark:text-slate-500 cursor-not-allowed select-none font-bold"
+                          onChange={(e) => setReturnDate(e.target.value)}
+                          className="w-full bg-white dark:bg-slate-950/40 border border-brand-200/60 dark:border-slate-850/60 rounded-2xl py-2.5 px-4 text-xs outline-none focus:border-brand-500 transition font-bold"
                         />
                       </div>
                     </div>

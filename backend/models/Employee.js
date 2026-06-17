@@ -58,6 +58,23 @@ const Employee = sequelize.define('Employee', {
     defaultValue: true,
     allowNull: false,
   },
+  isLegacy: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false,
+    allowNull: false,
+  },
+  lastVacationCutoffDate: {
+    type: DataTypes.DATEONLY,
+    allowNull: true,
+  },
+  lastVacationEnjoyedDate: {
+    type: DataTypes.DATEONLY,
+    allowNull: true,
+  },
+  initialPendingVacationBalance: {
+    type: DataTypes.DECIMAL(10, 2),
+    allowNull: true,
+  },
 }, {
   timestamps: true,
 });

@@ -7,7 +7,7 @@ import { API_URL } from '../config.js';
 export default function Dashboard({ token, onViewChange }) {
   const [stats, setStats] = useState(null);
   const [attendanceStats, setAttendanceStats] = useState(null);
-  const [pendingPermissionsCount, setPendingPermissionsCount] = useState(0);
+  const [pendingNoveltiesCount, setPendingNoveltiesCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -36,13 +36,13 @@ export default function Dashboard({ token, onViewChange }) {
           setAttendanceStats(attData);
         }
 
-        // Cargar solicitudes de permisos pendientes
-        const permRes = await fetch(`${API_URL}/api/permissions`, {
+        // Cargar solicitudes de novedades pendientes
+        const novRes = await fetch(`${API_URL}/api/novelties`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
-        if (permRes.ok) {
-          const permData = await permRes.json();
-          setPendingPermissionsCount(permData.filter(p => p.status === 'Pendiente').length);
+        if (novRes.ok) {
+          const novData = await novRes.json();
+          setPendingNoveltiesCount(novData.filter(n => n.status === 'Pendiente').length);
         }
 
       } catch (err) {
@@ -191,11 +191,11 @@ export default function Dashboard({ token, onViewChange }) {
           </div>
         </div>
 
-        {/* Permisos Pendientes */}
-        <div className="bg-white p-6 rounded-2xl border border-brand-100 shadow-sm flex items-center justify-between hover:shadow-md transition">
+        {/* Novedades Pendientes */}
+        <div className="bg-white p-6 rounded-2xl border border-brand-100 shadow-sm flex items-center justify-between hover:shadow-md transition cursor-pointer" onClick={() => onViewChange('novelties')}>
           <div>
-            <p className="text-xs font-bold uppercase tracking-wide text-slate-400">Permisos Pendientes</p>
-            <h3 className="text-3xl font-black text-brand-600 mt-1">{pendingPermissionsCount}</h3>
+            <p className="text-xs font-bold uppercase tracking-wide text-slate-400">Novedades Pendientes</p>
+            <h3 className="text-3xl font-black text-brand-600 mt-1">{pendingNoveltiesCount}</h3>
           </div>
           <div className="p-3 bg-brand-50 text-brand-500 rounded-xl">
             <ClipboardSignature className="w-6 h-6" />

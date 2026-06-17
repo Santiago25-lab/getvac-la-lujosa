@@ -424,7 +424,7 @@ export default function EmployeeDetail({ token, employeeId, onViewChange, userRo
           </div>
         </div>
 
-        <div class="summary-grid" style="grid-template-cols: repeat(4, 1fr); margin-top: -20px; margin-bottom: 35px;">
+        <div class="summary-grid" style="grid-template-cols: repeat(3, 1fr); margin-top: -20px; margin-bottom: 35px;">
           <div class="summary-card" style="padding: 10px 16px;">
             <h4 style="margin: 0; font-size: 16px; color: #a16207;">${summary.tardinessCount}</h4>
             <span class="summary-label" style="font-size: 8px;">Retardos</span>
@@ -432,10 +432,6 @@ export default function EmployeeDetail({ token, employeeId, onViewChange, userRo
           <div class="summary-card" style="padding: 10px 16px;">
             <h4 style="margin: 0; font-size: 16px; color: #b91c1c;">${summary.absencesCount}</h4>
             <span class="summary-label" style="font-size: 8px;">Inasistencias</span>
-          </div>
-          <div class="summary-card" style="padding: 10px 16px;">
-            <h4 style="margin: 0; font-size: 16px; color: #6b21a8;">${summary.permissionsCount}</h4>
-            <span class="summary-label" style="font-size: 8px;">Permisos</span>
           </div>
           <div class="summary-card" style="padding: 10px 16px;">
             <h4 style="margin: 0; font-size: 16px; color: #0369a1;">${summary.vacationsCount}</h4>
@@ -918,17 +914,7 @@ export default function EmployeeDetail({ token, employeeId, onViewChange, userRo
               <Clock className="w-4 h-4" />
               <span>Asistencia</span>
             </button>
-            <button
-              onClick={() => setActiveTab('permisos')}
-              className={`flex-1 py-3 text-xs font-bold uppercase tracking-wider rounded-2xl transition duration-150 flex items-center justify-center gap-2 ${
-                activeTab === 'permisos'
-                  ? 'bg-brand-500 text-white shadow-md shadow-brand-500/10'
-                  : 'text-slate-450 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-800 dark:hover:text-slate-200'
-              }`}
-            >
-              <ClipboardSignature className="w-4 h-4" />
-              <span>Permisos</span>
-            </button>
+
             <button
               onClick={() => setActiveTab('novedades')}
               className={`flex-1 py-3 text-xs font-bold uppercase tracking-wider rounded-2xl transition duration-150 flex items-center justify-center gap-2 ${
@@ -1251,63 +1237,6 @@ export default function EmployeeDetail({ token, employeeId, onViewChange, userRo
             </div>
           )}
 
-          {/* Contenido de la pestaña: PERMISOS */}
-          {activeTab === 'permisos' && (
-            <div className="bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/40 rounded-3xl p-6 shadow-sm space-y-5 animate-fade-in">
-              <div className="flex items-center gap-2.5 border-b border-slate-100 dark:border-slate-800/40 pb-4">
-                <div className="p-1.5 rounded-lg bg-brand-50/10 text-brand-500">
-                  <ClipboardSignature className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="text-base font-bold text-slate-850 dark:text-white">Expediente de Permisos y Licencias</h3>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 font-semibold mt-0.5">Control de ausencias autorizadas, citas médicas y calamidades del empleado.</p>
-                </div>
-              </div>
-
-              {!employee.permissions || employee.permissions.length === 0 ? (
-                <div className="py-12 text-center">
-                  <p className="text-xs font-semibold text-slate-400 dark:text-slate-500">El empleado no registra solicitudes de permisos.</p>
-                </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs border-collapse">
-                    <thead>
-                      <tr className="text-slate-400 font-black border-b border-slate-100 dark:border-slate-800/40 uppercase tracking-widest text-[9px] pb-3">
-                        <th className="pb-3">Tipo Licencia</th>
-                        <th className="pb-3">Desde</th>
-                        <th className="pb-3">Hasta</th>
-                        <th className="pb-3">Estado</th>
-                        <th className="pb-3">Autorizado Por</th>
-                        <th className="pb-3">Notas internas</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100 dark:divide-slate-850 font-medium text-slate-700 dark:text-slate-250">
-                      {employee.permissions.map(perm => (
-                        <tr key={perm.id} className="hover:bg-brand-50/20 transition">
-                          <td className="py-3.5 font-bold text-brand-600 dark:text-brand-400">{perm.type}</td>
-                          <td className="py-3.5 text-slate-800 dark:text-slate-350">{perm.startDate}</td>
-                          <td className="py-3.5 text-slate-800 dark:text-slate-350">{perm.endDate}</td>
-                          <td className="py-3.5">
-                            <span className={`inline-block px-2.5 py-0.5 border rounded-full text-[9px] font-black uppercase tracking-wider ${
-                              perm.status === 'Aprobado'
-                                ? 'bg-emerald-50 text-emerald-700 border-emerald-250 dark:bg-emerald-950/20 dark:text-emerald-450 dark:border-emerald-900/50'
-                                : perm.status === 'Rechazado'
-                                  ? 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/20 dark:text-rose-400 dark:border-rose-900/50'
-                                  : 'bg-amber-50 text-amber-700 border-amber-250 dark:bg-amber-950/20 dark:text-amber-455 dark:border-amber-900/50'
-                            }`}>
-                              {perm.status}
-                            </span>
-                          </td>
-                          <td className="py-3.5 font-bold text-slate-650">{perm.approvedBy || <span className="text-slate-350 italic font-normal">Pendiente</span>}</td>
-                          <td className="py-3.5 text-slate-500" title={perm.reason}>{perm.reason}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-          )}
 
           {/* Contenido de la pestaña: NOVEDADES */}
           {activeTab === 'novedades' && (

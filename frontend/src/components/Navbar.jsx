@@ -41,21 +41,21 @@ export default function Navbar({ activeView, token, onViewChange }) {
           }
         }
 
-        // 2. Cargar solicitudes de permisos pendientes
-        const permRes = await fetch(`${API_URL}/api/permissions`, {
+        // 2. Cargar solicitudes de novedades pendientes
+        const novRes = await fetch(`${API_URL}/api/novelties`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
-        if (permRes.ok) {
-          const permData = await permRes.json();
-          const pending = permData.filter(p => p.status === 'Pendiente');
-          pending.forEach((perm, index) => {
-            const empName = perm.employee ? perm.employee.fullName : 'Empleado';
+        if (novRes.ok) {
+          const novData = await novRes.json();
+          const pending = novData.filter(n => n.status === 'Pendiente');
+          pending.forEach((nov, index) => {
+            const empName = nov.employee ? nov.employee.fullName : 'Empleado';
             notifs.push({
-              id: `perm-${perm.id}-${index}`,
-              type: 'permission',
-              title: 'Solicitud de Permiso',
-              message: `${empName} solicitó un permiso por ${perm.type}.`,
-              view: 'permissions',
+              id: `nov-${nov.id}-${index}`,
+              type: 'novelty',
+              title: 'Novedad Pendiente',
+              message: `${empName} tiene una novedad pendiente por ${nov.type}.`,
+              view: 'novelties',
               icon: <ClipboardSignature className="w-4 h-4 text-amber-500" />
             });
           });

@@ -7,7 +7,6 @@ export default function Sidebar({ activeView, onViewChange, user, onLogout }) {
     { id: 'employees', label: 'Empleados', icon: Users },
     { id: 'attendance', label: 'Asistencias & Faltas', icon: Clock },
     { id: 'novelties', label: 'Novedades', icon: AlertOctagon },
-    { id: 'permissions', label: 'Permisos', icon: FileText },
     { id: 'vacations', label: 'Vacaciones', icon: CalendarCheck },
   ];
 

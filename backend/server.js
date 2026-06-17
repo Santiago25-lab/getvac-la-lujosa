@@ -480,7 +480,7 @@ sequelize.sync()
       if (novCols && novCols.type) {
         const newTypes = [
           'Incapacidad', 'Licencia Maternidad', 'Licencia Paternidad',
-          'Licencia Luto', 'Permiso Remunerado', 'Permiso No Remunerado',
+          'Licencia Luto', 'Permiso', 'Permiso Remunerado', 'Permiso No Remunerado',
           'Suspensión', 'Abandono de Cargo', 'Otro'
         ];
         for (const val of newTypes) {

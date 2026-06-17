@@ -17,8 +17,7 @@ const Novelty = sequelize.define('Novelty', {
       'Licencia Maternidad',
       'Licencia Paternidad',
       'Licencia Luto',
-      'Permiso Remunerado',
-      'Permiso No Remunerado',
+      'Permiso',
       'Suspensión',
       'Abandono de Cargo',
       'Otro'

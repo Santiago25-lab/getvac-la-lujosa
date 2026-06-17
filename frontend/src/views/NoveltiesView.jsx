@@ -168,8 +168,7 @@ export default function NoveltiesView({ token, userRole }) {
 
   const noveltyTypes = [
     'Incapacidad', 'Licencia Maternidad', 'Licencia Paternidad', 
-    'Licencia Luto', 'Permiso Remunerado', 'Permiso No Remunerado', 
-    'Suspensión', 'Abandono de Cargo', 'Otro'
+    'Licencia Luto', 'Permiso', 'Suspensión', 'Abandono de Cargo', 'Otro'
   ];
 
   const getStatusColor = (status) => {

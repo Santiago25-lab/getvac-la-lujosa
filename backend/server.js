@@ -418,6 +418,23 @@ sequelize.sync()
         }
       }
 
+      // 4. Añadir columnas de vacaciones a Employees si no existen
+      const empCols = await qi.describeTable('Employees').catch(() => null);
+      if (empCols) {
+        if (!empCols.contractType) {
+          await sequelize.query(`ALTER TABLE Employees ADD COLUMN contractType VARCHAR(255) DEFAULT 'Término Fijo'`);
+          console.log('✅ Migration: columna contractType añadida a Employees.');
+        }
+        if (!empCols.baseSalary) {
+          await sequelize.query(`ALTER TABLE Employees ADD COLUMN baseSalary DECIMAL(15, 2) DEFAULT 0`);
+          console.log('✅ Migration: columna baseSalary añadida a Employees.');
+        }
+        if (!empCols.appliesVacationCalculation) {
+          await sequelize.query(`ALTER TABLE Employees ADD COLUMN appliesVacationCalculation BOOLEAN DEFAULT true`);
+          console.log('✅ Migration: columna appliesVacationCalculation añadida a Employees.');
+        }
+      }
+
     } catch (migErr) {
       console.warn('⚠️ Migraciones opcionales con advertencia (no crítico):', migErr.message);
     }

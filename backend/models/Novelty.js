@@ -13,14 +13,15 @@ const Novelty = sequelize.define('Novelty', {
   },
   type: {
     type: DataTypes.ENUM(
-      'Incapacidad médica',
-      'Permiso remunerado',
-      'Permiso no remunerado',
-      'Licencia',
-      'Calamidad doméstica',
-      'Comisión laboral',
-      'Ausencia injustificada',
-      'Vacaciones'
+      'Incapacidad',
+      'Licencia Maternidad',
+      'Licencia Paternidad',
+      'Licencia Luto',
+      'Permiso Remunerado',
+      'Permiso No Remunerado',
+      'Suspensión',
+      'Abandono de Cargo',
+      'Otro'
     ),
     allowNull: false,
   },

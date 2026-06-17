@@ -475,6 +475,22 @@ sequelize.sync()
         }
       }
 
+      // 5. Actualizar ENUM type de Novelties para que coincida con el frontend
+      const novCols = await qi.describeTable('Novelties').catch(() => null);
+      if (novCols && novCols.type) {
+        const newTypes = [
+          'Incapacidad', 'Licencia Maternidad', 'Licencia Paternidad',
+          'Licencia Luto', 'Permiso Remunerado', 'Permiso No Remunerado',
+          'Suspensión', 'Abandono de Cargo', 'Otro'
+        ];
+        for (const val of newTypes) {
+          await sequelize.query(
+            `ALTER TYPE "enum_Novelties_type" ADD VALUE IF NOT EXISTS '${val}'`
+          ).catch(() => {}); // Ignorar si ya existe o si no es PostgreSQL
+        }
+        console.log('✅ Migration: ENUM type de Novelties actualizado con nuevos valores.');
+      }
+
     } catch (migErr) {
       console.warn('⚠️ Migraciones opcionales con advertencia (no crítico):', migErr.message);
     }

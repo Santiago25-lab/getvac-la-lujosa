@@ -5,7 +5,8 @@ import { Op } from 'sequelize';
 
 export const createNovelty = async (req, res) => {
   try {
-    const { employeeId, type, startDate, endDate, observations } = req.body;
+    const { employeeId, type, startDate, endDate, observations, reason, coverage } = req.body;
+    const observationsText = observations || reason || '';
     
     // Validar datos básicos
     if (!employeeId || !type || !startDate || !endDate) {
@@ -49,7 +50,7 @@ export const createNovelty = async (req, res) => {
       type,
       startDate,
       endDate,
-      observations,
+      observations: observationsText,
       attachments
     });
 

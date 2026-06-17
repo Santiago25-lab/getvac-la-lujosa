@@ -393,7 +393,7 @@ sequelize.sync()
       const permCols = await qi.describeTable('Permissions').catch(() => null);
       if (permCols && !permCols.coverage) {
         await sequelize.query(
-          `ALTER TABLE Permissions ADD COLUMN coverage VARCHAR(50) NOT NULL DEFAULT 'Jornada Completa'`
+          `ALTER TABLE "Permissions" ADD COLUMN "coverage" VARCHAR(50) NOT NULL DEFAULT 'Jornada Completa'`
         );
         console.log('✅ Migration: columna coverage añadida a Permissions.');
       }
@@ -402,8 +402,8 @@ sequelize.sync()
       const attCols = await qi.describeTable('Attendances').catch(() => null);
       if (attCols && attCols.checkIn && !attCols.checkIn.allowNull) {
         await sequelize.query(
-          `ALTER TABLE Attendances MODIFY COLUMN checkIn VARCHAR(255) NULL`
-        );
+          `ALTER TABLE "Attendances" ALTER COLUMN "checkIn" DROP NOT NULL`
+        ).catch(() => sequelize.query(`ALTER TABLE Attendances MODIFY COLUMN checkIn VARCHAR(255) NULL`));
         console.log('✅ Migration: checkIn en Attendances ahora permite NULL.');
       }
 
@@ -411,9 +411,12 @@ sequelize.sync()
       if (attCols && attCols.status) {
         const currentEnum = attCols.status.type || '';
         if (!currentEnum.includes('Sin entrada')) {
+          // PostgreSQL way to add enum value
           await sequelize.query(
+            `ALTER TYPE "enum_Attendances_status" ADD VALUE IF NOT EXISTS 'Salida registrada (Sin entrada)'`
+          ).catch(() => sequelize.query(
             `ALTER TABLE Attendances MODIFY COLUMN status ENUM('Presente','Tarde','Ausente','Salida registrada','Salida registrada (Sin entrada)','Sin salida') NOT NULL DEFAULT 'Presente'`
-          );
+          ));
           console.log('✅ Migration: ENUM status de Attendances actualizado.');
         }
       }
@@ -422,15 +425,24 @@ sequelize.sync()
       const empCols = await qi.describeTable('Employees').catch(() => null);
       if (empCols) {
         if (!empCols.contractType) {
-          await sequelize.query(`ALTER TABLE Employees ADD COLUMN contractType VARCHAR(255) DEFAULT 'Término Fijo'`);
+          await qi.addColumn('Employees', 'contractType', {
+            type: sequelize.Sequelize.STRING,
+            defaultValue: 'Término Fijo'
+          });
           console.log('✅ Migration: columna contractType añadida a Employees.');
         }
         if (!empCols.baseSalary) {
-          await sequelize.query(`ALTER TABLE Employees ADD COLUMN baseSalary DECIMAL(15, 2) DEFAULT 0`);
+          await qi.addColumn('Employees', 'baseSalary', {
+            type: sequelize.Sequelize.DECIMAL(15, 2),
+            defaultValue: 0
+          });
           console.log('✅ Migration: columna baseSalary añadida a Employees.');
         }
         if (!empCols.appliesVacationCalculation) {
-          await sequelize.query(`ALTER TABLE Employees ADD COLUMN appliesVacationCalculation BOOLEAN DEFAULT true`);
+          await qi.addColumn('Employees', 'appliesVacationCalculation', {
+            type: sequelize.Sequelize.BOOLEAN,
+            defaultValue: true
+          });
           console.log('✅ Migration: columna appliesVacationCalculation añadida a Employees.');
         }
       }

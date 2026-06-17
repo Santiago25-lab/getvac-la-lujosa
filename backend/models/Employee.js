@@ -45,6 +45,19 @@ const Employee = sequelize.define('Employee', {
     type: DataTypes.TEXT, // Almacenamiento flexible (Base64 / Path / URL)
     allowNull: true,
   },
+  contractType: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  baseSalary: {
+    type: DataTypes.DECIMAL(10, 2),
+    allowNull: true,
+  },
+  appliesVacationCalculation: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: true,
+    allowNull: false,
+  },
 }, {
   timestamps: true,
 });

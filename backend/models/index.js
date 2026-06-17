@@ -9,6 +9,7 @@ import Absence from './Absence.js';
 import Department from './Department.js';
 import AuditLog from './AuditLog.js';
 import CompanyHoliday from './CompanyHoliday.js';
+import Novelty from './Novelty.js';
 
 // Relaciones
 Employee.hasMany(Vacation, { foreignKey: 'employeeId', as: 'vacations', onDelete: 'CASCADE' });
@@ -23,6 +24,9 @@ Permission.belongsTo(Employee, { foreignKey: 'employeeId', as: 'employee' });
 Employee.hasMany(Absence, { foreignKey: 'employeeId', as: 'absences', onDelete: 'CASCADE' });
 Absence.belongsTo(Employee, { foreignKey: 'employeeId', as: 'employee' });
 
+Employee.hasMany(Novelty, { foreignKey: 'employeeId', as: 'novelties', onDelete: 'CASCADE' });
+Novelty.belongsTo(Employee, { foreignKey: 'employeeId', as: 'employee' });
+
 export {
   sequelize,
   User,
@@ -34,6 +38,7 @@ export {
   Absence,
   Department,
   AuditLog,
-  CompanyHoliday
+  CompanyHoliday,
+  Novelty
 };
 

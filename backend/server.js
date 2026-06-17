@@ -59,14 +59,20 @@ import { getAuditLogs } from './controllers/auditLogController.js';
 import { getUsers, createUser, updateUser, deleteUser } from './controllers/userController.js';
 import { auditMiddleware } from './middleware/auditMiddleware.js';
 import { startVacationCronJob } from './jobs/vacationUpdater.js';
+import noveltyRoutes from './routes/noveltyRoutes.js';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 app.use(cors());
 app.use(express.json());
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use(auditMiddleware);
 
 // Iniciar Cron Jobs
@@ -136,6 +142,9 @@ app.patch('/api/permissions/:id/status', authenticateToken, requireRole(['Admini
 app.get('/api/absences', authenticateToken, getAbsences);
 app.post('/api/absences', authenticateToken, createAbsence);
 app.put('/api/absences/:id', authenticateToken, updateAbsence);
+
+// Novedades Laborales (RRHH - Protegida)
+app.use('/api/novelties', noveltyRoutes);
 
 // Dashboard
 app.get('/api/dashboard/stats', authenticateToken, getDashboardStats);

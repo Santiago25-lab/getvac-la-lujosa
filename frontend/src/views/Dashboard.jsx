@@ -89,6 +89,12 @@ export default function Dashboard({ token, onViewChange }) {
         </div>
         <div className="flex gap-3">
           <button 
+            onClick={() => onViewChange('novelties')}
+            className="bg-rose-50 text-rose-600 border border-rose-200 px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider hover:bg-rose-100 transition active:scale-95 cursor-pointer"
+          >
+            Gestionar Novedades
+          </button>
+          <button 
             onClick={() => onViewChange('attendance')}
             className="bg-slate-50 text-slate-600 border border-slate-200 px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider hover:bg-slate-100 transition active:scale-95 cursor-pointer"
           >

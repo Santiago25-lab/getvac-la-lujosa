@@ -1,4 +1,4 @@
-import { Attendance, Employee, Setting, Permission, Vacation, Absence, CompanyHoliday } from '../models/index.js';
+import { Attendance, Employee, Setting, Permission, Vacation, Absence, CompanyHoliday, Novelty } from '../models/index.js';
 import { Op } from 'sequelize';
 import { isColombianHoliday } from '../utils/colombianHolidays.js';
 
@@ -363,7 +363,44 @@ export const getAttendanceRecords = async (req, res) => {
       return rec;
     });
 
-    res.json(recordsWithHours);
+    // --- INTEGRACIÓN CON NOVEDADES LABORALES ---
+    // Obtener Novedades para el mismo rango de fechas y empleados
+    let noveltyWhere = { status: 'Activa' };
+    if (employeeId) noveltyWhere.employeeId = employeeId;
+    if (startDate && endDate) {
+      noveltyWhere[Op.or] = [
+        { startDate: { [Op.between]: [startDate, endDate] } },
+        { endDate: { [Op.between]: [startDate, endDate] } },
+        {
+          [Op.and]: [
+            { startDate: { [Op.lte]: startDate } },
+            { endDate: { [Op.gte]: endDate } }
+          ]
+        }
+      ];
+    } else if (startDate) {
+      noveltyWhere.endDate = { [Op.gte]: startDate };
+    }
+
+    const novelties = await Novelty.findAll({ where: noveltyWhere });
+
+    // Sobreescribir el status de la asistencia si existe una novedad para ese día
+    const finalRecords = recordsWithHours.map(rec => {
+      const recDate = new Date(rec.date);
+      const activeNovelty = novelties.find(n => {
+        return n.employeeId === rec.employeeId && 
+               recDate >= new Date(n.startDate) && 
+               recDate <= new Date(n.endDate);
+      });
+
+      if (activeNovelty) {
+        rec.status = activeNovelty.type;
+        rec.noveltyId = activeNovelty.id; // Optional: To show a link or badge in frontend
+      }
+      return rec;
+    });
+
+    res.json(finalRecords);
   } catch (error) {
     console.error('Error al obtener asistencias:', error);
     res.status(500).json({ message: 'Error al cargar los registros de asistencia.' });
@@ -505,6 +542,16 @@ export const getAttendanceStats = async (req, res) => {
       });
       const permissionEmployeeIds = new Set(todayPermissions.map(p => p.employeeId));
 
+      // Obtener Novedades activas hoy
+      const todayNovelties = await Novelty.findAll({
+        where: {
+          status: 'Activa',
+          startDate: { [Op.lte]: todayStr },
+          endDate: { [Op.gte]: todayStr }
+        }
+      });
+      const noveltyEmployeeIds = new Set(todayNovelties.map(n => n.employeeId));
+
       // Obtener inasistencias manuales registradas para hoy (ej. incapacidades)
       const todayAbsences = await Absence.findAll({
         where: { date: todayStr }
@@ -513,15 +560,16 @@ export const getAttendanceStats = async (req, res) => {
 
       const presentEmployeeIds = new Set(todayRecords.map(r => r.employeeId));
       
-      // Un empleado está ausente si no está presente, y NO está de vacaciones, ni de permiso aprobado de jornada completa, ni tiene inasistencia/incapacidad
+      // Un empleado está ausente si no está presente, y NO está de vacaciones, ni de permiso aprobado de jornada completa, ni tiene inasistencia/incapacidad, ni tiene novedad activa
       absentEmployees = [];
       activeEmployees.forEach(emp => {
         const hasPresent = presentEmployeeIds.has(emp.id);
         const hasVacation = vacationEmployeeIds.has(emp.id);
         const hasAbsence = absenceEmployeeIds.has(emp.id);
+        const hasNovelty = noveltyEmployeeIds.has(emp.id);
         const empPerms = todayPermissions.filter(p => p.employeeId === emp.id);
 
-        if (hasPresent || hasVacation || hasAbsence) {
+        if (hasPresent || hasVacation || hasAbsence || hasNovelty) {
           return; // No está ausente
         }
 
@@ -681,6 +729,18 @@ export const getEmployeeMonthlyReport = async (req, res) => {
       }
     });
 
+    const novelties = await Novelty.findAll({
+      where: {
+        employeeId: id,
+        status: 'Activa',
+        [Op.or]: [
+          { startDate: { [Op.between]: [startDateStr, endDateStr] } },
+          { endDate: { [Op.between]: [startDateStr, endDateStr] } },
+          { startDate: { [Op.lte]: startDateStr }, endDate: { [Op.gte]: endDateStr } }
+        ]
+      }
+    });
+
     const vacations = await Vacation.findAll({
       where: {
         employeeId: id,
@@ -714,6 +774,7 @@ export const getEmployeeMonthlyReport = async (req, res) => {
     let totalAbsencesCount = 0;
     let totalPermissionsCount = 0;
     let totalVacationsCount = 0;
+    let totalNoveltiesCount = 0;
     const dailyDetails = [];
 
     for (let d = 1; d <= daysInMonth; d++) {
@@ -729,11 +790,15 @@ export const getEmployeeMonthlyReport = async (req, res) => {
 
       const att = attendances.find(a => a.date === currentDayStr);
       
-      const hasPermission = permissions.some(p => {
+      const hasPermission = permissions.find(p => {
         return currentDayStr >= p.startDate && currentDayStr <= p.endDate;
       });
 
-      const hasVacation = vacations.some(v => {
+      const hasNovelty = novelties.find(n => {
+        return currentDayStr >= n.startDate && currentDayStr <= n.endDate;
+      });
+
+      const hasVacation = vacations.find(v => {
         return currentDayStr >= v.startDate && currentDayStr < v.returnDate;
       });
 
@@ -782,7 +847,10 @@ export const getEmployeeMonthlyReport = async (req, res) => {
         }
         notes = att.notes || '';
       } else {
-        if (hasVacation && isWorkDay) {
+        if (hasNovelty) {
+          status = hasNovelty.type;
+          totalNoveltiesCount++;
+        } else if (hasVacation && isWorkDay) {
           status = 'Vacaciones';
           totalVacationsCount++;
         } else if (hasPermission) {
@@ -844,7 +912,8 @@ export const getEmployeeMonthlyReport = async (req, res) => {
         tardinessCount: totalTardinessCount,
         absencesCount: totalAbsencesCount,
         permissionsCount: totalPermissionsCount,
-        vacationsCount: totalVacationsCount
+        vacationsCount: totalVacationsCount,
+        noveltiesCount: totalNoveltiesCount
       },
       dailyDetails
     });

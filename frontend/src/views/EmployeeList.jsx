@@ -27,9 +27,13 @@ export default function EmployeeList({ token, userRole, onViewChange }) {
     position: '',
     department: '',
     hireDate: '',
+    hireDate: '',
     status: 'activo',
     email: '',
-    phone: ''
+    phone: '',
+    contractType: 'Término Fijo',
+    baseSalary: '',
+    appliesVacationCalculation: true
   });
 
   const fetchEmployees = async () => {
@@ -86,7 +90,10 @@ export default function EmployeeList({ token, userRole, onViewChange }) {
       hireDate: emp.hireDate || '',
       status: emp.status || 'activo',
       email: emp.email || '',
-      phone: emp.phone || ''
+      phone: emp.phone || '',
+      contractType: emp.contractType || 'Término Fijo',
+      baseSalary: emp.baseSalary || '',
+      appliesVacationCalculation: emp.appliesVacationCalculation !== false
     });
     setEditingEmployeeId(emp.id);
     setIsEditMode(true);
@@ -102,7 +109,10 @@ export default function EmployeeList({ token, userRole, onViewChange }) {
       hireDate: '',
       status: 'activo',
       email: '',
-      phone: ''
+      phone: '',
+      contractType: 'Término Fijo',
+      baseSalary: '',
+      appliesVacationCalculation: true
     });
     setEditingEmployeeId(null);
     setIsEditMode(false);
@@ -153,7 +163,10 @@ export default function EmployeeList({ token, userRole, onViewChange }) {
         hireDate: '',
         status: 'activo',
         email: '',
-        phone: ''
+        phone: '',
+        contractType: 'Término Fijo',
+        baseSalary: '',
+        appliesVacationCalculation: true
       });
       setIsModalOpen(false);
       setIsEditMode(false);
@@ -548,29 +561,70 @@ export default function EmployeeList({ token, userRole, onViewChange }) {
                       className="w-full bg-white border border-slate-200 rounded-2xl py-2.5 px-4 text-sm outline-none focus:border-brand-500 transition"
                     />
                   </div>
-                  {formData.hireDate && (() => {
-                    const hire = new Date(formData.hireDate + 'T00:00:00');
-                    const today = new Date();
-                    const diffTime = today - hire;
-                    const days = diffTime > 0 ? Math.floor(diffTime / (1000 * 60 * 60 * 24)) : 0;
-                    const yearsOfService = Math.floor(days / 365);
-                    const accrued = yearsOfService * 15;
-                    return (
-                      <div className="mt-2.5 p-3 rounded-2xl bg-brand-50 border border-brand-200 text-brand-600 text-[10px] font-bold space-y-1.5 animate-fade-in select-none">
-                        <div>⏳ Días Trabajados (hasta hoy): <span className="text-slate-700 font-extrabold">{days} días ({yearsOfService} {yearsOfService === 1 ? 'año' : 'años'} de servicio)</span></div>
-                        <div>
-                          📈 Acumulación Estimada:{' '}
-                          {yearsOfService > 0 ? (
-                            <span className="text-emerald-600 font-black">{accrued} días hábiles</span>
-                          ) : (
-                            <span className="text-rose-500 font-extrabold">0 días hábiles (Requiere cumplir mínimo 1 año completo)</span>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })()}
                 </div>
               </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-500 pl-1 uppercase tracking-wide">Tipo de Contrato</label>
+                  <select
+                    name="contractType"
+                    value={formData.contractType}
+                    onChange={handleInputChange}
+                    className="w-full bg-white border border-slate-200 rounded-2xl py-2.5 px-4 text-sm outline-none focus:border-brand-500 transition"
+                  >
+                    <option value="Término Fijo">Término Fijo</option>
+                    <option value="Término Indefinido">Término Indefinido</option>
+                    <option value="Prestación de Servicios">Prestación de Servicios</option>
+                    <option value="Obra o Labor">Obra o Labor</option>
+                    <option value="Aprendizaje">Aprendizaje</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1.5 md:col-span-2">
+                  <label className="text-xs font-bold text-slate-500 pl-1 uppercase tracking-wide">Salario Base ($ COP)</label>
+                  <input
+                    type="number"
+                    name="baseSalary"
+                    value={formData.baseSalary}
+                    onChange={handleInputChange}
+                    placeholder="Ej: 1300000"
+                    className="w-full bg-white border border-slate-200 rounded-2xl py-2.5 px-4 text-sm outline-none focus:border-brand-500 transition focus:ring-2 focus:ring-brand-500/10"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3 bg-brand-50/50 p-4 rounded-2xl border border-brand-100/50">
+                <input
+                  type="checkbox"
+                  name="appliesVacationCalculation"
+                  checked={formData.appliesVacationCalculation}
+                  onChange={(e) => setFormData(prev => ({ ...prev, appliesVacationCalculation: e.target.checked }))}
+                  className="w-4 h-4 text-brand-500 rounded border-slate-300 focus:ring-brand-500 transition"
+                  id="calcCheckbox"
+                />
+                <label htmlFor="calcCheckbox" className="text-sm font-semibold text-slate-700 cursor-pointer select-none">
+                  Incluir en cálculo automático de vacaciones
+                </label>
+              </div>
+
+              {formData.hireDate && formData.appliesVacationCalculation && (() => {
+                const hire = new Date(formData.hireDate + 'T00:00:00');
+                const today = new Date();
+                const diffTime = today - hire;
+                const days = diffTime > 0 ? Math.floor(diffTime / (1000 * 60 * 60 * 24)) : 0;
+                const yearsOfService = Math.floor(days / 365);
+                const accrued = Number(((15 * days) / 360).toFixed(2));
+                return (
+                  <div className="p-3 rounded-2xl bg-brand-50 border border-brand-200 text-brand-600 text-[10px] font-bold space-y-1.5 animate-fade-in select-none">
+                    <div>⏳ Días Trabajados (hasta hoy): <span className="text-slate-700 font-extrabold">{days} días ({yearsOfService} {yearsOfService === 1 ? 'año' : 'años'} de servicio)</span></div>
+                    <div>
+                      📈 Acumulación Estimada (Fórmula 15x/360):{' '}
+                      <span className="text-emerald-600 font-black">{accrued} días</span>
+                    </div>
+                  </div>
+                );
+              })()}
 
               <div className="space-y-1.5">
                 <label className="text-xs font-bold text-slate-500 pl-1 uppercase tracking-wide">Estado Inicial</label>

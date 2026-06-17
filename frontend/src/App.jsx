@@ -11,6 +11,8 @@ import AttendanceView from './views/AttendanceView';
 import PermissionsView from './views/PermissionsView';
 import AbsencesView from './views/AbsencesView';
 import SuperUserPanelView from './views/SuperUserPanelView';
+import NoveltiesView from './views/NoveltiesView';
+import VacationsDashboard from './views/VacationsDashboard';
 
 export default function App() {
   const [token, setToken] = useState(() => localStorage.getItem('token') || '');
@@ -132,6 +134,21 @@ export default function App() {
 
           {activeView === 'permissions' && (
             <PermissionsView
+              token={token}
+              userRole={user?.role}
+              onViewChange={handleViewChange}
+            />
+          )}
+
+          {activeView === 'novelties' && (
+            <NoveltiesView
+              token={token}
+              userRole={user?.role}
+            />
+          )}
+
+          {activeView === 'vacations' && (
+            <VacationsDashboard
               token={token}
               userRole={user?.role}
               onViewChange={handleViewChange}

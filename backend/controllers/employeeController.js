@@ -2,15 +2,6 @@ import { Employee, Vacation, Setting, Attendance, Permission, Absence } from '..
 
 // Función helper para calcular las estadísticas de vacaciones de un empleado
 export const calculateEmployeeVacationStats = async (employee, customSettings = null) => {
-  // Obtener la regla de acumulación
-  let settings = customSettings;
-  if (!settings) {
-    settings = await Setting.findOne();
-    if (!settings) {
-      settings = { daysRequiredForOneVacationDay: 24.333333333333332 };
-    }
-  }
-
   const hireDate = new Date(employee.hireDate);
   const endDate = employee.status === 'activo' ? new Date() : new Date(employee.updatedAt);
   
@@ -18,22 +9,33 @@ export const calculateEmployeeVacationStats = async (employee, customSettings = 
   const diffTime = endDate - hireDate;
   const totalDaysWorked = diffTime > 0 ? Math.floor(diffTime / (1000 * 60 * 60 * 24)) : 0;
 
-  // Días acumulados: se otorgan estrictamente por cada año completo cumplido (365 días) de servicio
-  const yearsOfService = Math.floor(totalDaysWorked / 365);
-  const accruedDays = Math.floor(yearsOfService * (365 / settings.daysRequiredForOneVacationDay));
+  // Fórmula colombiana: (15 * días trabajados) / 360
+  // Solo aplica si el empleado tiene appliesVacationCalculation = true
+  let accruedDays = 0;
+  if (employee.appliesVacationCalculation !== false) {
+    accruedDays = Number(((15 * totalDaysWorked) / 360).toFixed(2));
+  }
 
   // Días tomados (suma de businessDays de todas sus vacaciones)
   const vacations = employee.vacations || await Vacation.findAll({ where: { employeeId: employee.id } });
   const takenDays = vacations.reduce((sum, vac) => sum + vac.businessDays, 0);
 
   // Días disponibles
-  const availableDays = accruedDays - takenDays;
+  const availableDays = Number((accruedDays - takenDays).toFixed(2));
+
+  // Cálculo económico
+  let economicValue = 0;
+  if (employee.baseSalary && employee.baseSalary > 0) {
+    const dailyValue = employee.baseSalary / 30;
+    economicValue = Number((dailyValue * availableDays).toFixed(2));
+  }
 
   return {
     totalDaysWorked,
     accruedDays,
     takenDays,
-    availableDays
+    availableDays,
+    economicValue
   };
 };
 
@@ -105,7 +107,7 @@ export const createEmployee = async (req, res) => {
       return res.status(400).json({ message: 'El número de documento ya está registrado.' });
     }
 
-    const { email, phone, profilePicture } = req.body;
+    const { email, phone, profilePicture, contractType, baseSalary, appliesVacationCalculation } = req.body;
 
     const employee = await Employee.create({
       fullName,
@@ -116,7 +118,10 @@ export const createEmployee = async (req, res) => {
       status: status || 'activo',
       email: email || null,
       phone: phone || null,
-      profilePicture: profilePicture || null
+      profilePicture: profilePicture || null,
+      contractType: contractType || null,
+      baseSalary: baseSalary || null,
+      appliesVacationCalculation: appliesVacationCalculation !== undefined ? appliesVacationCalculation : true
     });
 
     res.status(201).json({
@@ -146,7 +151,7 @@ export const updateEmployee = async (req, res) => {
       }
     }
 
-    const { email, phone, profilePicture } = req.body;
+    const { email, phone, profilePicture, contractType, baseSalary, appliesVacationCalculation } = req.body;
 
     employee.fullName = fullName || employee.fullName;
     employee.documentNumber = documentNumber || employee.documentNumber;
@@ -157,6 +162,9 @@ export const updateEmployee = async (req, res) => {
     if (email !== undefined) employee.email = email;
     if (phone !== undefined) employee.phone = phone;
     if (profilePicture !== undefined) employee.profilePicture = profilePicture;
+    if (contractType !== undefined) employee.contractType = contractType;
+    if (baseSalary !== undefined) employee.baseSalary = baseSalary;
+    if (appliesVacationCalculation !== undefined) employee.appliesVacationCalculation = appliesVacationCalculation;
 
     await employee.save();
 

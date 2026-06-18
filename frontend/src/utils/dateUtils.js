@@ -160,10 +160,11 @@ export const calculateReturnDate = (
   }
   
   // El día de retorno es estrictamente el siguiente día que debe presentarse a trabajar físicamente.
-  // Por lo tanto, no forzamos el conteo de sábados ni domingos si no están en su jornada laboral regular (workDays).
+  // En Colombia, sin importar si los sábados son hábiles para descontar días, el regreso a labores 
+  // regulares después de vacaciones siempre se empuja al próximo Lunes a Viernes.
   do {
     current.setDate(current.getDate() + 1);
-  } while (!isVacationDayCheck(current, workDays, companyHolidays, false, false));
+  } while (!isVacationDayCheck(current, '1,2,3,4,5', companyHolidays, false, false));
   
   return current.toISOString().split('T')[0];
 };

@@ -1,4 +1,4 @@
-import { Attendance, Employee, Setting, Permission, Vacation, Absence, CompanyHoliday, Novelty } from '../models/index.js';
+import { Attendance, Employee, Setting, Permission, Vacation, Absence, CompanyHoliday, Novelty, SpecialWorkday } from '../models/index.js';
 import { Op } from 'sequelize';
 import { isColombianHoliday } from '../utils/colombianHolidays.js';
 
@@ -68,10 +68,40 @@ export const registerPublicAttendance = async (req, res) => {
     const [nowH, nowM, nowS] = timeStr.split(':').map(Number);
     const nowSeconds = nowH * 3600 + nowM * 60 + nowS;
 
-    if (!settings.isSplitShift) {
-      // --- JORNADA CONTINUA ---
-      const officialIn = settings.checkInTime || '08:00';
-      const officialOut = settings.checkOutTime || '17:00';
+    // --- LÓGICA DE PRIORIDADES DE CALENDARIO ---
+    // Prioridad 1: Jornada Especial
+    const specialWorkday = await SpecialWorkday.findOne({ where: { date: dateStr } });
+    
+    // Determinar configuración dinámica de la jornada
+    let isSplitShift = settings.isSplitShift;
+    let officialIn = settings.checkInTime || '08:00';
+    let officialOut = settings.checkOutTime || '17:00';
+
+    if (specialWorkday) {
+      if (specialWorkday.type === 'No Laborable') {
+        // Podríamos rechazar, pero si el empleado fue a trabajar, podemos guardar su entrada.
+        // Opcionalmente podemos cambiar el status a "Día No Laborable". 
+        // Para no bloquear al usuario, dejaremos que marque pero como jornada continua genérica si no tiene horario.
+        isSplitShift = false;
+      } else if (specialWorkday.type === 'Media Jornada' || specialWorkday.type === 'Jornada Continua') {
+        isSplitShift = false; // Solo 2 marcaciones
+        officialIn = specialWorkday.startTime || officialIn;
+        officialOut = specialWorkday.endTime || officialOut;
+      } else if (specialWorkday.type === 'Normal') {
+        officialIn = specialWorkday.startTime || officialIn;
+        officialOut = specialWorkday.endTime || officialOut;
+      }
+    } else {
+      // Prioridad 2 y 3: Festivo o Configuración Semanal
+      const currentDayOfWeek = now.getDay() === 0 ? 7 : now.getDay();
+      const isHalfWorkday = (settings.halfWorkDays || '').split(',').includes(currentDayOfWeek.toString());
+      if (isHalfWorkday) {
+        isSplitShift = false; // Media jornada = 2 marcas
+      }
+    }
+
+    if (!isSplitShift) {
+      // --- JORNADA CONTINUA / MEDIA JORNADA (2 Slots) ---
       const [inH, inM] = officialIn.split(':').map(Number);
       const [outH, outM] = officialOut.split(':').map(Number);
       
@@ -508,7 +538,15 @@ export const getAttendanceStats = async (req, res) => {
     const localDay = localDate.getDay();
     const dayOfWeek = localDay === 0 ? 7 : localDay; // Mapear 0 a 7
     const workDaysArray = settings.workDays ? settings.workDays.split(',').map(Number) : [1,2,3,4,5];
-    const isTodayWorkDay = workDaysArray.includes(dayOfWeek);
+    const halfWorkDaysArray = settings.halfWorkDays ? settings.halfWorkDays.split(',').map(Number) : [];
+    
+    let isTodayWorkDay = workDaysArray.includes(dayOfWeek) || halfWorkDaysArray.includes(dayOfWeek);
+
+    const specialDay = await SpecialWorkday.findOne({ where: { date: todayStr } });
+    if (specialDay) {
+      if (specialDay.type === 'No Laborable') isTodayWorkDay = false;
+      else isTodayWorkDay = true;
+    }
 
     // 2. Verificar si la hora límite (hora de entrada + tolerancia) ya pasó
     const officialTime = settings.isSplitShift && settings.checkInTimeMorning ? settings.checkInTimeMorning : settings.checkInTime;
@@ -765,7 +803,10 @@ export const getEmployeeMonthlyReport = async (req, res) => {
     const dbHolidays = await CompanyHoliday.findAll({ raw: true });
     const companyHolidaysList = dbHolidays.map(h => h.date);
 
+    const specialWorkdaysList = await SpecialWorkday.findAll({ raw: true });
+
     const workDaysArray = settings.workDays ? settings.workDays.split(',').map(Number) : [1,2,3,4,5];
+    const halfWorkDaysArray = settings.halfWorkDays ? settings.halfWorkDays.split(',').map(Number) : [];
 
     let totalRealDaysWorked = 0;
     let totalWorkedSeconds = 0;
@@ -783,8 +824,13 @@ export const getEmployeeMonthlyReport = async (req, res) => {
       const dayOfWeek = currentDate.getDay() === 0 ? 7 : currentDate.getDay();
       
       const isHoliday = isColombianHoliday(currentDayStr) || companyHolidaysList.includes(currentDayStr);
-      let isWorkDay = workDaysArray.includes(dayOfWeek);
-      if (isHoliday) {
+      let isWorkDay = workDaysArray.includes(dayOfWeek) || halfWorkDaysArray.includes(dayOfWeek);
+      
+      const specialDay = specialWorkdaysList.find(sw => sw.date === currentDayStr);
+      if (specialDay) {
+        if (specialDay.type === 'No Laborable') isWorkDay = false;
+        else isWorkDay = true;
+      } else if (isHoliday) {
         isWorkDay = false;
       }
 

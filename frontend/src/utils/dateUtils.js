@@ -30,17 +30,27 @@ export const formatTimeTo12Hour = (timeStr) => {
  * @param {Array} companyHolidays 
  * @param {boolean} satCount 
  * @param {boolean} sunCount 
+ * @param {string|Array} halfWorkDays 
+ * @param {Array} specialWorkdays 
  * @returns {boolean}
  */
-export const isVacationDayCheck = (dateObj, workDays = '1,2,3,4,5', companyHolidays = [], satCount = false, sunCount = false) => {
+export const isVacationDayCheck = (dateObj, workDays = '1,2,3,4,5', companyHolidays = [], satCount = false, sunCount = false, halfWorkDays = '', specialWorkdays = []) => {
   const dateStr = dateObj.toISOString().split('T')[0];
   
+  // 0. Si hay una jornada especial configurada para esta fecha
+  const specialDay = specialWorkdays.find(sw => sw.date === dateStr);
+  if (specialDay) {
+    if (specialDay.type === 'No Laborable') return false;
+    // Si es Media Jornada, Jornada Continua o Normal, cuenta como día laborable y por tanto consume vacaciones
+    return true;
+  }
+
   // 1. Si es festivo nacional en Colombia, no cuenta
   if (isColombianHoliday(dateStr)) {
     return false;
   }
   
-  // 2. Si es día no laborable especial de la empresa, no cuenta
+  // 2. Si es día no laborable especial genérico de la empresa, no cuenta
   if (companyHolidays.includes(dateStr)) {
     return false;
   }
@@ -52,10 +62,14 @@ export const isVacationDayCheck = (dateObj, workDays = '1,2,3,4,5', companyHolid
   const workDaysArray = typeof workDays === 'string'
     ? workDays.split(',').map(Number)
     : (Array.isArray(workDays) ? workDays.map(Number) : [1,2,3,4,5]);
+
+  const halfWorkDaysArray = typeof halfWorkDays === 'string'
+    ? halfWorkDays.split(',').map(Number)
+    : (Array.isArray(halfWorkDays) ? halfWorkDays.map(Number) : []);
   
-  // Si está en la jornada de la empresa, cuenta como vacación.
+  // Si está en la jornada de la empresa o es media jornada, cuenta como vacación.
   // También si se forza el conteo de sábados/domingos.
-  let isWork = workDaysArray.includes(dayOfWeek);
+  let isWork = workDaysArray.includes(dayOfWeek) || halfWorkDaysArray.includes(dayOfWeek);
   if (day === 0 && sunCount) isWork = true;
   if (day === 6 && satCount) isWork = true;
   
@@ -73,6 +87,8 @@ export const isVacationDayCheck = (dateObj, workDays = '1,2,3,4,5', companyHolid
  * @param {Array} companyHolidays - Días no laborables especiales de la empresa
  * @param {boolean} satCount 
  * @param {boolean} sunCount 
+ * @param {string|Array} halfWorkDays 
+ * @param {Array} specialWorkdays 
  * @returns {number} Cantidad de días hábiles consumidos
  */
 export const calculateBusinessDays = (
@@ -81,7 +97,9 @@ export const calculateBusinessDays = (
   workDays = '1,2,3,4,5', 
   companyHolidays = [], 
   satCount = false, 
-  sunCount = false
+  sunCount = false,
+  halfWorkDays = '',
+  specialWorkdays = []
 ) => {
   if (!startDateStr || !returnDateStr) return 0;
   
@@ -94,7 +112,7 @@ export const calculateBusinessDays = (
   let current = new Date(start);
   
   while (current < returnDate) {
-    if (isVacationDayCheck(current, workDays, companyHolidays, satCount, sunCount)) {
+    if (isVacationDayCheck(current, workDays, companyHolidays, satCount, sunCount, halfWorkDays, specialWorkdays)) {
       businessDays++;
     }
     current.setDate(current.getDate() + 1);
@@ -129,6 +147,8 @@ export const formatDateFriendly = (dateStr) => {
  * @param {Array} companyHolidays - Días no laborables especiales de la empresa
  * @param {boolean} satCount 
  * @param {boolean} sunCount 
+ * @param {string|Array} halfWorkDays 
+ * @param {Array} specialWorkdays 
  * @returns {string} Fecha de retorno YYYY-MM-DD
  */
 export const calculateReturnDate = (
@@ -137,7 +157,9 @@ export const calculateReturnDate = (
   workDays = '1,2,3,4,5', 
   companyHolidays = [], 
   satCount = false, 
-  sunCount = false
+  sunCount = false,
+  halfWorkDays = '',
+  specialWorkdays = []
 ) => {
   if (!startDateStr || !businessDaysNeeded || businessDaysNeeded <= 0) return '';
   
@@ -145,13 +167,13 @@ export const calculateReturnDate = (
   let addedDays = 0;
   
   // Si la fecha de inicio no es un día de vacaciones válido, avanzar hasta el primer día hábil
-  while (!isVacationDayCheck(current, workDays, companyHolidays, satCount, sunCount)) {
+  while (!isVacationDayCheck(current, workDays, companyHolidays, satCount, sunCount, halfWorkDays, specialWorkdays)) {
     current.setDate(current.getDate() + 1);
   }
   
   // Contar los días hábiles gozados
   while (addedDays < businessDaysNeeded) {
-    if (isVacationDayCheck(current, workDays, companyHolidays, satCount, sunCount)) {
+    if (isVacationDayCheck(current, workDays, companyHolidays, satCount, sunCount, halfWorkDays, specialWorkdays)) {
       addedDays++;
     }
     if (addedDays < businessDaysNeeded) {
@@ -164,7 +186,7 @@ export const calculateReturnDate = (
   // regulares después de vacaciones siempre se empuja al próximo Lunes a Viernes.
   do {
     current.setDate(current.getDate() + 1);
-  } while (!isVacationDayCheck(current, '1,2,3,4,5', companyHolidays, false, false));
+  } while (!isVacationDayCheck(current, '1,2,3,4,5', companyHolidays, false, false, halfWorkDays, specialWorkdays));
   
   return current.toISOString().split('T')[0];
 };
@@ -178,19 +200,21 @@ export const calculateLastVacationDay = (
   workDays = '1,2,3,4,5', 
   companyHolidays = [], 
   satCount = false, 
-  sunCount = false
+  sunCount = false,
+  halfWorkDays = '',
+  specialWorkdays = []
 ) => {
   if (!startDateStr || !businessDaysNeeded || businessDaysNeeded <= 0) return '';
   
   let current = new Date(startDateStr + 'T00:00:00');
   let addedDays = 0;
   
-  while (!isVacationDayCheck(current, workDays, companyHolidays, satCount, sunCount)) {
+  while (!isVacationDayCheck(current, workDays, companyHolidays, satCount, sunCount, halfWorkDays, specialWorkdays)) {
     current.setDate(current.getDate() + 1);
   }
   
   while (addedDays < businessDaysNeeded) {
-    if (isVacationDayCheck(current, workDays, companyHolidays, satCount, sunCount)) {
+    if (isVacationDayCheck(current, workDays, companyHolidays, satCount, sunCount, halfWorkDays, specialWorkdays)) {
       addedDays++;
     }
     if (addedDays < businessDaysNeeded) {

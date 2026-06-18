@@ -22,6 +22,7 @@ export default function EmployeeDetail({ token, employeeId, onViewChange, userRo
   const [bookingLoading, setBookingLoading] = useState(false);
   const [requestedDays, setRequestedDays] = useState('');
   const [companyHolidays, setCompanyHolidays] = useState([]);
+  const [specialWorkdays, setSpecialWorkdays] = useState([]);
 
   // Nuevos campos legales de Fase 1 (Vacaciones)
   const [tipoDisfrute, setTipoDisfrute] = useState('Físico');
@@ -118,11 +119,26 @@ export default function EmployeeDetail({ token, employeeId, onViewChange, userRo
     }
   };
 
+  const fetchSpecialWorkdays = async () => {
+    try {
+      const response = await fetch(`${API_URL}/api/special-workdays`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setSpecialWorkdays(data);
+      }
+    } catch (err) {
+      console.error('Error al cargar jornadas especiales:', err);
+    }
+  };
+
   useEffect(() => {
     fetchEmployeeData();
     fetchDepartments();
     fetchSettings();
     fetchCompanyHolidays();
+    fetchSpecialWorkdays();
   }, [employeeId, token]);
 
   const fetchMonthlyReport = async (year, month) => {
@@ -974,7 +990,9 @@ export default function EmployeeDetail({ token, employeeId, onViewChange, userRo
                                 settings?.workDays || '1,2,3,4,5',
                                 companyHolidays,
                                 settings?.vacationsSaturdaysCount || false,
-                                settings?.vacationsSundaysCount || false
+                                settings?.vacationsSundaysCount || false,
+                                settings?.halfWorkDays || '',
+                                specialWorkdays
                               );
                               const lastDay = calculateLastVacationDay(
                                 newStart,
@@ -982,7 +1000,9 @@ export default function EmployeeDetail({ token, employeeId, onViewChange, userRo
                                 settings?.workDays || '1,2,3,4,5',
                                 companyHolidays,
                                 settings?.vacationsSaturdaysCount || false,
-                                settings?.vacationsSundaysCount || false
+                                settings?.vacationsSundaysCount || false,
+                                settings?.halfWorkDays || '',
+                                specialWorkdays
                               );
                               setReturnDate(nextReturn);
                               setLastVacationDay(lastDay);
@@ -1009,7 +1029,9 @@ export default function EmployeeDetail({ token, employeeId, onViewChange, userRo
                                 settings?.workDays || '1,2,3,4,5',
                                 companyHolidays,
                                 settings?.vacationsSaturdaysCount || false,
-                                settings?.vacationsSundaysCount || false
+                                settings?.vacationsSundaysCount || false,
+                                settings?.halfWorkDays || '',
+                                specialWorkdays
                               );
                               const lastDay = calculateLastVacationDay(
                                 startDate,
@@ -1017,7 +1039,9 @@ export default function EmployeeDetail({ token, employeeId, onViewChange, userRo
                                 settings?.workDays || '1,2,3,4,5',
                                 companyHolidays,
                                 settings?.vacationsSaturdaysCount || false,
-                                settings?.vacationsSundaysCount || false
+                                settings?.vacationsSundaysCount || false,
+                                settings?.halfWorkDays || '',
+                                specialWorkdays
                               );
                               setReturnDate(nextReturn);
                               setLastVacationDay(lastDay);

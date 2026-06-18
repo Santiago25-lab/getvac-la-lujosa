@@ -32,6 +32,11 @@ const Setting = sequelize.define('Setting', {
     defaultValue: '1,2,3,4,5', // 1=Lunes, 5=Viernes
     allowNull: false,
   },
+  halfWorkDays: {
+    type: DataTypes.STRING,
+    defaultValue: '', // Días de media jornada (ej: '6')
+    allowNull: true,
+  },
   updatedBy: {
     type: DataTypes.STRING,
     allowNull: true,

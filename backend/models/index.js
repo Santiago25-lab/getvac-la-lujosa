@@ -10,6 +10,7 @@ import Department from './Department.js';
 import AuditLog from './AuditLog.js';
 import CompanyHoliday from './CompanyHoliday.js';
 import Novelty from './Novelty.js';
+import SpecialWorkday from './SpecialWorkday.js';
 
 // Relaciones
 Employee.hasMany(Vacation, { foreignKey: 'employeeId', as: 'vacations', onDelete: 'CASCADE' });
@@ -39,6 +40,7 @@ export {
   Department,
   AuditLog,
   CompanyHoliday,
-  Novelty
+  Novelty,
+  SpecialWorkday
 };
 

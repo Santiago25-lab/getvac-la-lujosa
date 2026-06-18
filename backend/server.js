@@ -58,6 +58,8 @@ import {
 import { getAuditLogs } from './controllers/auditLogController.js';
 import { getUsers, createUser, updateUser, deleteUser } from './controllers/userController.js';
 import { auditMiddleware } from './middleware/auditMiddleware.js';
+
+import specialWorkdayRoutes from './routes/specialWorkdayRoutes.js';
 import { startVacationCronJob } from './jobs/vacationUpdater.js';
 import noveltyRoutes from './routes/noveltyRoutes.js';
 import path from 'path';
@@ -120,7 +122,8 @@ app.post('/api/vacations', authenticateToken, registerVacation);
 app.delete('/api/vacations/:id', authenticateToken, deleteVacation);
 app.put('/api/vacations/:id/status', authenticateToken, requireRole(['Administrador', 'Super Usuario']), updateVacationStatus);
 
-
+// Jornadas Especiales
+app.use('/api/special-workdays', specialWorkdayRoutes);
 // Asistencia Pública (Registros QR - Libres)
 app.get('/api/public/employees/validate/:documentNumber', validatePublicEmployee);
 app.post('/api/public/attendance/register', registerPublicAttendance);
@@ -489,6 +492,17 @@ sequelize.sync()
           ).catch(() => {}); // Ignorar si ya existe o si no es PostgreSQL
         }
         console.log('✅ Migration: ENUM type de Novelties actualizado con nuevos valores.');
+      }
+
+      // 6. Añadir columna halfWorkDays a Settings si no existe
+      const setCols = await qi.describeTable('Settings').catch(() => null);
+      if (setCols && !setCols.halfWorkDays) {
+        await qi.addColumn('Settings', 'halfWorkDays', {
+          type: sequelize.Sequelize.STRING,
+          defaultValue: '',
+          allowNull: true
+        });
+        console.log('✅ Migration: columna halfWorkDays añadida a Settings.');
       }
 
     } catch (migErr) {

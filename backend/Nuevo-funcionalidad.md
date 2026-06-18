@@ -477,3 +477,255 @@ Salario base.
 Fórmula de vacaciones.
 
 Únicamente implementar las mejoras descritas anteriormente.
+
+
+
+AJUSTES AL PANEL SUPER Y MOTOR DE CALENDARIO LABORAL
+Contexto
+
+Actualmente existe un Panel Super que permite configurar:
+
+Días laborales de la empresa.
+Horarios de trabajo.
+Festivos nacionales.
+Días especiales de la empresa.
+Horarios de entrada y salida.
+
+Este panel debe convertirse en la fuente oficial de configuración laboral para todo el sistema.
+
+NO reemplazar la lógica existente.
+
+NO reconstruir módulos ya funcionales.
+
+Únicamente ampliar y fortalecer la lógica actual.
+
+1. MOTOR CENTRAL DE CALENDARIO LABORAL
+
+El Panel Super será la única fuente oficial para determinar:
+
+Días laborales.
+Días no laborales.
+Horarios.
+Jornadas especiales.
+Jornada continua.
+Media jornada.
+Festivos.
+Días especiales de la empresa.
+
+Ningún módulo deberá tener días laborales o horarios definidos directamente en código.
+
+Todos los módulos deberán consultar esta configuración.
+
+2. NUEVO COMPORTAMIENTO DE LOS CÍRCULOS DE DÍAS LABORALES
+
+Actualmente existen los círculos:
+
+L M M J V S D
+
+Se debe implementar un sistema de tres estados.
+
+Estado 1
+⚪
+
+No laboral.
+
+Ese día no se trabaja.
+
+Estado 2
+◐
+
+Media jornada.
+
+Ese día se trabaja medio tiempo.
+
+Ejemplo:
+
+08:00 AM - 12:00 PM
+Estado 3
+●
+
+Jornada completa.
+
+Ejemplo:
+
+08:00 AM - 05:00 PM
+Ciclo de selección
+
+Cada clic deberá cambiar:
+
+⚪ → ◐ → ● → ⚪
+3. IMPACTO EN EL SISTEMA
+
+Todos los módulos deberán utilizar esta configuración.
+
+Asistencia
+
+Si el día es:
+
+⚪
+
+No se espera asistencia.
+
+Si es:
+
+◐
+
+Se espera media jornada.
+
+Si es:
+
+●
+
+Se espera jornada completa.
+
+Vacaciones
+
+Los días hábiles de vacaciones deberán calcularse utilizando esta configuración.
+
+Importante
+
+Para vacaciones:
+
+◐ Media jornada
+
+seguirá siendo considerado:
+
+Día hábil
+
+Por lo tanto cuenta como día de vacaciones.
+
+4. NUEVO MÓDULO DE JORNADAS ESPECIALES
+
+Crear una sección nueva dentro del Panel Super.
+
+Nombre:
+
+Jornadas Especiales
+Objetivo
+
+Permitir configurar excepciones futuras al calendario normal.
+
+Campos
+Fecha
+Tipo de Jornada
+Hora Inicio
+Hora Fin
+Observación
+Tipos
+Normal
+Media Jornada
+Jornada Continua
+No Laborable
+5. JORNADA CONTINUA
+
+Ejemplo:
+
+Fecha:
+24/12/2026
+
+Horario:
+08:00 AM - 03:00 PM
+
+Tipo:
+Jornada Continua
+6. COMPORTAMIENTO DE ASISTENCIA EN JORNADA CONTINUA
+
+Actualmente la asistencia funciona con:
+
+Entrada
+Salida Almuerzo
+Entrada Tarde
+Salida Final
+
+Total:
+
+4 registros
+
+Cuando exista Jornada Continua:
+
+NO solicitar:
+
+Salida Almuerzo
+Entrada Tarde
+
+Solicitar únicamente:
+
+Entrada
+Salida
+
+Total:
+
+2 registros
+7. REPORTES
+
+Los reportes deberán mostrar:
+
+Tipo de Jornada
+
+Ejemplo:
+
+Jornada Continua
+
+para evitar confusiones.
+
+8. ORDEN DE PRIORIDAD DEL SISTEMA
+
+Al determinar horarios o asistencia:
+
+Prioridad 1
+
+Jornada Especial configurada para una fecha específica.
+
+Prioridad 2
+
+Festivos nacionales.
+
+Prioridad 3
+
+Configuración semanal del Panel Super.
+
+9. INTEGRACIÓN CON VACACIONES
+
+Las vacaciones deberán utilizar:
+
+Configuración semanal.
+Festivos.
+Días especiales.
+Jornadas especiales.
+
+para determinar:
+
+Fecha final
+Fecha regreso
+Días hábiles consumidos
+IMPORTANTE
+
+Las jornadas especiales NO modifican la causación de vacaciones.
+
+Las vacaciones acumuladas seguirán calculándose exclusivamente mediante días calendario según la legislación colombiana.
+
+REGLA LEGAL OBLIGATORIA
+
+La causación de vacaciones debe mantenerse exactamente igual.
+
+Fórmula:
+
+Vacaciones causadas = (15 × días calendario trabajados) / 360
+
+Esto significa que:
+
+Jornada completa.
+Media jornada.
+Jornada continua.
+Horarios especiales.
+Sábados laborales.
+Horarios reducidos.
+
+NO afectan la cantidad de vacaciones acumuladas.
+
+LAS JORNADAS SOLO AFECTAN
+Asistencia.
+Horarios.
+Registro de entradas y salidas.
+Fechas de regreso de vacaciones.
+Cálculo de días hábiles consumidos.

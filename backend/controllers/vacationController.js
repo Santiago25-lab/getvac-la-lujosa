@@ -1,4 +1,4 @@
-import { Employee, Vacation, Setting, CompanyHoliday } from '../models/index.js';
+import { Employee, Vacation, Setting, CompanyHoliday, SpecialWorkday } from '../models/index.js';
 import { calculateEmployeeVacationStats } from './employeeController.js';
 import { Op } from 'sequelize';
 import { isColombianHoliday } from '../utils/colombianHolidays.js';
@@ -10,7 +10,9 @@ export const calculateBusinessDays = (
   workDays = '1,2,3,4,5', 
   companyHolidays = [], 
   satCount = false, 
-  sunCount = false
+  sunCount = false,
+  halfWorkDays = '',
+  specialWorkdays = []
 ) => {
   const start = new Date(startDateStr + 'T00:00:00');
   const returnDate = new Date(returnDateStr + 'T00:00:00');
@@ -24,6 +26,10 @@ export const calculateBusinessDays = (
     ? workDays.split(',').map(Number)
     : (Array.isArray(workDays) ? workDays.map(Number) : [1,2,3,4,5]);
   
+  const halfWorkDaysArray = typeof halfWorkDays === 'string'
+    ? halfWorkDays.split(',').map(Number)
+    : (Array.isArray(halfWorkDays) ? halfWorkDays.map(Number) : []);
+
   // Se recorre desde el día de inicio hasta el día ANTERIOR a la fecha de regreso.
   // El "returnDate" representa el día en que el empleado vuelve a laborar físicamente.
   while (current < returnDate) {
@@ -31,19 +37,27 @@ export const calculateBusinessDays = (
     const dayOfWeek = day === 0 ? 7 : day; // Mapear 0 a 7
     const dateStr = current.toISOString().split('T')[0];
     
-    let isWork = workDaysArray.includes(dayOfWeek);
-    if (day === 0 && sunCount) isWork = true;
-    if (day === 6 && satCount) isWork = true;
+    const specialDay = specialWorkdays.find(sw => sw.date === dateStr);
     
-    // Si es un festivo colombiano, o un día no laborable especial de la empresa, no es día laborable
-    if (isWork) {
-      if (isColombianHoliday(dateStr) || companyHolidays.includes(dateStr)) {
-        isWork = false;
+    if (specialDay) {
+      if (specialDay.type !== 'No Laborable') {
+        businessDays++;
       }
-    }
-    
-    if (isWork) {
-      businessDays++;
+    } else {
+      let isWork = workDaysArray.includes(dayOfWeek) || halfWorkDaysArray.includes(dayOfWeek);
+      if (day === 0 && sunCount) isWork = true;
+      if (day === 6 && satCount) isWork = true;
+      
+      // Si es un festivo colombiano, o un día no laborable especial de la empresa, no es día laborable
+      if (isWork) {
+        if (isColombianHoliday(dateStr) || companyHolidays.includes(dateStr)) {
+          isWork = false;
+        }
+      }
+      
+      if (isWork) {
+        businessDays++;
+      }
     }
     current.setDate(current.getDate() + 1);
   }
@@ -81,12 +95,16 @@ export const registerVacation = async (req, res) => {
     const settings = await Setting.findOne() || {
       vacationsSaturdaysCount: false,
       vacationsSundaysCount: false,
-      workDays: '1,2,3,4,5'
+      workDays: '1,2,3,4,5',
+      halfWorkDays: ''
     };
 
     // Obtener días no laborables especiales de la empresa
     const dbHolidays = await CompanyHoliday.findAll({ raw: true });
     const companyHolidaysList = dbHolidays.map(h => h.date);
+
+    // Obtener Special Workdays
+    const specialWorkdaysList = await SpecialWorkday.findAll({ raw: true });
 
     // Calcular días hábiles
     const businessDays = calculateBusinessDays(
@@ -95,7 +113,9 @@ export const registerVacation = async (req, res) => {
       settings.workDays || '1,2,3,4,5',
       companyHolidaysList,
       settings.vacationsSaturdaysCount, 
-      settings.vacationsSundaysCount
+      settings.vacationsSundaysCount,
+      settings.halfWorkDays || '',
+      specialWorkdaysList
     );
 
     if (businessDays === 0) {

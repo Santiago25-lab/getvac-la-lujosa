@@ -23,7 +23,7 @@ export const getSettings = async (req, res) => {
 
 export const updateSettings = async (req, res) => {
   const { 
-    daysRequiredForOneVacationDay, checkInTime, checkOutTime, toleranceMinutes, workDays,
+    daysRequiredForOneVacationDay, checkInTime, checkOutTime, toleranceMinutes, workDays, halfWorkDays,
     companyName, companyNit, companyAddress, companyPhone, companyEmail, companyLogo,
     vacationsSaturdaysCount, vacationsSundaysCount, isSplitShift,
     checkInTimeMorning, checkOutTimeMorning, checkInTimeAfternoon, checkOutTimeAfternoon
@@ -38,6 +38,7 @@ export const updateSettings = async (req, res) => {
         checkOutTime: checkOutTime || '17:00',
         toleranceMinutes: toleranceMinutes !== undefined ? parseInt(toleranceMinutes) : 10,
         workDays: workDays || '1,2,3,4,5',
+        halfWorkDays: halfWorkDays || '',
         companyName, companyNit, companyAddress, companyPhone, companyEmail, companyLogo,
         vacationsSaturdaysCount, vacationsSundaysCount, isSplitShift,
         checkInTimeMorning, checkOutTimeMorning, checkInTimeAfternoon, checkOutTimeAfternoon,
@@ -49,6 +50,7 @@ export const updateSettings = async (req, res) => {
       if (checkOutTime !== undefined) setting.checkOutTime = checkOutTime;
       if (toleranceMinutes !== undefined) setting.toleranceMinutes = parseInt(toleranceMinutes);
       if (workDays !== undefined) setting.workDays = workDays;
+      if (halfWorkDays !== undefined) setting.halfWorkDays = halfWorkDays;
       if (companyName !== undefined) setting.companyName = companyName;
       if (companyNit !== undefined) setting.companyNit = companyNit;
       if (companyAddress !== undefined) setting.companyAddress = companyAddress;

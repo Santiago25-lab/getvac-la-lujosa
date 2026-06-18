@@ -17,6 +17,7 @@ export default function SuperUserPanelView({ token, userRole }) {
   const [settings, setSettings] = useState({
     daysRequiredForOneVacationDay: 24.33,
     workDays: '1,2,3,4,5',
+    halfWorkDays: '',
     checkInTime: '08:00',
     checkOutTime: '17:00',
     toleranceMinutes: 10
@@ -34,6 +35,11 @@ export default function SuperUserPanelView({ token, userRole }) {
   const [companyHolidays, setCompanyHolidays] = useState([]);
   const [newHoliday, setNewHoliday] = useState({ date: '', reason: '' });
   const [activeHolidayYear, setActiveHolidayYear] = useState(2026);
+  
+  // Jornadas Especiales
+  const [specialWorkdays, setSpecialWorkdays] = useState([]);
+  const [newSpecialWorkday, setNewSpecialWorkday] = useState({ date: '', type: 'Jornada Continua', startTime: '', endTime: '', observation: '' });
+
   const [editUserLoading, setEditUserLoading] = useState(false);
   const [auditFilterUsername, setAuditFilterUsername] = useState('');
 
@@ -83,6 +89,15 @@ export default function SuperUserPanelView({ token, userRole }) {
       if (holidaysRes.ok) {
         const holidaysData = await holidaysRes.json();
         setCompanyHolidays(holidaysData);
+      }
+
+      // Fetch Special Workdays
+      const swRes = await fetch(`${API_URL}/api/special-workdays`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (swRes.ok) {
+        const swData = await swRes.json();
+        setSpecialWorkdays(swData);
       }
 
     } catch (err) {
@@ -323,15 +338,32 @@ export default function SuperUserPanelView({ token, userRole }) {
   ];
 
   const activeDays = settings.workDays ? settings.workDays.split(',').map(Number) : [];
+  const halfDays = settings.halfWorkDays ? settings.halfWorkDays.split(',').map(Number) : [];
 
   const toggleDay = (dayId) => {
-    let daysArray = settings.workDays ? settings.workDays.split(',').map(Number) : [];
-    if (daysArray.includes(dayId)) {
-      daysArray = daysArray.filter(d => d !== dayId);
-    } else {
-      daysArray = [...daysArray, dayId].sort((a, b) => a - b);
+    let wArray = settings.workDays ? settings.workDays.split(',').map(Number) : [];
+    let hArray = settings.halfWorkDays ? settings.halfWorkDays.split(',').map(Number) : [];
+
+    const isFull = wArray.includes(dayId);
+    const isHalf = hArray.includes(dayId);
+
+    if (!isFull && !isHalf) {
+      // ⚪ -> ◐ (Media jornada)
+      hArray.push(dayId);
+    } else if (isHalf) {
+      // ◐ -> ● (Jornada completa)
+      hArray = hArray.filter(d => d !== dayId);
+      wArray.push(dayId);
+    } else if (isFull) {
+      // ● -> ⚪ (No laboral)
+      wArray = wArray.filter(d => d !== dayId);
     }
-    setSettings({ ...settings, workDays: daysArray.join(',') });
+
+    setSettings({ 
+      ...settings, 
+      workDays: wArray.sort((a, b) => a - b).join(','),
+      halfWorkDays: hArray.sort((a, b) => a - b).join(',')
+    });
   };
 
   const filteredLogs = auditFilterUsername 
@@ -485,23 +517,41 @@ export default function SuperUserPanelView({ token, userRole }) {
               <label className="text-xs font-bold text-slate-500 uppercase block">Días Laborables</label>
               <div className="flex gap-2 flex-wrap">
                 {DAYS.map((day) => {
-                  const isActive = activeDays.includes(day.id);
+                  const isFull = activeDays.includes(day.id);
+                  const isHalf = halfDays.includes(day.id);
+                  
+                  let btnClass = 'bg-white text-slate-650 border-slate-200 hover:bg-slate-100 hover:text-slate-800'; // ⚪
+                  let iconStr = '⚪';
+                  let titleStr = `${day.name} (No laboral)`;
+
+                  if (isHalf) {
+                    btnClass = 'bg-amber-500 text-white border-amber-500 hover:bg-amber-600 shadow-md shadow-amber-500/20'; // ◐
+                    iconStr = '◐';
+                    titleStr = `${day.name} (Media jornada)`;
+                  } else if (isFull) {
+                    btnClass = 'bg-rose-600 text-white border-rose-600 hover:bg-rose-700 shadow-md shadow-rose-600/20'; // ●
+                    iconStr = '●';
+                    titleStr = `${day.name} (Jornada completa)`;
+                  }
+
                   return (
                     <button
                       key={day.id}
                       type="button"
                       onClick={() => toggleDay(day.id)}
-                      className={`w-10 h-10 rounded-full font-extrabold text-xs flex items-center justify-center border transition-all active:scale-90 cursor-pointer ${
-                        isActive
-                          ? 'bg-rose-600 text-white border-rose-600 hover:bg-rose-700 shadow-md shadow-rose-600/20'
-                          : 'bg-white text-slate-650 border-slate-200 hover:bg-slate-100 hover:text-slate-800'
-                      }`}
-                      title={day.name}
+                      className={`relative w-11 h-11 rounded-full font-extrabold text-xs flex flex-col items-center justify-center border transition-all active:scale-90 cursor-pointer ${btnClass}`}
+                      title={titleStr}
                     >
-                      {day.label}
+                      <span className="leading-none">{day.label}</span>
+                      <span className="text-[8px] leading-none opacity-80 mt-0.5">{iconStr}</span>
                     </button>
                   );
                 })}
+              </div>
+              <div className="text-[10px] text-slate-400 font-medium mt-1 flex gap-3">
+                <span>⚪ No laboral</span>
+                <span><span className="text-amber-500">◐</span> Media</span>
+                <span><span className="text-rose-600">●</span> Completa</span>
               </div>
             </div>
 
@@ -640,6 +690,127 @@ export default function SuperUserPanelView({ token, userRole }) {
           </div>
         </div>
 
+      </div>
+
+      {/* Jornadas Especiales */}
+      <div className="glass-card p-6 space-y-6">
+        <div className="flex items-center gap-2.5 pb-4 border-b border-slate-100">
+          <div className="p-1.5 rounded-lg bg-indigo-500/10 text-indigo-500">
+            <Calendar className="w-5 h-5" />
+          </div>
+          <div>
+            <h3 className="text-lg font-bold text-slate-800">Jornadas Especiales (Excepciones)</h3>
+            <p className="text-xs text-slate-500 mt-0.5">Configura excepciones temporales a los horarios, como medias jornadas o jornadas continuas.</p>
+          </div>
+        </div>
+
+        <form onSubmit={handleCreateSpecialWorkday} className="grid grid-cols-1 sm:grid-cols-5 gap-4 items-end bg-slate-50/50 p-4 rounded-2xl border border-slate-100 font-semibold">
+          <div className="space-y-1">
+            <label className="text-xs font-bold text-slate-500 uppercase">Fecha</label>
+            <input
+              type="date"
+              value={newSpecialWorkday.date}
+              onChange={(e) => setNewSpecialWorkday({ ...newSpecialWorkday, date: e.target.value })}
+              className="w-full bg-white border border-slate-200 rounded-xl py-2 px-3 text-sm font-bold text-slate-800 outline-none focus:border-brand-500 transition"
+              required
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="text-xs font-bold text-slate-500 uppercase">Tipo</label>
+            <select
+              value={newSpecialWorkday.type}
+              onChange={(e) => setNewSpecialWorkday({ ...newSpecialWorkday, type: e.target.value })}
+              className="w-full bg-white border border-slate-200 rounded-xl py-2 px-3 text-sm font-bold text-slate-800 outline-none focus:border-brand-500 transition"
+            >
+              <option value="Normal">Normal (Solo cambia horas)</option>
+              <option value="Media Jornada">Media Jornada</option>
+              <option value="Jornada Continua">Jornada Continua</option>
+              <option value="No Laborable">No Laborable</option>
+            </select>
+          </div>
+          {newSpecialWorkday.type !== 'No Laborable' ? (
+            <>
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-slate-500 uppercase">Hora Inicio</label>
+                <input
+                  type="time"
+                  value={newSpecialWorkday.startTime}
+                  onChange={(e) => setNewSpecialWorkday({ ...newSpecialWorkday, startTime: e.target.value })}
+                  className="w-full bg-white border border-slate-200 rounded-xl py-2 px-3 text-sm font-bold text-slate-800 outline-none focus:border-brand-500 transition"
+                  required
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-slate-500 uppercase">Hora Fin</label>
+                <input
+                  type="time"
+                  value={newSpecialWorkday.endTime}
+                  onChange={(e) => setNewSpecialWorkday({ ...newSpecialWorkday, endTime: e.target.value })}
+                  className="w-full bg-white border border-slate-200 rounded-xl py-2 px-3 text-sm font-bold text-slate-800 outline-none focus:border-brand-500 transition"
+                  required
+                />
+              </div>
+            </>
+          ) : (
+            <div className="col-span-2"></div>
+          )}
+          
+          <div className="space-y-1">
+            <label className="text-xs font-bold text-slate-500 uppercase">Observación</label>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={newSpecialWorkday.observation}
+                onChange={(e) => setNewSpecialWorkday({ ...newSpecialWorkday, observation: e.target.value })}
+                placeholder="Ej: Día de la secretaria"
+                className="flex-1 bg-white border border-slate-200 rounded-xl py-2 px-3 text-sm font-bold text-slate-800 outline-none focus:border-brand-500 transition"
+              />
+              <button
+                type="submit"
+                className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-3 rounded-xl shadow-lg shadow-indigo-600/10 transition flex items-center justify-center shrink-0"
+                title="Añadir Jornada Especial"
+              >
+                <Plus className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        </form>
+
+        <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1">
+          {specialWorkdays.length === 0 ? (
+            <div className="py-8 text-center border border-dashed border-slate-200 rounded-2xl">
+              <p className="text-xs font-semibold text-slate-400 italic">No hay jornadas especiales configuradas.</p>
+            </div>
+          ) : (
+            specialWorkdays.map((sw) => (
+              <div key={sw.id} className="flex items-center justify-between p-3 bg-white rounded-xl border border-slate-150 hover:shadow-sm transition">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-indigo-50 border border-indigo-100 text-indigo-600 text-center font-black min-w-[50px]">
+                    <span className="text-[10px] block uppercase font-bold opacity-80">
+                      {new Date(sw.date + 'T00:00:00').toLocaleDateString('es-ES', { month: 'short' })}
+                    </span>
+                    <span className="text-base leading-none">
+                      {new Date(sw.date + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric' })}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-sm font-bold text-slate-800 block flex items-center gap-2">
+                      {sw.type} 
+                      {sw.type !== 'No Laborable' && <span className="text-xs font-bold text-indigo-600 bg-indigo-100 px-2 py-0.5 rounded-full">{sw.startTime} - {sw.endTime}</span>}
+                    </span>
+                    {sw.observation && <span className="text-xs font-semibold text-slate-500 block">{sw.observation}</span>}
+                  </div>
+                </div>
+                <button
+                  onClick={() => handleDeleteSpecialWorkday(sw.id)}
+                  className="p-2 bg-rose-50 text-rose-500 hover:bg-rose-500 hover:text-white rounded-lg transition"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            ))
+          )}
+        </div>
       </div>
 
       {/* Nueva Sección: Calendario de Días Especiales de la Empresa y Festivos */}

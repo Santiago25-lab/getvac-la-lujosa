@@ -207,6 +207,45 @@ export default function SuperUserPanelView({ token, userRole }) {
     }
   };
 
+  const handleCreateSpecialWorkday = async (e) => {
+    e.preventDefault();
+    if (!newSpecialWorkday.date || !newSpecialWorkday.type) return;
+
+    try {
+      const res = await fetch(`${API_URL}/api/special-workdays`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(newSpecialWorkday)
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Error al crear jornada especial');
+      
+      setSpecialWorkdays([...specialWorkdays, data.specialWorkday].sort((a,b) => new Date(a.date) - new Date(b.date)));
+      setNewSpecialWorkday({ date: '', type: 'Jornada Continua', startTime: '', endTime: '', observation: '' });
+      setSuccessMsg('Jornada especial añadida.');
+    } catch (err) {
+      setErrorMsg(err.message);
+    }
+  };
+
+  const handleDeleteSpecialWorkday = async (id) => {
+    if (!window.confirm('¿Eliminar esta jornada especial?')) return;
+    try {
+      const res = await fetch(`${API_URL}/api/special-workdays/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (!res.ok) throw new Error('Error al eliminar jornada especial');
+      setSpecialWorkdays(specialWorkdays.filter(h => h.id !== id));
+      setSuccessMsg('Jornada especial eliminada.');
+    } catch (err) {
+      setErrorMsg(err.message);
+    }
+  };
+
 
   const handleCreateUser = async (e) => {
     e.preventDefault();

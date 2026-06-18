@@ -939,7 +939,13 @@ export default function EmployeeDetail({ token, employeeId, onViewChange, userRo
                     </div>
                     <div>
                       <h3 className="text-base font-bold text-slate-850 dark:text-white">Registrar Novedad de Vacaciones</h3>
-                      <p className="text-xs text-slate-500 dark:text-slate-400 font-semibold mt-0.5">Sábados y domingos se excluyen automáticamente en el descuento del saldo.</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 font-semibold mt-0.5">
+                        {settings?.vacationsSaturdaysCount && settings?.vacationsSundaysCount 
+                          ? 'Sábados y domingos SÍ se descuentan del saldo.'
+                          : settings?.vacationsSaturdaysCount 
+                            ? 'Sábados SÍ se descuentan del saldo. Domingos se excluyen.'
+                            : 'Sábados y domingos se excluyen automáticamente.'}
+                      </p>
                     </div>
                   </div>
 

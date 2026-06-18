@@ -159,10 +159,43 @@ export const calculateReturnDate = (
     }
   }
   
-  // El día de retorno es el siguiente día hábil laborable disponible después del último día gozado
+  // El día de retorno es estrictamente el siguiente día que debe presentarse a trabajar físicamente.
+  // Por lo tanto, no forzamos el conteo de sábados ni domingos si no están en su jornada laboral regular (workDays).
   do {
     current.setDate(current.getDate() + 1);
-  } while (!isVacationDayCheck(current, workDays, companyHolidays, satCount, sunCount));
+  } while (!isVacationDayCheck(current, workDays, companyHolidays, false, false));
+  
+  return current.toISOString().split('T')[0];
+};
+
+/**
+ * Calcula el último día de vacaciones (el día en que se cumple el saldo).
+ */
+export const calculateLastVacationDay = (
+  startDateStr, 
+  businessDaysNeeded, 
+  workDays = '1,2,3,4,5', 
+  companyHolidays = [], 
+  satCount = false, 
+  sunCount = false
+) => {
+  if (!startDateStr || !businessDaysNeeded || businessDaysNeeded <= 0) return '';
+  
+  let current = new Date(startDateStr + 'T00:00:00');
+  let addedDays = 0;
+  
+  while (!isVacationDayCheck(current, workDays, companyHolidays, satCount, sunCount)) {
+    current.setDate(current.getDate() + 1);
+  }
+  
+  while (addedDays < businessDaysNeeded) {
+    if (isVacationDayCheck(current, workDays, companyHolidays, satCount, sunCount)) {
+      addedDays++;
+    }
+    if (addedDays < businessDaysNeeded) {
+      current.setDate(current.getDate() + 1);
+    }
+  }
   
   return current.toISOString().split('T')[0];
 };

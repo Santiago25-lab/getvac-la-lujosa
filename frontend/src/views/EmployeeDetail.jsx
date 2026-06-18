@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { ChevronLeft, CalendarRange, Clock, CalendarDays, CheckCircle2, AlertTriangle, Trash2, FileText, UserSquare2, RefreshCw, ClipboardSignature, ShieldCheck, AlertOctagon, Edit, X } from 'lucide-react';
-import { formatDateFriendly, calculateBusinessDays, calculateReturnDate } from '../utils/dateUtils';
+import { formatDateFriendly, calculateBusinessDays, calculateReturnDate, calculateLastVacationDay } from '../utils/dateUtils';
 import { exportEmployeeHistoryToPDF } from '../utils/exportUtils';
 import { API_URL } from '../config.js';
 
@@ -15,6 +15,7 @@ export default function EmployeeDetail({ token, employeeId, onViewChange, userRo
   // Estados para Registro de Vacaciones
   const [startDate, setStartDate] = useState('');
   const [returnDate, setReturnDate] = useState('');
+  const [lastVacationDay, setLastVacationDay] = useState('');
   const [notes, setNotes] = useState('');
   const [bookingDays, setBookingDays] = useState(0);
   const [bookingError, setBookingError] = useState('');
@@ -975,7 +976,16 @@ export default function EmployeeDetail({ token, employeeId, onViewChange, userRo
                                 settings?.vacationsSaturdaysCount || false,
                                 settings?.vacationsSundaysCount || false
                               );
+                              const lastDay = calculateLastVacationDay(
+                                newStart,
+                                parseInt(requestedDays),
+                                settings?.workDays || '1,2,3,4,5',
+                                companyHolidays,
+                                settings?.vacationsSaturdaysCount || false,
+                                settings?.vacationsSundaysCount || false
+                              );
                               setReturnDate(nextReturn);
+                              setLastVacationDay(lastDay);
                             }
                           }}
                           className="w-full bg-slate-100/60 dark:bg-slate-950/40 border border-slate-200/60 dark:border-slate-850/60 rounded-2xl py-2.5 px-4 text-xs outline-none focus:border-brand-500 transition font-bold"
@@ -1001,9 +1011,19 @@ export default function EmployeeDetail({ token, employeeId, onViewChange, userRo
                                 settings?.vacationsSaturdaysCount || false,
                                 settings?.vacationsSundaysCount || false
                               );
+                              const lastDay = calculateLastVacationDay(
+                                startDate,
+                                parseInt(days),
+                                settings?.workDays || '1,2,3,4,5',
+                                companyHolidays,
+                                settings?.vacationsSaturdaysCount || false,
+                                settings?.vacationsSundaysCount || false
+                              );
                               setReturnDate(nextReturn);
+                              setLastVacationDay(lastDay);
                             } else {
                               setReturnDate('');
+                              setLastVacationDay('');
                             }
                           }}
                           placeholder="Ej: 5"
@@ -1057,6 +1077,23 @@ export default function EmployeeDetail({ token, employeeId, onViewChange, userRo
                         />
                       </div>
                     </div>
+
+                    {lastVacationDay && (
+                      <div className="p-4 bg-brand-50/50 border border-brand-100 dark:bg-brand-950/20 dark:border-brand-900/50 rounded-2xl flex flex-col gap-2">
+                        <div className="flex items-center gap-2">
+                          <CheckCircle2 className="w-4 h-4 text-brand-500" />
+                          <p className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                            Último día de descanso (Día {requestedDays}): <span className="text-brand-600 dark:text-brand-400">{formatDateFriendly(lastVacationDay)}</span>
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <AlertOctagon className="w-4 h-4 text-emerald-500" />
+                          <p className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                            Debe presentarse a trabajar el: <span className="text-emerald-600 dark:text-emerald-400">{formatDateFriendly(returnDate)}</span>
+                          </p>
+                        </div>
+                      </div>
+                    )}
 
                     <div className="space-y-1.5">
                       <label className="text-[10px] font-bold text-slate-450 uppercase tracking-widest pl-1">Notas / Observaciones</label>

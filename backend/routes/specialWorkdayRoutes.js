@@ -9,9 +9,9 @@ import { authenticateToken, requireRole } from '../middleware/authMiddleware.js'
 
 const router = express.Router();
 
-// Todas las rutas requieren autenticación y rol de Super Administrador
+// Todas las rutas requieren autenticación y rol de Super Usuario
 router.use(authenticateToken);
-router.use(requireRole(['Super Administrador']));
+router.use(requireRole(['Super Usuario']));
 
 router.get('/', getSpecialWorkdays);
 router.post('/', createSpecialWorkday);

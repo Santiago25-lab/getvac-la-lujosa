@@ -957,11 +957,17 @@ export default function EmployeeDetail({ token, employeeId, onViewChange, userRo
                     <div>
                       <h3 className="text-base font-bold text-slate-850 dark:text-white">Registrar Novedad de Vacaciones</h3>
                       <p className="text-xs text-slate-500 dark:text-slate-400 font-semibold mt-0.5">
-                        {settings?.vacationsSaturdaysCount && settings?.vacationsSundaysCount 
-                          ? 'Sábados y domingos SÍ se descuentan del saldo.'
-                          : settings?.vacationsSaturdaysCount 
-                            ? 'Sábados SÍ se descuentan del saldo. Domingos se excluyen.'
-                            : 'Sábados y domingos se excluyen automáticamente.'}
+                        {(() => {
+                          const workDaysArray = settings?.workDays ? settings.workDays.split(',').map(Number) : [1,2,3,4,5];
+                          const halfWorkDaysArray = settings?.halfWorkDays ? settings.halfWorkDays.split(',').map(Number) : [];
+                          const countsSat = settings?.vacationsSaturdaysCount || workDaysArray.includes(6) || halfWorkDaysArray.includes(6);
+                          const countsSun = settings?.vacationsSundaysCount || workDaysArray.includes(7) || halfWorkDaysArray.includes(7);
+                          
+                          if (countsSat && countsSun) return 'Sábados y domingos SÍ se descuentan del saldo de vacaciones.';
+                          if (countsSat) return 'Sábados SÍ se descuentan del saldo (Día laboral o media jornada). Domingos excluidos.';
+                          if (countsSun) return 'Domingos SÍ se descuentan del saldo. Sábados excluidos.';
+                          return 'Sábados y domingos se excluyen automáticamente del conteo.';
+                        })()}
                       </p>
                     </div>
                   </div>

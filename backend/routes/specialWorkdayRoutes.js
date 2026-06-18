@@ -5,11 +5,13 @@ import {
   updateSpecialWorkday, 
   deleteSpecialWorkday 
 } from '../controllers/specialWorkdayController.js';
-import { authenticateToken } from '../middleware/auth.js';
+import { authenticateToken, requireRole } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
-router.use(authenticateToken); // Todas las rutas requieren estar logueado
+// Todas las rutas requieren autenticación y rol de Super Administrador
+router.use(authenticateToken);
+router.use(requireRole(['Super Administrador']));
 
 router.get('/', getSpecialWorkdays);
 router.post('/', createSpecialWorkday);

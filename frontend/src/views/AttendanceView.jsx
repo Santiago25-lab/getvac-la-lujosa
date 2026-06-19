@@ -5,8 +5,7 @@ import { formatTimeTo12Hour } from '../utils/dateUtils.js';
 
 export default function AttendanceView({ token, userRole }) {
   const [records, setRecords] = useState([]);
-  const [permissions, setPermissions] = useState([]);
-  const [absences, setAbsences] = useState([]);
+  const [novelties, setNovelties] = useState([]);
   const [vacations, setVacations] = useState([]);
   const [stats, setStats] = useState({
     totalActiveEmployees: 0,
@@ -206,11 +205,10 @@ export default function AttendanceView({ token, userRole }) {
         queryParams.append('endDate', new Date().toLocaleDateString('en-CA', { timeZone: 'America/Bogota' }));
       }
 
-      const [recordsRes, empRes, permRes, absRes, vacRes] = await Promise.all([
+      const [recordsRes, empRes, novRes, vacRes] = await Promise.all([
         fetch(`${API_URL}/api/attendance?${queryParams.toString()}`, { headers: { 'Authorization': `Bearer ${token}` } }),
         fetch(`${API_URL}/api/employees`, { headers: { 'Authorization': `Bearer ${token}` } }),
-        fetch(`${API_URL}/api/permissions`, { headers: { 'Authorization': `Bearer ${token}` } }),
-        fetch(`${API_URL}/api/absences`, { headers: { 'Authorization': `Bearer ${token}` } }),
+        fetch(`${API_URL}/api/novelties`, { headers: { 'Authorization': `Bearer ${token}` } }),
         fetch(`${API_URL}/api/dashboard/stats`, { headers: { 'Authorization': `Bearer ${token}` } }),
       ]);
 
@@ -219,8 +217,7 @@ export default function AttendanceView({ token, userRole }) {
         const empData = await empRes.json();
         setEmployees(empData.filter(e => e.status === 'activo'));
       }
-      if (permRes.ok) setPermissions(await permRes.json());
-      if (absRes.ok) setAbsences(await absRes.json());
+      if (novRes.ok) setNovelties(await novRes.json());
       if (vacRes.ok) {
         const dashData = await vacRes.json();
         // Extraer todas las vacaciones activas del dashboard stats
@@ -565,18 +562,16 @@ export default function AttendanceView({ token, userRole }) {
             const sortedDates = [...allDates].sort((a, b) => b.localeCompare(a));
 
             // Helpers
-            const empHasPermission = (empId, dateStr) =>
-              permissions.find(p =>
-                p.employeeId === empId &&
-                p.status === 'Aprobado' &&
-                dateStr >= p.startDate &&
-                dateStr <= p.endDate
+            const empHasNovelty = (empId, dateStr) =>
+              novelties.find(n =>
+                n.employeeId === empId &&
+                n.status === 'Activa' &&
+                dateStr >= n.startDate &&
+                dateStr <= n.endDate
               );
             const empHasVacation = (empId, dateStr) =>
               records.find(r => r.employeeId === empId && r.date === dateStr && r.status === 'Vacaciones') ||
               false; // vacaciones se reflejan en el reporte
-            const empHasAbsence = (empId, dateStr) =>
-              absences.find(a => a.employeeId === empId && a.date === dateStr);
 
             // Config de estado visual
             const statusConfig = {
@@ -611,7 +606,7 @@ export default function AttendanceView({ token, userRole }) {
                   const dayAttRecords = records.filter(r => r.date === date);
                   const presentCount = dayAttRecords.filter(r => ['Presente', 'Salida registrada'].includes(r.status)).length;
                   const lateCount = dayAttRecords.filter(r => r.status === 'Tarde').length;
-                  const permCount = filteredEmps.filter(e => empHasPermission(e.id, date) && !dayAttRecords.find(r => r.employeeId === e.id)).length;
+                  const novCount = filteredEmps.filter(e => empHasNovelty(e.id, date) && !dayAttRecords.find(r => r.employeeId === e.id)).length;
 
                   return (
                     <div key={date}>
@@ -630,7 +625,7 @@ export default function AttendanceView({ token, userRole }) {
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="text-[10px] font-black bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">{presentCount} presentes</span>
                           {lateCount > 0 && <span className="text-[10px] font-black bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">{lateCount} retardos</span>}
-                          {permCount > 0 && <span className="text-[10px] font-black bg-amber-50 text-amber-600 border border-amber-200 px-2 py-0.5 rounded-full">{permCount} permisos</span>}
+                          {novCount > 0 && <span className="text-[10px] font-black bg-amber-50 text-amber-600 border border-amber-200 px-2 py-0.5 rounded-full">{novCount} novedades</span>}
                           <span className="text-[10px] font-semibold text-slate-400">{filteredEmps.length} empleados</span>
                         </div>
                       </div>
@@ -639,30 +634,33 @@ export default function AttendanceView({ token, userRole }) {
                       <div className="divide-y divide-slate-50 dark:divide-slate-800/20">
                         {filteredEmps.map(emp => {
                           const att = dayAttRecords.find(r => r.employeeId === emp.id);
-                          const perm = empHasPermission(emp.id, date);
-                          const absence = empHasAbsence(emp.id, date);
+                          const activeNovelty = empHasNovelty(emp.id, date);
 
                           // Determinar estado combinado
                           let stateKey = 'ausente';
                           let isHalfDayPermission = false;
                           let halfDayType = null; // 'Mañana' o 'Tarde'
 
-                          if (perm && perm.coverage !== 'Jornada Completa') {
+                          if (activeNovelty && activeNovelty.coverage !== 'Jornada Completa') {
                             isHalfDayPermission = true;
-                            halfDayType = perm.coverage === 'Jornada Mañana' ? 'Mañana' : 'Tarde';
+                            halfDayType = activeNovelty.coverage === 'Jornada Mañana' ? 'Mañana' : 'Tarde';
                           }
 
                           if (att) {
                             if (att.status === 'Tarde') stateKey = 'tarde';
                             else if (att.status === 'Salida registrada') stateKey = 'completado';
                             else stateKey = 'presente';
-                          } else if (absence?.type === 'incapacidad') {
-                            stateKey = 'incapacidad';
-                          } else if (perm) {
-                            if (isHalfDayPermission) {
-                              stateKey = 'ausente'; // Fila gris (ausente), pero tendrá etiquetas especiales
+                          } else if (activeNovelty) {
+                            if (activeNovelty.type === 'Incapacidad') {
+                              stateKey = 'incapacidad';
+                            } else if (activeNovelty.type === 'Permiso Remunerado' || activeNovelty.type === 'Permiso No Remunerado' || activeNovelty.type === 'Licencia Luto' || activeNovelty.type === 'Licencia Maternidad/Paternidad') {
+                              if (isHalfDayPermission) {
+                                stateKey = 'ausente'; // Fila gris (ausente), pero tendrá etiquetas especiales
+                              } else {
+                                stateKey = 'permiso'; // Jornada completa
+                              }
                             } else {
-                              stateKey = 'permiso'; // Jornada completa
+                              stateKey = 'permiso';
                             }
                           }
 

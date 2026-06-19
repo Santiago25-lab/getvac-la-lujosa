@@ -651,16 +651,14 @@ export default function AttendanceView({ token, userRole }) {
                             else if (att.status === 'Salida registrada') stateKey = 'completado';
                             else stateKey = 'presente';
                           } else if (activeNovelty) {
-                            if (activeNovelty.type === 'Incapacidad') {
-                              stateKey = 'incapacidad';
-                            } else if (activeNovelty.type === 'Permiso Remunerado' || activeNovelty.type === 'Permiso No Remunerado' || activeNovelty.type === 'Licencia Luto' || activeNovelty.type === 'Licencia Maternidad/Paternidad') {
-                              if (isHalfDayPermission) {
-                                stateKey = 'ausente'; // Fila gris (ausente), pero tendrá etiquetas especiales
-                              } else {
-                                stateKey = 'permiso'; // Jornada completa
-                              }
+                            if (isHalfDayPermission) {
+                              stateKey = 'ausente'; // Fila gris, pero tendrá etiquetas en la media jornada
                             } else {
-                              stateKey = 'permiso';
+                              if (activeNovelty.type === 'Incapacidad') {
+                                stateKey = 'incapacidad';
+                              } else {
+                                stateKey = 'permiso'; // Jornada completa para licencias/permisos
+                              }
                             }
                           }
 
@@ -673,11 +671,15 @@ export default function AttendanceView({ token, userRole }) {
                           const renderTimeSlot = (time, slotType) => {
                             // Permiso parcial (esté presente o no la otra media jornada)
                             if (isHalfDayPermission) {
+                              const badgeStyle = activeNovelty.type === 'Incapacidad' 
+                                ? "bg-violet-50 text-violet-700 border-violet-200" 
+                                : "bg-amber-50 text-amber-700 border-amber-200";
+                              
                               if (halfDayType === 'Mañana' && (slotType === 'checkIn' || slotType === 'checkOutMorning')) {
-                                return <TagBadge label="Permiso Mañana" style="bg-amber-50 text-amber-700 border-amber-200" />;
+                                return <TagBadge label={`${activeNovelty.type} Mañana`} style={badgeStyle} />;
                               }
                               if (halfDayType === 'Tarde' && (slotType === 'checkInAfternoon' || slotType === 'checkOut')) {
-                                return <TagBadge label="Permiso Tarde" style="bg-amber-50 text-amber-700 border-amber-200" />;
+                                return <TagBadge label={`${activeNovelty.type} Tarde`} style={badgeStyle} />;
                               }
                             }
 

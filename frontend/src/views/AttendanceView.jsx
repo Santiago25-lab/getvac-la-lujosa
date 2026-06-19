@@ -730,9 +730,9 @@ export default function AttendanceView({ token, userRole }) {
                                 </div>
 
                                 {/* Notas / Motivo */}
-                                {(att?.notes || perm?.reason || absence?.reason) && (
-                                  <div className="hidden lg:block max-w-[130px]" title={att?.notes || perm?.reason || absence?.reason}>
-                                    <div className="text-[10px] font-semibold text-slate-400 italic truncate">📝 {att?.notes || perm?.reason || absence?.reason}</div>
+                                {(att?.notes || activeNovelty?.observations) && (
+                                  <div className="hidden lg:block max-w-[130px]" title={att?.notes || activeNovelty?.observations}>
+                                    <div className="text-[10px] font-semibold text-slate-400 italic truncate">📝 {att?.notes || activeNovelty?.observations}</div>
                                   </div>
                                 )}
                               </div>

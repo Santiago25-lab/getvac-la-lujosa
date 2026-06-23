@@ -1,7 +1,6 @@
 import express from 'express';
 import { getLaborCostsDashboard } from '../controllers/laborCostController.js';
-import { authenticateToken } from '../middleware/auth.js';
-import { requireRole } from '../middleware/roles.js';
+import { authenticateToken, requireRole } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 

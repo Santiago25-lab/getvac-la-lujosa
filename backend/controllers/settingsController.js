@@ -26,7 +26,9 @@ export const updateSettings = async (req, res) => {
     daysRequiredForOneVacationDay, checkInTime, checkOutTime, toleranceMinutes, workDays, halfWorkDays,
     companyName, companyNit, companyAddress, companyPhone, companyEmail, companyLogo,
     vacationsSaturdaysCount, vacationsSundaysCount, isSplitShift,
-    checkInTimeMorning, checkOutTimeMorning, checkInTimeAfternoon, checkOutTimeAfternoon
+    checkInTimeMorning, checkOutTimeMorning, checkInTimeAfternoon, checkOutTimeAfternoon,
+    healthCompanyPercentage, pensionCompanyPercentage, compensationFundPercentage,
+    arlRisk1Percentage, arlRisk2Percentage, arlRisk3Percentage, arlRisk4Percentage, arlRisk5Percentage
   } = req.body;
 
   try {
@@ -42,6 +44,14 @@ export const updateSettings = async (req, res) => {
         companyName, companyNit, companyAddress, companyPhone, companyEmail, companyLogo,
         vacationsSaturdaysCount, vacationsSundaysCount, isSplitShift,
         checkInTimeMorning, checkOutTimeMorning, checkInTimeAfternoon, checkOutTimeAfternoon,
+        healthCompanyPercentage: healthCompanyPercentage !== undefined ? parseFloat(healthCompanyPercentage) : 8.5,
+        pensionCompanyPercentage: pensionCompanyPercentage !== undefined ? parseFloat(pensionCompanyPercentage) : 12.0,
+        compensationFundPercentage: compensationFundPercentage !== undefined ? parseFloat(compensationFundPercentage) : 4.0,
+        arlRisk1Percentage: arlRisk1Percentage !== undefined ? parseFloat(arlRisk1Percentage) : 0.522,
+        arlRisk2Percentage: arlRisk2Percentage !== undefined ? parseFloat(arlRisk2Percentage) : 1.044,
+        arlRisk3Percentage: arlRisk3Percentage !== undefined ? parseFloat(arlRisk3Percentage) : 2.436,
+        arlRisk4Percentage: arlRisk4Percentage !== undefined ? parseFloat(arlRisk4Percentage) : 4.350,
+        arlRisk5Percentage: arlRisk5Percentage !== undefined ? parseFloat(arlRisk5Percentage) : 6.960,
         updatedBy: req.user.fullName
       });
     } else {
@@ -64,6 +74,14 @@ export const updateSettings = async (req, res) => {
       if (checkOutTimeMorning !== undefined) setting.checkOutTimeMorning = checkOutTimeMorning;
       if (checkInTimeAfternoon !== undefined) setting.checkInTimeAfternoon = checkInTimeAfternoon;
       if (checkOutTimeAfternoon !== undefined) setting.checkOutTimeAfternoon = checkOutTimeAfternoon;
+      if (healthCompanyPercentage !== undefined) setting.healthCompanyPercentage = parseFloat(healthCompanyPercentage);
+      if (pensionCompanyPercentage !== undefined) setting.pensionCompanyPercentage = parseFloat(pensionCompanyPercentage);
+      if (compensationFundPercentage !== undefined) setting.compensationFundPercentage = parseFloat(compensationFundPercentage);
+      if (arlRisk1Percentage !== undefined) setting.arlRisk1Percentage = parseFloat(arlRisk1Percentage);
+      if (arlRisk2Percentage !== undefined) setting.arlRisk2Percentage = parseFloat(arlRisk2Percentage);
+      if (arlRisk3Percentage !== undefined) setting.arlRisk3Percentage = parseFloat(arlRisk3Percentage);
+      if (arlRisk4Percentage !== undefined) setting.arlRisk4Percentage = parseFloat(arlRisk4Percentage);
+      if (arlRisk5Percentage !== undefined) setting.arlRisk5Percentage = parseFloat(arlRisk5Percentage);
       
       setting.updatedBy = req.user.fullName;
       await setting.save();

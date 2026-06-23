@@ -1,4 +1,4 @@
-import { Employee, Vacation, Setting, Attendance, Permission, Absence } from '../models/index.js';
+import { Employee, Vacation, Setting, Attendance, Permission, Absence, AuditLog } from '../models/index.js';
 
 // Función helper para calcular las estadísticas de vacaciones de un empleado
 export const calculateEmployeeVacationStats = async (employee, customSettings = null) => {
@@ -146,6 +146,8 @@ export const createEmployee = async (req, res) => {
       profilePicture, 
       contractType, 
       baseSalary, 
+      transportAllowance,
+      arlRiskLevel,
       appliesVacationCalculation,
       isLegacy,
       lastVacationCutoffDate,
@@ -164,7 +166,9 @@ export const createEmployee = async (req, res) => {
       phone: phone || null,
       profilePicture: profilePicture || null,
       contractType: contractType || null,
-      baseSalary: baseSalary || null,
+      baseSalary: baseSalary || 0,
+      transportAllowance: transportAllowance || 0,
+      arlRiskLevel: arlRiskLevel || 'Riesgo I',
       appliesVacationCalculation: appliesVacationCalculation !== undefined ? appliesVacationCalculation : true,
       isLegacy: isLegacy || false,
       lastVacationCutoffDate: lastVacationCutoffDate || null,
@@ -205,12 +209,21 @@ export const updateEmployee = async (req, res) => {
       profilePicture, 
       contractType, 
       baseSalary, 
+      transportAllowance,
+      arlRiskLevel,
       appliesVacationCalculation,
       isLegacy,
       lastVacationCutoffDate,
       lastVacationEnjoyedDate,
       initialPendingVacationBalance 
     } = req.body;
+
+    // Detect changes for AuditLog
+    const changes = [];
+    if (hireDate && hireDate !== employee.hireDate) changes.push(`Fecha Ingreso: ${employee.hireDate} -> ${hireDate}`);
+    if (position && position !== employee.position) changes.push(`Cargo: ${employee.position} -> ${position}`);
+    if (baseSalary !== undefined && baseSalary !== employee.baseSalary) changes.push(`Salario Base: ${employee.baseSalary} -> ${baseSalary}`);
+    if (arlRiskLevel !== undefined && arlRiskLevel !== employee.arlRiskLevel) changes.push(`Nivel ARL: ${employee.arlRiskLevel} -> ${arlRiskLevel}`);
 
     employee.fullName = fullName || employee.fullName;
     employee.documentNumber = documentNumber || employee.documentNumber;
@@ -223,6 +236,8 @@ export const updateEmployee = async (req, res) => {
     if (profilePicture !== undefined) employee.profilePicture = profilePicture;
     if (contractType !== undefined) employee.contractType = contractType;
     if (baseSalary !== undefined) employee.baseSalary = baseSalary;
+    if (transportAllowance !== undefined) employee.transportAllowance = transportAllowance;
+    if (arlRiskLevel !== undefined) employee.arlRiskLevel = arlRiskLevel;
     if (appliesVacationCalculation !== undefined) employee.appliesVacationCalculation = appliesVacationCalculation;
     if (isLegacy !== undefined) employee.isLegacy = isLegacy;
     if (lastVacationCutoffDate !== undefined) employee.lastVacationCutoffDate = lastVacationCutoffDate;
@@ -230,6 +245,17 @@ export const updateEmployee = async (req, res) => {
     if (initialPendingVacationBalance !== undefined) employee.initialPendingVacationBalance = initialPendingVacationBalance;
 
     await employee.save();
+
+    if (changes.length > 0) {
+      await AuditLog.create({
+        userId: req.user ? req.user.id : null,
+        username: req.user ? req.user.username : 'Sistema',
+        action: 'Actualización Salarial/Laboral',
+        target: 'Empleado',
+        targetId: employee.id.toString(),
+        details: `Se modificó: ${changes.join(', ')} para ${employee.fullName}`
+      }).catch(err => console.error('Error guardando audit log:', err));
+    }
 
     res.json({
       message: 'Empleado actualizado exitosamente.',

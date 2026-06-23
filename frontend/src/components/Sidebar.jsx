@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, Users, Settings, LogOut, CalendarCheck, UserCheck, Clock, FileText, AlertOctagon, ExternalLink, HelpCircle, ShieldCheck, ClipboardSignature, Plus } from 'lucide-react';
+import { LayoutDashboard, Users, Settings, LogOut, CalendarCheck, UserCheck, Clock, FileText, AlertOctagon, ExternalLink, HelpCircle, ShieldCheck, ClipboardSignature, Plus, DollarSign } from 'lucide-react';
 
 export default function Sidebar({ activeView, onViewChange, user, onLogout }) {
   const menuItems = [
@@ -9,6 +9,10 @@ export default function Sidebar({ activeView, onViewChange, user, onLogout }) {
     { id: 'novelties', label: 'Novedades', icon: AlertOctagon },
     { id: 'vacations', label: 'Vacaciones', icon: CalendarCheck },
   ];
+
+  if (user?.role === 'Super Usuario' || user?.role === 'Recursos Humanos' || user?.role === 'Gerencia') {
+    menuItems.push({ id: 'labor-costs', label: 'Costos Laborales', icon: DollarSign });
+  }
 
   if (user?.role === 'Super Usuario') {
     menuItems.push({ id: 'settings', label: 'Configuración', icon: Settings });

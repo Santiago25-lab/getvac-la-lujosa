@@ -33,6 +33,21 @@ const Employee = sequelize.define('Employee', {
     defaultValue: 'activo',
     allowNull: false,
   },
+  baseSalary: {
+    type: DataTypes.INTEGER,
+    defaultValue: 0,
+    allowNull: false,
+  },
+  transportAllowance: {
+    type: DataTypes.INTEGER,
+    defaultValue: 0,
+    allowNull: false,
+  },
+  arlRiskLevel: {
+    type: DataTypes.ENUM('Riesgo I', 'Riesgo II', 'Riesgo III', 'Riesgo IV', 'Riesgo V'),
+    defaultValue: 'Riesgo I',
+    allowNull: false,
+  },
   email: {
     type: DataTypes.STRING,
     allowNull: true,

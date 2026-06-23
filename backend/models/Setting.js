@@ -41,6 +41,46 @@ const Setting = sequelize.define('Setting', {
     type: DataTypes.STRING,
     allowNull: true,
   },
+  healthCompanyPercentage: {
+    type: DataTypes.FLOAT,
+    defaultValue: 8.5,
+    allowNull: false,
+  },
+  pensionCompanyPercentage: {
+    type: DataTypes.FLOAT,
+    defaultValue: 12.0,
+    allowNull: false,
+  },
+  compensationFundPercentage: {
+    type: DataTypes.FLOAT,
+    defaultValue: 4.0,
+    allowNull: false,
+  },
+  arlRisk1Percentage: {
+    type: DataTypes.FLOAT,
+    defaultValue: 0.522,
+    allowNull: false,
+  },
+  arlRisk2Percentage: {
+    type: DataTypes.FLOAT,
+    defaultValue: 1.044,
+    allowNull: false,
+  },
+  arlRisk3Percentage: {
+    type: DataTypes.FLOAT,
+    defaultValue: 2.436,
+    allowNull: false,
+  },
+  arlRisk4Percentage: {
+    type: DataTypes.FLOAT,
+    defaultValue: 4.350,
+    allowNull: false,
+  },
+  arlRisk5Percentage: {
+    type: DataTypes.FLOAT,
+    defaultValue: 6.960,
+    allowNull: false,
+  },
   companyName: {
     type: DataTypes.STRING,
     allowNull: true,

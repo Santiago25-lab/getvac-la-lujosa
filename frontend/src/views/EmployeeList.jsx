@@ -97,6 +97,8 @@ export default function EmployeeList({ token, userRole, onViewChange }) {
       phone: emp.phone || '',
       contractType: emp.contractType || 'Término Fijo',
       baseSalary: emp.baseSalary || '',
+      transportAllowance: emp.transportAllowance || '',
+      arlRiskLevel: emp.arlRiskLevel || 'Riesgo I',
       appliesVacationCalculation: emp.appliesVacationCalculation !== false,
       isLegacy: emp.isLegacy || false,
       lastVacationCutoffDate: emp.lastVacationCutoffDate || '',
@@ -120,6 +122,8 @@ export default function EmployeeList({ token, userRole, onViewChange }) {
       phone: '',
       contractType: 'Término Fijo',
       baseSalary: '',
+      transportAllowance: '',
+      arlRiskLevel: 'Riesgo I',
       appliesVacationCalculation: true,
       isLegacy: false,
       lastVacationCutoffDate: '',
@@ -612,6 +616,36 @@ export default function EmployeeList({ token, userRole, onViewChange }) {
                     placeholder="Ej: 1300000"
                     className="w-full bg-white border border-slate-200 rounded-2xl py-2.5 px-4 text-sm outline-none focus:border-brand-500 transition focus:ring-2 focus:ring-brand-500/10"
                   />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-500 pl-1 uppercase tracking-wide">Auxilio Transporte ($ COP)</label>
+                  <input
+                    type="number"
+                    name="transportAllowance"
+                    value={formData.transportAllowance}
+                    onChange={handleInputChange}
+                    placeholder="Ej: 162000"
+                    className="w-full bg-white border border-slate-200 rounded-2xl py-2.5 px-4 text-sm outline-none focus:border-brand-500 transition focus:ring-2 focus:ring-brand-500/10"
+                  />
+                </div>
+                
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-500 pl-1 uppercase tracking-wide">Nivel ARL</label>
+                  <select
+                    name="arlRiskLevel"
+                    value={formData.arlRiskLevel}
+                    onChange={handleInputChange}
+                    className="w-full bg-white border border-slate-200 rounded-2xl py-2.5 px-4 text-sm outline-none focus:border-brand-500 transition"
+                  >
+                    <option value="Riesgo I">Riesgo I (0.522%)</option>
+                    <option value="Riesgo II">Riesgo II (1.044%)</option>
+                    <option value="Riesgo III">Riesgo III (2.436%)</option>
+                    <option value="Riesgo IV">Riesgo IV (4.350%)</option>
+                    <option value="Riesgo V">Riesgo V (6.960%)</option>
+                  </select>
                 </div>
               </div>
 

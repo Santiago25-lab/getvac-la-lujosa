@@ -681,6 +681,101 @@ export default function SuperUserPanelView({ token, userRole }) {
               />
             </div>
 
+            <div className="flex items-center gap-2.5 pt-4 pb-2 border-b border-slate-100">
+              <div className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-500">
+                <Briefcase className="w-5 h-5" />
+              </div>
+              <h3 className="text-sm font-bold text-slate-800">Cargas Prestacionales (Empresa %)</h3>
+            </div>
+
+            <div className="grid grid-cols-3 gap-4">
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-slate-500 uppercase">Salud (%)</label>
+                <input
+                  type="number" step="any"
+                  value={settings.healthCompanyPercentage || ''}
+                  onChange={(e) => setSettings({ ...settings, healthCompanyPercentage: parseFloat(e.target.value) })}
+                  className="w-full bg-white border border-slate-200 rounded-xl py-2 px-3 text-sm font-bold text-slate-800 outline-none focus:border-brand-500 transition"
+                  placeholder="Ej: 8.5"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-slate-500 uppercase">Pensión (%)</label>
+                <input
+                  type="number" step="any"
+                  value={settings.pensionCompanyPercentage || ''}
+                  onChange={(e) => setSettings({ ...settings, pensionCompanyPercentage: parseFloat(e.target.value) })}
+                  className="w-full bg-white border border-slate-200 rounded-xl py-2 px-3 text-sm font-bold text-slate-800 outline-none focus:border-brand-500 transition"
+                  placeholder="Ej: 12.0"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-slate-500 uppercase">Caja Comp. (%)</label>
+                <input
+                  type="number" step="any"
+                  value={settings.compensationFundPercentage || ''}
+                  onChange={(e) => setSettings({ ...settings, compensationFundPercentage: parseFloat(e.target.value) })}
+                  className="w-full bg-white border border-slate-200 rounded-xl py-2 px-3 text-sm font-bold text-slate-800 outline-none focus:border-brand-500 transition"
+                  placeholder="Ej: 4.0"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2.5 pt-4 pb-2 border-b border-slate-100">
+              <div className="p-1.5 rounded-lg bg-orange-500/10 text-orange-500">
+                <ShieldAlert className="w-5 h-5" />
+              </div>
+              <h3 className="text-sm font-bold text-slate-800">ARL por Riesgo (%)</h3>
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-slate-500 uppercase">Riesgo I</label>
+                <input
+                  type="number" step="any"
+                  value={settings.arlRisk1Percentage || ''}
+                  onChange={(e) => setSettings({ ...settings, arlRisk1Percentage: parseFloat(e.target.value) })}
+                  className="w-full bg-white border border-slate-200 rounded-xl py-2 px-2 text-xs font-bold text-slate-800 outline-none focus:border-brand-500 transition"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-slate-500 uppercase">Riesgo II</label>
+                <input
+                  type="number" step="any"
+                  value={settings.arlRisk2Percentage || ''}
+                  onChange={(e) => setSettings({ ...settings, arlRisk2Percentage: parseFloat(e.target.value) })}
+                  className="w-full bg-white border border-slate-200 rounded-xl py-2 px-2 text-xs font-bold text-slate-800 outline-none focus:border-brand-500 transition"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-slate-500 uppercase">Riesgo III</label>
+                <input
+                  type="number" step="any"
+                  value={settings.arlRisk3Percentage || ''}
+                  onChange={(e) => setSettings({ ...settings, arlRisk3Percentage: parseFloat(e.target.value) })}
+                  className="w-full bg-white border border-slate-200 rounded-xl py-2 px-2 text-xs font-bold text-slate-800 outline-none focus:border-brand-500 transition"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-slate-500 uppercase">Riesgo IV</label>
+                <input
+                  type="number" step="any"
+                  value={settings.arlRisk4Percentage || ''}
+                  onChange={(e) => setSettings({ ...settings, arlRisk4Percentage: parseFloat(e.target.value) })}
+                  className="w-full bg-white border border-slate-200 rounded-xl py-2 px-2 text-xs font-bold text-slate-800 outline-none focus:border-brand-500 transition"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-slate-500 uppercase">Riesgo V</label>
+                <input
+                  type="number" step="any"
+                  value={settings.arlRisk5Percentage || ''}
+                  onChange={(e) => setSettings({ ...settings, arlRisk5Percentage: parseFloat(e.target.value) })}
+                  className="w-full bg-white border border-slate-200 rounded-xl py-2 px-2 text-xs font-bold text-slate-800 outline-none focus:border-brand-500 transition"
+                />
+              </div>
+            </div>
+
             <button
               type="submit"
               className="w-full bg-brand-500 hover:bg-brand-600 text-white font-bold py-2.5 px-4 rounded-xl shadow-lg shadow-brand-500/10 transition flex items-center justify-center gap-2"

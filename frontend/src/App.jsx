@@ -13,6 +13,7 @@ import AbsencesView from './views/AbsencesView';
 import SuperUserPanelView from './views/SuperUserPanelView';
 import NoveltiesView from './views/NoveltiesView';
 import VacationsDashboard from './views/VacationsDashboard';
+import LaborCostsView from './views/LaborCostsView';
 
 export default function App() {
   const [token, setToken] = useState(() => localStorage.getItem('token') || '');
@@ -172,6 +173,13 @@ export default function App() {
 
           {activeView === 'superuser' && (
             <SuperUserPanelView
+              token={token}
+              userRole={user?.role}
+            />
+          )}
+
+          {activeView === 'labor-costs' && (
+            <LaborCostsView
               token={token}
               userRole={user?.role}
             />

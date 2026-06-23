@@ -62,6 +62,7 @@ import { auditMiddleware } from './middleware/auditMiddleware.js';
 import specialWorkdayRoutes from './routes/specialWorkdayRoutes.js';
 import { startVacationCronJob } from './jobs/vacationUpdater.js';
 import noveltyRoutes from './routes/noveltyRoutes.js';
+import laborCostRoutes from './routes/laborCostRoutes.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -148,6 +149,7 @@ app.put('/api/absences/:id', authenticateToken, updateAbsence);
 
 // Novedades Laborales (RRHH - Protegida)
 app.use('/api/novelties', noveltyRoutes);
+app.use('/api/labor-costs', laborCostRoutes);
 
 // Dashboard
 app.get('/api/dashboard/stats', authenticateToken, getDashboardStats);
@@ -476,6 +478,20 @@ sequelize.sync()
           });
           console.log('✅ Migration: columna initialPendingVacationBalance añadida a Employees.');
         }
+        if (!empCols.transportAllowance) {
+          await qi.addColumn('Employees', 'transportAllowance', {
+            type: sequelize.Sequelize.DECIMAL(15, 2),
+            defaultValue: 0
+          });
+          console.log('✅ Migration: columna transportAllowance añadida a Employees.');
+        }
+        if (!empCols.arlRiskLevel) {
+          await qi.addColumn('Employees', 'arlRiskLevel', {
+            type: sequelize.Sequelize.STRING,
+            defaultValue: 'Riesgo I'
+          });
+          console.log('✅ Migration: columna arlRiskLevel añadida a Employees.');
+        }
       }
 
       // 5. Actualizar ENUM type de Novelties para que coincida con el frontend
@@ -496,13 +512,26 @@ sequelize.sync()
 
       // 6. Añadir columna halfWorkDays a Settings si no existe
       const setCols = await qi.describeTable('Settings').catch(() => null);
-      if (setCols && !setCols.halfWorkDays) {
-        await qi.addColumn('Settings', 'halfWorkDays', {
-          type: sequelize.Sequelize.STRING,
-          defaultValue: '',
-          allowNull: true
-        });
-        console.log('✅ Migration: columna halfWorkDays añadida a Settings.');
+      if (setCols) {
+        if (!setCols.halfWorkDays) {
+          await qi.addColumn('Settings', 'halfWorkDays', {
+            type: sequelize.Sequelize.STRING,
+            defaultValue: '',
+            allowNull: true
+          });
+          console.log('✅ Migration: columna halfWorkDays añadida a Settings.');
+        }
+        if (!setCols.healthCompanyPercentage) {
+          await qi.addColumn('Settings', 'healthCompanyPercentage', { type: sequelize.Sequelize.DECIMAL(5, 3), defaultValue: 8.5 });
+          await qi.addColumn('Settings', 'pensionCompanyPercentage', { type: sequelize.Sequelize.DECIMAL(5, 3), defaultValue: 12.0 });
+          await qi.addColumn('Settings', 'compensationFundPercentage', { type: sequelize.Sequelize.DECIMAL(5, 3), defaultValue: 4.0 });
+          await qi.addColumn('Settings', 'arlRisk1Percentage', { type: sequelize.Sequelize.DECIMAL(5, 3), defaultValue: 0.522 });
+          await qi.addColumn('Settings', 'arlRisk2Percentage', { type: sequelize.Sequelize.DECIMAL(5, 3), defaultValue: 1.044 });
+          await qi.addColumn('Settings', 'arlRisk3Percentage', { type: sequelize.Sequelize.DECIMAL(5, 3), defaultValue: 2.436 });
+          await qi.addColumn('Settings', 'arlRisk4Percentage', { type: sequelize.Sequelize.DECIMAL(5, 3), defaultValue: 4.350 });
+          await qi.addColumn('Settings', 'arlRisk5Percentage', { type: sequelize.Sequelize.DECIMAL(5, 3), defaultValue: 6.960 });
+          console.log('✅ Migration: columnas financieras añadidas a Settings.');
+        }
       }
 
     } catch (migErr) {

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { DollarSign, PieChart, Users, TrendingUp, AlertCircle, Briefcase, FileText, ChevronRight, X, Clock } from 'lucide-react';
-import { API_BASE_URL } from '../config';
+import { API_URL } from '../config';
 
 export default function LaborCostsView({ token, userRole }) {
   const [data, setData] = useState(null);
@@ -15,7 +15,7 @@ export default function LaborCostsView({ token, userRole }) {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const res = await fetch(`${API_BASE_URL}/api/labor-costs/dashboard`, {
+      const res = await fetch(`${API_URL}/api/labor-costs/dashboard`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (!res.ok) throw new Error('Error al cargar datos');

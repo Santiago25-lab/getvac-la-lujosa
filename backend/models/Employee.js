@@ -90,6 +90,14 @@ const Employee = sequelize.define('Employee', {
     type: DataTypes.DECIMAL(10, 2),
     allowNull: true,
   },
+  initialCesantiasBalance: {
+    type: DataTypes.DECIMAL(15, 2),
+    allowNull: true,
+  },
+  initialPrimaDays: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+  },
 }, {
   timestamps: true,
 });

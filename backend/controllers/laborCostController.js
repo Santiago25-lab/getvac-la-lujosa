@@ -81,7 +81,9 @@ export const getLaborCostsDashboard = async (req, res) => {
         if (payment) {
           return { date: payment.periodEnd, isPayment: true };
         }
-        return { date: emp.hireDate, isPayment: false };
+        // Ticket 2: Si es empleado antiguo, "kilómetro cero" es su fecha de registro en sistema
+        const startDate = emp.isLegacy ? emp.createdAt : emp.hireDate;
+        return { date: startDate, isPayment: false };
       };
 
       const getCommercialDays = (dateInfo) => {
@@ -121,9 +123,22 @@ export const getLaborCostsDashboard = async (req, res) => {
         baseSalaryForBenefits += transport;
       }
 
-      const prima = Math.round((baseSalaryForBenefits * daysPrima) / 360);
-      const cesantias = Math.round((baseSalaryForBenefits * daysCesantias) / 360);
-      const intereses = Math.round((cesantias * daysIntereses * 0.12) / 360);
+      let prima = Math.round((baseSalaryForBenefits * daysPrima) / 360);
+      let cesantias = Math.round((baseSalaryForBenefits * daysCesantias) / 360);
+      
+      if (emp.isLegacy) {
+        if (emp.initialPrimaDays) {
+          prima += Math.round((baseSalaryForBenefits * emp.initialPrimaDays) / 360);
+        }
+        if (emp.initialCesantiasBalance) {
+          cesantias += Number(emp.initialCesantiasBalance);
+        }
+      }
+      
+      // Ticket 1: Los intereses solo se calculan sobre las cesantías del año en curso
+      const currentYearInterestDays = Math.min(360, daysIntereses);
+      const currentYearCesantias = Math.round((baseSalaryForBenefits * currentYearInterestDays) / 360);
+      const intereses = Math.round((currentYearCesantias * currentYearInterestDays * 0.12) / 360);
 
       // Vacaciones (usa la función existente que ya lee los cortes)
       const vacationStats = await calculateEmployeeVacationStats(emp, settings);
@@ -164,7 +179,7 @@ export const getLaborCostsDashboard = async (req, res) => {
           cesantias,
           intereses,
           vacaciones,
-          vacationDays: vacationStats.totalVacationDaysAvailable || 0,
+          vacationDays: vacationStats.availableDays || 0,
           total: accumulatedTotal
         }
       });

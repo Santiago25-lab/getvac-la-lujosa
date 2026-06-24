@@ -482,6 +482,20 @@ sequelize.sync()
           });
           console.log('✅ Migration: columna initialPendingVacationBalance añadida a Employees.');
         }
+        if (!empCols.initialCesantiasBalance) {
+          await qi.addColumn('Employees', 'initialCesantiasBalance', {
+            type: sequelize.Sequelize.DECIMAL(15, 2),
+            allowNull: true
+          });
+          console.log('✅ Migration: columna initialCesantiasBalance añadida a Employees.');
+        }
+        if (!empCols.initialPrimaDays) {
+          await qi.addColumn('Employees', 'initialPrimaDays', {
+            type: sequelize.Sequelize.INTEGER,
+            allowNull: true
+          });
+          console.log('✅ Migration: columna initialPrimaDays añadida a Employees.');
+        }
         if (!empCols.transportAllowance) {
           await qi.addColumn('Employees', 'transportAllowance', {
             type: sequelize.Sequelize.DECIMAL(15, 2),

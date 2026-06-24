@@ -152,7 +152,9 @@ export const createEmployee = async (req, res) => {
       isLegacy,
       lastVacationCutoffDate,
       lastVacationEnjoyedDate,
-      initialPendingVacationBalance
+      initialPendingVacationBalance,
+      initialCesantiasBalance,
+      initialPrimaDays
     } = req.body;
 
     const employee = await Employee.create({
@@ -173,7 +175,9 @@ export const createEmployee = async (req, res) => {
       isLegacy: isLegacy || false,
       lastVacationCutoffDate: lastVacationCutoffDate || null,
       lastVacationEnjoyedDate: lastVacationEnjoyedDate || null,
-      initialPendingVacationBalance: initialPendingVacationBalance === '' || initialPendingVacationBalance === undefined ? null : Number(initialPendingVacationBalance)
+      initialPendingVacationBalance: initialPendingVacationBalance === '' || initialPendingVacationBalance === undefined ? null : Number(initialPendingVacationBalance),
+      initialCesantiasBalance: initialCesantiasBalance === '' || initialCesantiasBalance === undefined ? null : Number(initialCesantiasBalance),
+      initialPrimaDays: initialPrimaDays === '' || initialPrimaDays === undefined ? null : Number(initialPrimaDays)
     });
 
     res.status(201).json({
@@ -215,7 +219,9 @@ export const updateEmployee = async (req, res) => {
       isLegacy,
       lastVacationCutoffDate,
       lastVacationEnjoyedDate,
-      initialPendingVacationBalance 
+      initialPendingVacationBalance,
+      initialCesantiasBalance,
+      initialPrimaDays
     } = req.body;
 
     // Detect changes for AuditLog
@@ -243,6 +249,8 @@ export const updateEmployee = async (req, res) => {
     if (lastVacationCutoffDate !== undefined) employee.lastVacationCutoffDate = lastVacationCutoffDate || null;
     if (lastVacationEnjoyedDate !== undefined) employee.lastVacationEnjoyedDate = lastVacationEnjoyedDate || null;
     if (initialPendingVacationBalance !== undefined) employee.initialPendingVacationBalance = initialPendingVacationBalance === '' ? null : Number(initialPendingVacationBalance);
+    if (initialCesantiasBalance !== undefined) employee.initialCesantiasBalance = initialCesantiasBalance === '' ? null : Number(initialCesantiasBalance);
+    if (initialPrimaDays !== undefined) employee.initialPrimaDays = initialPrimaDays === '' ? null : Number(initialPrimaDays);
 
     await employee.save();
 

@@ -37,7 +37,9 @@ export default function EmployeeList({ token, userRole, onViewChange }) {
     isLegacy: false,
     lastVacationCutoffDate: '',
     lastVacationEnjoyedDate: '',
-    initialPendingVacationBalance: ''
+    initialPendingVacationBalance: '',
+    initialCesantiasBalance: '',
+    initialPrimaDays: ''
   });
 
   const fetchEmployees = async () => {
@@ -103,7 +105,9 @@ export default function EmployeeList({ token, userRole, onViewChange }) {
       isLegacy: emp.isLegacy || false,
       lastVacationCutoffDate: emp.lastVacationCutoffDate || '',
       lastVacationEnjoyedDate: emp.lastVacationEnjoyedDate || '',
-      initialPendingVacationBalance: emp.initialPendingVacationBalance || ''
+      initialPendingVacationBalance: emp.initialPendingVacationBalance || '',
+      initialCesantiasBalance: emp.initialCesantiasBalance || '',
+      initialPrimaDays: emp.initialPrimaDays || ''
     });
     setEditingEmployeeId(emp.id);
     setIsEditMode(true);
@@ -128,7 +132,9 @@ export default function EmployeeList({ token, userRole, onViewChange }) {
       isLegacy: false,
       lastVacationCutoffDate: '',
       lastVacationEnjoyedDate: '',
-      initialPendingVacationBalance: ''
+      initialPendingVacationBalance: '',
+      initialCesantiasBalance: '',
+      initialPrimaDays: ''
     });
     setEditingEmployeeId(null);
     setIsEditMode(false);
@@ -146,8 +152,8 @@ export default function EmployeeList({ token, userRole, onViewChange }) {
       return;
     }
 
-    if (isLegacy && (!lastVacationCutoffDate || initialPendingVacationBalance === '')) {
-      setFormError('Para empleados antiguos, debe especificar la fecha de corte y el saldo inicial.');
+    if (isLegacy && (!lastVacationCutoffDate || initialPendingVacationBalance === '' || formData.initialCesantiasBalance === '' || formData.initialPrimaDays === '')) {
+      setFormError('Para empleados antiguos, debe especificar la fecha de corte y todos los saldos iniciales.');
       return;
     }
 
@@ -704,7 +710,7 @@ export default function EmployeeList({ token, userRole, onViewChange }) {
                       </div>
                     </div>
                     <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-slate-500 pl-1 uppercase tracking-wide">Saldo Inicial (Días Pendientes)</label>
+                      <label className="text-xs font-bold text-slate-500 pl-1 uppercase tracking-wide">Saldo Inicial (Días Vacaciones)</label>
                       <input
                         type="number"
                         step="0.01"
@@ -714,6 +720,32 @@ export default function EmployeeList({ token, userRole, onViewChange }) {
                         placeholder="Ej: 7.5"
                         className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-sm outline-none focus:border-orange-500 transition"
                       />
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-slate-500 pl-1 uppercase tracking-wide">Saldo Inicial Cesantías ($)</label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          name="initialCesantiasBalance"
+                          value={formData.initialCesantiasBalance}
+                          onChange={handleInputChange}
+                          placeholder="Ej: 1500000"
+                          className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-sm outline-none focus:border-orange-500 transition"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-slate-500 pl-1 uppercase tracking-wide">Saldo Inicial Prima (Días)</label>
+                        <input
+                          type="number"
+                          step="1"
+                          name="initialPrimaDays"
+                          value={formData.initialPrimaDays}
+                          onChange={handleInputChange}
+                          placeholder="Ej: 15"
+                          className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-sm outline-none focus:border-orange-500 transition"
+                        />
+                      </div>
                     </div>
                   </div>
                 )}

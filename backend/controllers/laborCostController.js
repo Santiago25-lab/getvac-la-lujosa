@@ -64,18 +64,54 @@ export const getLaborCostsDashboard = async (req, res) => {
         order: [['periodEnd', 'DESC']]
       });
 
-      const getLastDate = (type) => {
+      const parseDateToYMD = (dateVal) => {
+        if (!dateVal) return null;
+        if (typeof dateVal === 'string') {
+          const datePart = dateVal.split('T')[0];
+          return datePart.split('-').map(Number);
+        }
+        if (dateVal instanceof Date) {
+          return [dateVal.getFullYear(), dateVal.getMonth() + 1, dateVal.getDate()];
+        }
+        return null;
+      };
+
+      const getLastDateInfo = (type) => {
         const payment = payments.find(p => p.type === type);
-        return payment ? new Date(payment.periodEnd) : new Date(emp.hireDate);
+        if (payment) {
+          return { date: payment.periodEnd, isPayment: true };
+        }
+        return { date: emp.hireDate, isPayment: false };
       };
 
-      const getDaysSince = (startDate) => {
-        return Math.max(0, Math.floor((today - startDate) / (1000 * 60 * 60 * 24)));
+      const getCommercialDays = (dateInfo) => {
+        const parsed = parseDateToYMD(dateInfo.date);
+        if (!parsed) return 0;
+        const [y1, m1, d1] = parsed;
+        const y2 = today.getFullYear();
+        const m2 = today.getMonth() + 1;
+        let d2 = today.getDate();
+
+        let day1 = d1;
+        let day2 = d2;
+
+        // Estandarización a meses de 30 días (Año Comercial Colombiano)
+        if (day1 === 31) day1 = 30;
+        if (day2 === 31) day2 = 30;
+
+        let days = (y2 - y1) * 360 + (m2 - m1) * 30 + (day2 - day1);
+        
+        // Si calculamos desde la contratación (no desde un corte), el extremo inferior es inclusivo
+        if (!dateInfo.isPayment) {
+          days += 1;
+        }
+
+        return Math.max(0, days);
       };
 
-      const daysPrima = getDaysSince(getLastDate('Prima'));
-      const daysCesantias = getDaysSince(getLastDate('Cesantías'));
-      const daysIntereses = getDaysSince(getLastDate('Intereses de Cesantías'));
+      const daysPrima = getCommercialDays(getLastDateInfo('Prima'));
+      const daysCesantias = getCommercialDays(getLastDateInfo('Cesantías'));
+      const daysIntereses = getCommercialDays(getLastDateInfo('Intereses de Cesantías'));
 
       const baseSalaryForBenefits = salary + transport; // Prima y cesantías incluyen auxilio de transporte
 

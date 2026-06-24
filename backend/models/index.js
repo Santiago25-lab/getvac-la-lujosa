@@ -11,6 +11,7 @@ import AuditLog from './AuditLog.js';
 import CompanyHoliday from './CompanyHoliday.js';
 import Novelty from './Novelty.js';
 import SpecialWorkday from './SpecialWorkday.js';
+import BenefitPayment from './BenefitPayment.js';
 
 // Relaciones
 Employee.hasMany(Vacation, { foreignKey: 'employeeId', as: 'vacations', onDelete: 'CASCADE' });
@@ -28,6 +29,9 @@ Absence.belongsTo(Employee, { foreignKey: 'employeeId', as: 'employee' });
 Employee.hasMany(Novelty, { foreignKey: 'employeeId', as: 'novelties', onDelete: 'CASCADE' });
 Novelty.belongsTo(Employee, { foreignKey: 'employeeId', as: 'employee' });
 
+Employee.hasMany(BenefitPayment, { foreignKey: 'employeeId', as: 'benefitPayments', onDelete: 'CASCADE' });
+BenefitPayment.belongsTo(Employee, { foreignKey: 'employeeId', as: 'employee' });
+
 export {
   sequelize,
   User,
@@ -41,6 +45,7 @@ export {
   AuditLog,
   CompanyHoliday,
   Novelty,
-  SpecialWorkday
+  SpecialWorkday,
+  BenefitPayment
 };
 

@@ -69,48 +69,71 @@ export default function LaborCostsView({ token, userRole }) {
           </div>
         </div>
 
-        {/* Dashboard Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-white rounded-2xl p-5 border border-slate-200/60 shadow-sm relative overflow-hidden group">
-            <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 group-hover:scale-110 transition-all">
-              <DollarSign className="w-16 h-16 text-rose-600" />
+        {/* Dashboard Cards: Costos Mensuales */}
+        <div>
+          <h2 className="text-sm font-extrabold text-slate-800 uppercase tracking-wider mb-4 flex items-center gap-2">
+            <Clock className="w-4 h-4 text-brand-500" /> Costos Laborales Mensuales
+          </h2>
+          <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
+            <div className="bg-white rounded-xl p-4 border border-slate-200/60 shadow-sm">
+              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Nómina Total</p>
+              <h3 className="text-lg font-black text-slate-800 mt-1">{formatCurrency(data?.dashboard.monthly.nomina || 0)}</h3>
             </div>
-            <p className="text-sm font-bold text-slate-500 uppercase tracking-wider">Pasivo Laboral Total</p>
-            <h3 className="text-3xl font-black text-slate-800 mt-2">{formatCurrency(data?.dashboard.totalPassive || 0)}</h3>
-          </div>
-          
-          <div className="bg-white rounded-2xl p-5 border border-slate-200/60 shadow-sm">
-            <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Provisiones Acumuladas</p>
-            <div className="space-y-2">
-              <div className="flex justify-between items-center text-sm">
-                <span className="text-slate-600 font-medium flex items-center gap-1"><Briefcase className="w-4 h-4 text-emerald-500" /> Prima</span>
-                <span className="font-bold text-slate-800">{formatCurrency(data?.dashboard.globalPrima || 0)}</span>
+            <div className="bg-white rounded-xl p-4 border border-slate-200/60 shadow-sm">
+              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Salud Total</p>
+              <h3 className="text-lg font-black text-slate-800 mt-1">{formatCurrency(data?.dashboard.monthly.salud || 0)}</h3>
+            </div>
+            <div className="bg-white rounded-xl p-4 border border-slate-200/60 shadow-sm">
+              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Pensión Total</p>
+              <h3 className="text-lg font-black text-slate-800 mt-1">{formatCurrency(data?.dashboard.monthly.pension || 0)}</h3>
+            </div>
+            <div className="bg-white rounded-xl p-4 border border-slate-200/60 shadow-sm">
+              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Caja Comp.</p>
+              <h3 className="text-lg font-black text-slate-800 mt-1">{formatCurrency(data?.dashboard.monthly.ccf || 0)}</h3>
+            </div>
+            <div className="bg-white rounded-xl p-4 border border-slate-200/60 shadow-sm">
+              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">ARL Total</p>
+              <h3 className="text-lg font-black text-slate-800 mt-1">{formatCurrency(data?.dashboard.monthly.arl || 0)}</h3>
+            </div>
+            <div className="bg-brand-600 rounded-xl p-4 border border-brand-500 shadow-sm shadow-brand-500/20 text-white relative overflow-hidden">
+              <div className="absolute -right-4 -bottom-4 opacity-10">
+                <DollarSign className="w-20 h-20" />
               </div>
-              <div className="flex justify-between items-center text-sm">
-                <span className="text-slate-600 font-medium flex items-center gap-1"><FileText className="w-4 h-4 text-amber-500" /> Cesantías</span>
-                <span className="font-bold text-slate-800">{formatCurrency(data?.dashboard.globalCesantias || 0)}</span>
-              </div>
+              <p className="text-[10px] font-bold text-brand-200 uppercase tracking-wider relative z-10">Costo Mensual Total</p>
+              <h3 className="text-xl font-black mt-1 relative z-10">{formatCurrency(data?.dashboard.monthly.total || 0)}</h3>
             </div>
           </div>
+        </div>
 
-          <div className="bg-white rounded-2xl p-5 border border-slate-200/60 shadow-sm">
-            <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Otras Provisiones</p>
-            <div className="space-y-2">
-              <div className="flex justify-between items-center text-sm">
-                <span className="text-slate-600 font-medium flex items-center gap-1"><TrendingUp className="w-4 h-4 text-violet-500" /> Int. Cesantías</span>
-                <span className="font-bold text-slate-800">{formatCurrency(data?.dashboard.globalIntereses || 0)}</span>
-              </div>
-              <div className="flex justify-between items-center text-sm">
-                <span className="text-slate-600 font-medium flex items-center gap-1"><Clock className="w-4 h-4 text-blue-500" /> Vacaciones</span>
-                <span className="font-bold text-slate-800">{formatCurrency(data?.dashboard.globalVacaciones || 0)}</span>
-              </div>
+        {/* Dashboard Cards: Obligaciones Acumuladas */}
+        <div className="pt-4 border-t border-slate-100">
+          <h2 className="text-sm font-extrabold text-slate-800 uppercase tracking-wider mb-4 flex items-center gap-2">
+            <Briefcase className="w-4 h-4 text-rose-500" /> Obligaciones Prestacionales Acumuladas
+          </h2>
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+            <div className="bg-white rounded-xl p-4 border border-slate-200/60 shadow-sm">
+              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Prima</p>
+              <h3 className="text-lg font-black text-slate-800 mt-1">{formatCurrency(data?.dashboard.accumulated.prima || 0)}</h3>
             </div>
-          </div>
-
-          <div className="bg-brand-600 rounded-2xl p-5 border border-brand-500 shadow-sm shadow-brand-500/20 text-white flex flex-col justify-center items-center">
-            <Users className="w-8 h-8 text-brand-200 mb-2" />
-            <h3 className="text-4xl font-black">{data?.dashboard.activeEmployeesCount}</h3>
-            <p className="text-xs font-bold text-brand-200 uppercase tracking-wider mt-1">Empleados Activos</p>
+            <div className="bg-white rounded-xl p-4 border border-slate-200/60 shadow-sm">
+              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Cesantías</p>
+              <h3 className="text-lg font-black text-slate-800 mt-1">{formatCurrency(data?.dashboard.accumulated.cesantias || 0)}</h3>
+            </div>
+            <div className="bg-white rounded-xl p-4 border border-slate-200/60 shadow-sm">
+              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Int. Cesantías</p>
+              <h3 className="text-lg font-black text-slate-800 mt-1">{formatCurrency(data?.dashboard.accumulated.intereses || 0)}</h3>
+            </div>
+            <div className="bg-white rounded-xl p-4 border border-slate-200/60 shadow-sm">
+              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Vacaciones</p>
+              <h3 className="text-lg font-black text-slate-800 mt-1">{formatCurrency(data?.dashboard.accumulated.vacaciones || 0)}</h3>
+            </div>
+            <div className="bg-rose-600 rounded-xl p-4 border border-rose-500 shadow-sm shadow-rose-500/20 text-white relative overflow-hidden">
+              <div className="absolute -right-4 -bottom-4 opacity-10">
+                <AlertCircle className="w-20 h-20" />
+              </div>
+              <p className="text-[10px] font-bold text-rose-200 uppercase tracking-wider relative z-10">Obligación Total</p>
+              <h3 className="text-xl font-black mt-1 relative z-10">{formatCurrency(data?.dashboard.accumulated.total || 0)}</h3>
+            </div>
           </div>
         </div>
 
@@ -127,11 +150,11 @@ export default function LaborCostsView({ token, userRole }) {
                 <tr className="bg-slate-50 text-[10px] uppercase tracking-wider text-slate-500 font-bold border-b border-slate-200/60">
                   <th className="px-6 py-4">Empleado</th>
                   <th className="px-6 py-4">Salario Base</th>
-                  <th className="px-6 py-4">Prima</th>
-                  <th className="px-6 py-4">Cesantías</th>
-                  <th className="px-6 py-4">Vacaciones</th>
-                  <th className="px-6 py-4">Seg. Social Mensual</th>
-                  <th className="px-6 py-4 text-right">Total Obligación</th>
+                  <th className="px-6 py-4">Prima (Días)</th>
+                  <th className="px-6 py-4">Cesantías (Días)</th>
+                  <th className="px-6 py-4">Vacaciones (Días)</th>
+                  <th className="px-6 py-4 text-center">Costo Mensual</th>
+                  <th className="px-6 py-4 text-right">Obligación Total</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-sm">
@@ -146,13 +169,25 @@ export default function LaborCostsView({ token, userRole }) {
                       <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 mt-0.5">{emp.position}</div>
                     </td>
                     <td className="px-6 py-4 font-semibold text-slate-600">{formatCurrency(emp.baseSalary)}</td>
-                    <td className="px-6 py-4 font-medium text-slate-600">{formatCurrency(emp.prima)}</td>
-                    <td className="px-6 py-4 font-medium text-slate-600">{formatCurrency(emp.cesantias)}</td>
-                    <td className="px-6 py-4 font-medium text-slate-600">{formatCurrency(emp.vacaciones)}</td>
-                    <td className="px-6 py-4 font-medium text-slate-600">{formatCurrency(emp.seguridadSocial.total)}</td>
+                    <td className="px-6 py-4 font-medium text-slate-600">
+                      <div>{formatCurrency(emp.accumulatedObligations.prima)}</div>
+                      <div className="text-[10px] text-slate-400 mt-0.5">{emp.accumulatedObligations.daysPrima} días</div>
+                    </td>
+                    <td className="px-6 py-4 font-medium text-slate-600">
+                      <div>{formatCurrency(emp.accumulatedObligations.cesantias)}</div>
+                      <div className="text-[10px] text-slate-400 mt-0.5">{emp.accumulatedObligations.daysCesantias} días</div>
+                    </td>
+                    <td className="px-6 py-4 font-medium text-slate-600">
+                      <div>{formatCurrency(emp.accumulatedObligations.vacaciones)}</div>
+                      <div className="text-[10px] text-slate-400 mt-0.5">
+                        {Math.floor(emp.accumulatedObligations.vacationDays)}
+                        {emp.accumulatedObligations.vacationDays % 1 !== 0 && ` +${(emp.accumulatedObligations.vacationDays % 1).toFixed(2)}`} días
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 font-bold text-slate-700 text-center">{formatCurrency(emp.monthlyCosts.total)}</td>
                     <td className="px-6 py-4 text-right">
                       <span className="inline-flex items-center gap-1 font-bold text-rose-600 bg-rose-50 px-2.5 py-1 rounded-lg">
-                        {formatCurrency(emp.totalAcumulado)}
+                        {formatCurrency(emp.accumulatedObligations.total)}
                         <ChevronRight className="w-4 h-4 opacity-50" />
                       </span>
                     </td>
@@ -201,7 +236,7 @@ export default function LaborCostsView({ token, userRole }) {
                   <div>
                     <h4 className="text-sm font-extrabold text-slate-800 uppercase tracking-wider">Obligación Estimada</h4>
                     <p className="text-xs text-slate-600 font-medium mt-1 leading-relaxed max-w-md">Si este empleado finalizara su relación laboral hoy, la empresa tendría aproximadamente la siguiente obligación acumulada a cancelar:</p>
-                    <div className="text-3xl font-black text-rose-600 mt-2">{formatCurrency(selectedEmployee.totalAcumulado)}</div>
+                    <div className="text-3xl font-black text-rose-600 mt-2">{formatCurrency(selectedEmployee.accumulatedObligations.total)}</div>
                   </div>
                 </div>
               </div>
@@ -213,19 +248,15 @@ export default function LaborCostsView({ token, userRole }) {
                   <div className="space-y-3">
                     <div className="flex justify-between">
                       <span className="text-sm font-medium text-slate-500">Salario Base</span>
-                      <span className="text-sm font-bold text-slate-800">{formatCurrency(selectedEmployee.baseSalary)}</span>
+                      <span className="text-sm font-bold text-slate-800">{formatCurrency(selectedEmployee.monthlyCosts.salary)}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-sm font-medium text-slate-500">Auxilio Transporte</span>
-                      <span className="text-sm font-bold text-slate-800">{formatCurrency(selectedEmployee.transportAllowance)}</span>
+                      <span className="text-sm font-bold text-slate-800">{formatCurrency(selectedEmployee.monthlyCosts.transport)}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-sm font-medium text-slate-500">Nivel ARL</span>
                       <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded uppercase tracking-wider">{selectedEmployee.arlRiskLevel}</span>
-                    </div>
-                    <div className="flex justify-between pt-2 border-t border-slate-100">
-                      <span className="text-sm font-medium text-slate-500">Días Trabajados</span>
-                      <span className="text-sm font-bold text-slate-800">{selectedEmployee.daysWorked}</span>
                     </div>
                   </div>
                 </div>
@@ -235,20 +266,20 @@ export default function LaborCostsView({ token, userRole }) {
                   <h4 className="text-xs font-extrabold text-slate-400 uppercase tracking-widest mb-3 border-b border-slate-100 pb-2">Prestaciones Acumuladas</h4>
                   <div className="space-y-3">
                     <div className="flex justify-between">
-                      <span className="text-sm font-medium text-slate-500">Prima</span>
-                      <span className="text-sm font-bold text-slate-800">{formatCurrency(selectedEmployee.prima)}</span>
+                      <span className="text-sm font-medium text-slate-500">Prima ({selectedEmployee.accumulatedObligations.daysPrima} días)</span>
+                      <span className="text-sm font-bold text-slate-800">{formatCurrency(selectedEmployee.accumulatedObligations.prima)}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-sm font-medium text-slate-500">Cesantías</span>
-                      <span className="text-sm font-bold text-slate-800">{formatCurrency(selectedEmployee.cesantias)}</span>
+                      <span className="text-sm font-medium text-slate-500">Cesantías ({selectedEmployee.accumulatedObligations.daysCesantias} días)</span>
+                      <span className="text-sm font-bold text-slate-800">{formatCurrency(selectedEmployee.accumulatedObligations.cesantias)}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-sm font-medium text-slate-500">Intereses Cesantías</span>
-                      <span className="text-sm font-bold text-slate-800">{formatCurrency(selectedEmployee.intereses)}</span>
+                      <span className="text-sm font-bold text-slate-800">{formatCurrency(selectedEmployee.accumulatedObligations.intereses)}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-sm font-medium text-slate-500">Vacaciones</span>
-                      <span className="text-sm font-bold text-slate-800">{formatCurrency(selectedEmployee.vacaciones)}</span>
+                      <span className="text-sm font-medium text-slate-500">Vacaciones ({selectedEmployee.accumulatedObligations.vacationDays.toFixed(1)} días)</span>
+                      <span className="text-sm font-bold text-slate-800">{formatCurrency(selectedEmployee.accumulatedObligations.vacaciones)}</span>
                     </div>
                   </div>
                 </div>
@@ -260,19 +291,19 @@ export default function LaborCostsView({ token, userRole }) {
                 <div className="grid grid-cols-4 gap-4">
                   <div className="bg-slate-50 rounded-xl p-3 border border-slate-100">
                     <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Salud Empresa</div>
-                    <div className="text-sm font-bold text-slate-800 mt-1">{formatCurrency(selectedEmployee.seguridadSocial.salud)}</div>
+                    <div className="text-sm font-bold text-slate-800 mt-1">{formatCurrency(selectedEmployee.monthlyCosts.salud)}</div>
                   </div>
                   <div className="bg-slate-50 rounded-xl p-3 border border-slate-100">
                     <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Pensión Empresa</div>
-                    <div className="text-sm font-bold text-slate-800 mt-1">{formatCurrency(selectedEmployee.seguridadSocial.pension)}</div>
+                    <div className="text-sm font-bold text-slate-800 mt-1">{formatCurrency(selectedEmployee.monthlyCosts.pension)}</div>
                   </div>
                   <div className="bg-slate-50 rounded-xl p-3 border border-slate-100">
                     <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Caja Comp.</div>
-                    <div className="text-sm font-bold text-slate-800 mt-1">{formatCurrency(selectedEmployee.seguridadSocial.ccf)}</div>
+                    <div className="text-sm font-bold text-slate-800 mt-1">{formatCurrency(selectedEmployee.monthlyCosts.ccf)}</div>
                   </div>
                   <div className="bg-slate-50 rounded-xl p-3 border border-slate-100">
                     <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">ARL ({selectedEmployee.arlRiskLevel})</div>
-                    <div className="text-sm font-bold text-slate-800 mt-1">{formatCurrency(selectedEmployee.seguridadSocial.arl)}</div>
+                    <div className="text-sm font-bold text-slate-800 mt-1">{formatCurrency(selectedEmployee.monthlyCosts.arl)}</div>
                   </div>
                 </div>
               </div>

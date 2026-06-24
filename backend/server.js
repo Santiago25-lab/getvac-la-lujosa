@@ -63,6 +63,8 @@ import specialWorkdayRoutes from './routes/specialWorkdayRoutes.js';
 import { startVacationCronJob } from './jobs/vacationUpdater.js';
 import noveltyRoutes from './routes/noveltyRoutes.js';
 import laborCostRoutes from './routes/laborCostRoutes.js';
+import benefitPaymentRoutes from './routes/benefitPaymentRoutes.js';
+
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -150,6 +152,7 @@ app.put('/api/absences/:id', authenticateToken, updateAbsence);
 // Novedades Laborales (RRHH - Protegida)
 app.use('/api/novelties', noveltyRoutes);
 app.use('/api/labor-costs', laborCostRoutes);
+app.use('/api/benefit-payments', benefitPaymentRoutes);
 
 // Dashboard
 app.get('/api/dashboard/stats', authenticateToken, getDashboardStats);

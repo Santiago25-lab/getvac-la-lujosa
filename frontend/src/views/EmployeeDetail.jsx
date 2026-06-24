@@ -9,8 +9,19 @@ export default function EmployeeDetail({ token, employeeId, onViewChange, userRo
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   
-  // Pestaña activa: 'vacaciones' | 'asistencia' | 'permisos' | 'novedades'
+  // Pestaña activa: 'vacaciones' | 'asistencia' | 'permisos' | 'novedades' | 'prestaciones'
   const [activeTab, setActiveTab] = useState('vacaciones');
+
+  // Estados para Prestaciones
+  const [benefitPayments, setBenefitPayments] = useState([]);
+  const [paymentType, setPaymentType] = useState('Prima');
+  const [paymentAmount, setPaymentAmount] = useState('');
+  const [paymentPeriodStart, setPaymentPeriodStart] = useState('');
+  const [paymentPeriodEnd, setPaymentPeriodEnd] = useState('');
+  const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split('T')[0]);
+  const [paymentNotes, setPaymentNotes] = useState('');
+  const [paymentLoading, setPaymentLoading] = useState(false);
+  const [paymentError, setPaymentError] = useState('');
 
   // Estados para Registro de Vacaciones
   const [startDate, setStartDate] = useState('');
@@ -133,13 +144,69 @@ export default function EmployeeDetail({ token, employeeId, onViewChange, userRo
     }
   };
 
+  const fetchBenefitPayments = async () => {
+    try {
+      const response = await fetch(`${API_URL}/api/benefit-payments/employee/${employeeId}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setBenefitPayments(data);
+      }
+    } catch (err) {
+      console.error('Error fetching benefit payments:', err);
+    }
+  };
+
   useEffect(() => {
     fetchEmployeeData();
     fetchDepartments();
     fetchSettings();
     fetchCompanyHolidays();
     fetchSpecialWorkdays();
+    fetchBenefitPayments();
   }, [employeeId, token]);
+
+  const handleRegisterPayment = async (e) => {
+    e.preventDefault();
+    if (!paymentAmount || !paymentPeriodEnd || !paymentDate) {
+      setPaymentError('Por favor completa todos los campos obligatorios.');
+      return;
+    }
+    setPaymentLoading(true);
+    setPaymentError('');
+    try {
+      const response = await fetch(`${API_URL}/api/benefit-payments/employee/${employeeId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          type: paymentType,
+          amount: parseFloat(paymentAmount),
+          paymentDate,
+          periodStart: paymentPeriodStart || null,
+          periodEnd: paymentPeriodEnd,
+          notes: paymentNotes
+        })
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message || 'Error al registrar el pago.');
+      
+      setPaymentAmount('');
+      setPaymentPeriodStart('');
+      setPaymentPeriodEnd('');
+      setPaymentNotes('');
+      fetchBenefitPayments();
+      // Refrescar el dashboard y empleado si es necesario
+      fetchEmployeeData();
+    } catch (err) {
+      setPaymentError(err.message);
+    } finally {
+      setPaymentLoading(false);
+    }
+  };
 
   const fetchMonthlyReport = async (year, month) => {
     setReportLoading(true);
@@ -943,6 +1010,17 @@ export default function EmployeeDetail({ token, employeeId, onViewChange, userRo
               <AlertOctagon className="w-4 h-4" />
               <span>Novedades</span>
             </button>
+            <button
+              onClick={() => setActiveTab('prestaciones')}
+              className={`flex-1 py-3 text-xs font-bold uppercase tracking-wider rounded-2xl transition duration-150 flex items-center justify-center gap-2 ${
+                activeTab === 'prestaciones'
+                  ? 'bg-rose-500 text-white shadow-md shadow-rose-500/10'
+                  : 'text-slate-450 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-800 dark:hover:text-slate-200'
+              }`}
+            >
+              <FileText className="w-4 h-4" />
+              <span>Prestaciones</span>
+            </button>
           </div>
 
           {/* Contenido de la pestaña: VACACIONES */}
@@ -1387,6 +1465,95 @@ export default function EmployeeDetail({ token, employeeId, onViewChange, userRo
           )}
 
         </div>
+
+          {/* Contenido de la pestaña: PRESTACIONES */}
+          {activeTab === 'prestaciones' && (
+            <div className="bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/40 rounded-3xl p-6 shadow-sm space-y-5 animate-fade-in">
+              <div className="flex items-center gap-2.5 border-b border-slate-100 dark:border-slate-800/40 pb-4">
+                <div className="p-1.5 rounded-lg bg-rose-500/10 text-rose-500">
+                  <Briefcase className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-850 dark:text-white">Historial de Prestaciones (Pagos y Liquidaciones)</h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 font-semibold mt-0.5">
+                    Registra los pagos de Prima, Cesantías e Intereses para descontarlos del acumulado empresarial. 
+                    El sistema comenzará a acumular de nuevo a partir de la fecha de corte que indiques.
+                  </p>
+                </div>
+              </div>
+
+              {paymentError && (
+                <div className="p-3 bg-rose-500/10 border border-rose-500/20 text-rose-500 rounded-2xl text-xs font-semibold">
+                  {paymentError}
+                </div>
+              )}
+
+              {/* Formulario para nuevo registro */}
+              <form onSubmit={handleRegisterPayment} className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 bg-slate-50/50 dark:bg-slate-950/20 rounded-2xl border border-slate-100 dark:border-slate-800/50">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-450 uppercase tracking-widest pl-1">Tipo de Prestación</label>
+                  <select value={paymentType} onChange={(e) => setPaymentType(e.target.value)} className="w-full bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 rounded-xl py-2 px-3 text-xs outline-none focus:border-brand-500 font-bold">
+                    <option value="Prima">Prima de Servicios</option>
+                    <option value="Cesantías">Cesantías (Consignación)</option>
+                    <option value="Intereses de Cesantías">Intereses de Cesantías</option>
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-450 uppercase tracking-widest pl-1">Valor Pagado</label>
+                  <input type="number" min="0" step="0.01" value={paymentAmount} onChange={(e) => setPaymentAmount(e.target.value)} placeholder="Ej: 1500000" className="w-full bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 rounded-xl py-2 px-3 text-xs outline-none focus:border-brand-500 font-bold" />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-450 uppercase tracking-widest pl-1">Fecha del Pago</label>
+                  <input type="date" value={paymentDate} onChange={(e) => setPaymentDate(e.target.value)} className="w-full bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 rounded-xl py-2 px-3 text-xs outline-none focus:border-brand-500 font-bold" />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-450 uppercase tracking-widest pl-1">Corte Liquidación (Hasta)</label>
+                  <input type="date" value={paymentPeriodEnd} onChange={(e) => setPaymentPeriodEnd(e.target.value)} className="w-full bg-white dark:bg-slate-900 border border-brand-200/60 dark:border-slate-800 rounded-xl py-2 px-3 text-xs outline-none focus:border-brand-500 font-bold" title="A partir de esta fecha, el sistema volverá a acumular la provisión desde cero." />
+                </div>
+                <div className="md:col-span-3 space-y-1">
+                  <label className="text-[10px] font-bold text-slate-450 uppercase tracking-widest pl-1">Observaciones</label>
+                  <input type="text" value={paymentNotes} onChange={(e) => setPaymentNotes(e.target.value)} placeholder="Ej: Consignación a Fondo Porvenir" className="w-full bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 rounded-xl py-2 px-3 text-xs outline-none focus:border-brand-500 font-medium" />
+                </div>
+                <div className="md:col-span-1 flex items-end">
+                  <button type="submit" disabled={paymentLoading} className="w-full bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs py-2.5 rounded-xl shadow-sm transition disabled:opacity-50">
+                    {paymentLoading ? 'Guardando...' : 'Registrar Pago'}
+                  </button>
+                </div>
+              </form>
+
+              {/* Historial (Tabla) */}
+              {benefitPayments.length === 0 ? (
+                <div className="py-8 text-center text-xs font-medium text-slate-400">No hay pagos prestacionales registrados.</div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead>
+                      <tr className="text-slate-400 font-black border-b border-slate-100 dark:border-slate-800/40 uppercase tracking-widest text-[9px] pb-3">
+                        <th className="pb-3">Tipo</th>
+                        <th className="pb-3">Fecha Pago</th>
+                        <th className="pb-3">Corte (Período)</th>
+                        <th className="pb-3">Valor Pagado</th>
+                        <th className="pb-3">Observaciones</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-850 font-medium text-slate-700 dark:text-slate-250">
+                      {benefitPayments.map(bp => (
+                        <tr key={bp.id} className="hover:bg-slate-50/50 transition">
+                          <td className="py-3.5 font-bold text-slate-850 dark:text-white">{bp.type}</td>
+                          <td className="py-3.5">{bp.paymentDate}</td>
+                          <td className="py-3.5 text-brand-600 font-semibold">Hasta {bp.periodEnd}</td>
+                          <td className="py-3.5 font-bold text-emerald-600">
+                            {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(bp.amount)}
+                          </td>
+                          <td className="py-3.5 italic text-slate-500 max-w-[200px] truncate" title={bp.notes}>{bp.notes || 'Ninguna'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
 
       </div>
 

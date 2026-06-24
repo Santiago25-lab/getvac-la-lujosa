@@ -276,3 +276,220 @@ NO genera desprendibles.
 NO realiza liquidaciones finales.
 
 Su función es mostrar en tiempo real el costo laboral y las obligaciones acumuladas de cada trabajador y de toda la empresa.
+
+
+Ajustes y mejoras del módulo de Costos Laborales, Prestaciones y Acumulados
+
+Implementar los siguientes cambios respetando toda la lógica existente del sistema. No eliminar funcionalidades actuales.
+
+1. Separar claramente dos conceptos
+
+Actualmente existe un módulo de Costos Laborales.
+
+Debe diferenciarse claramente entre:
+
+Costos Laborales Mensuales
+
+Corresponde al costo real mensual que representa un empleado para la empresa.
+
+Debe incluir:
+
+Salario base.
+Auxilio de transporte (si aplica).
+Salud empresa.
+Pensión empresa.
+Caja de compensación.
+ARL según nivel de riesgo.
+Total costo mensual empresa.
+
+Pregunta que responde:
+
+¿Cuánto le cuesta este empleado a la empresa cada mes?
+
+Obligaciones Prestacionales Acumuladas
+
+Corresponde al dinero que la empresa tendría pendiente con el trabajador si hoy terminara la relación laboral.
+
+Debe incluir:
+
+Prima acumulada.
+Cesantías acumuladas.
+Intereses de cesantías acumulados.
+Vacaciones acumuladas.
+Total obligación acumulada.
+
+Pregunta que responde:
+
+Si este empleado sale hoy de la empresa, ¿cuánto tendría que pagarle la empresa?
+
+2. Crear Historial de Movimientos Prestacionales
+
+Crear una nueva sección denominada:
+
+Movimientos Prestacionales
+
+Esta sección permitirá registrar eventos que afectan los acumulados.
+
+Tipos de movimiento:
+
+Pago de Prima.
+Consignación de Cesantías.
+Pago de Intereses de Cesantías.
+Disfrute de Vacaciones.
+Compensación de Vacaciones (si aplica).
+
+Cada registro debe almacenar:
+
+Fecha.
+Empleado.
+Tipo de movimiento.
+Valor.
+Observación.
+Usuario que realizó el registro.
+Soporte o comprobante (opcional).
+3. No eliminar acumulados históricos
+
+Regla obligatoria:
+
+Nunca borrar información histórica.
+
+Cuando se registre un pago:
+
+Prima
+El acumulado pendiente pasa a cero.
+Se registra el pago en historial.
+Comienza un nuevo período de acumulación.
+Cesantías
+El acumulado pendiente pasa a cero.
+Se registra la consignación.
+Comienza un nuevo período de acumulación.
+Intereses de Cesantías
+El acumulado pendiente pasa a cero.
+Se registra el pago.
+Comienza un nuevo período.
+Vacaciones
+Se descuentan únicamente los días disfrutados.
+Se conserva historial completo.
+El sistema sigue acumulando desde la última fecha efectiva de disfrute.
+4. Historial completo en ficha del empleado
+
+Agregar una pestaña nueva en la ficha del empleado llamada:
+
+Historial Prestacional
+
+Mostrar:
+
+Vacaciones
+Días acumulados históricamente.
+Días tomados.
+Días disponibles.
+Fechas de disfrute.
+Prima
+Historial de pagos.
+Fechas.
+Valores.
+Cesantías
+Historial de consignaciones.
+Fechas.
+Valores.
+Intereses de Cesantías
+Historial de pagos.
+Fechas.
+Valores.
+5. Recalcular automáticamente ante cambios salariales
+
+Toda la lógica debe depender de los valores configurados actualmente en el sistema.
+
+Si el salario cambia:
+
+Recalcular automáticamente:
+
+Prima.
+Cesantías.
+Intereses.
+Vacaciones.
+Salud empresa.
+Pensión empresa.
+Caja de compensación.
+ARL.
+Costos laborales.
+Obligaciones acumuladas.
+
+No deben existir valores quemados en código.
+
+6. Dependencia total del Panel Super
+
+Toda la lógica debe obedecer los parámetros configurados en Panel Super.
+
+Especialmente:
+
+Cargas prestacionales
+Salud.
+Pensión.
+Caja de compensación.
+ARL por riesgo
+Riesgo I.
+Riesgo II.
+Riesgo III.
+Riesgo IV.
+Riesgo V.
+
+Si Recursos Humanos modifica un porcentaje:
+
+Todos los cálculos futuros deben actualizarse automáticamente.
+
+7. Mejorar visualización de acumulados
+
+Actualmente se muestran valores con muchos decimales.
+
+Mejorar presentación:
+
+Ejemplo actual:
+
+37.67 días
+15.46 días
+
+Mostrar:
+
+37 días (acumulado)
++0.67 en pequeño debajo
+15 días (acumulado)
++0.46 en pequeño debajo
+
+Mantener precisión interna completa para cálculos.
+
+Solo mejorar visualización.
+
+8. Dashboard Ejecutivo
+
+Agregar tarjetas resumen:
+
+Costos Mensuales
+Nómina total.
+Salud total.
+Pensión total.
+Caja compensación total.
+ARL total.
+Costo laboral mensual total.
+Obligaciones Acumuladas
+Prima acumulada total.
+Cesantías acumuladas totales.
+Intereses acumulados totales.
+Vacaciones acumuladas totales.
+Obligación laboral total empresa.
+9. Compatibilidad
+
+Mantener compatibilidad absoluta con:
+
+Vacaciones.
+Historial de vacaciones.
+Acumulación de días.
+Alertas.
+Panel Super.
+Jornadas especiales.
+Festivos.
+Días hábiles configurables.
+
+No romper ninguna funcionalidad existente.
+
+Importante

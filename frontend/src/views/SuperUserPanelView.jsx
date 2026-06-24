@@ -542,6 +542,20 @@ export default function SuperUserPanelView({ token, userRole }) {
             </div>
 
             <div className="space-y-1">
+              <label className="text-xs font-bold text-slate-500 uppercase">SMMLV (Año en Curso)</label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold">$</span>
+                <input
+                  type="number"
+                  value={settings.smmlv || ''}
+                  onChange={(e) => setSettings({ ...settings, smmlv: parseInt(e.target.value) || 0 })}
+                  className="w-full bg-white border border-slate-200 rounded-xl py-2 pl-7 px-3 text-sm font-bold text-slate-800 outline-none focus:border-brand-500 transition"
+                  placeholder="1300000"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1">
               <label className="text-xs font-bold text-slate-500 uppercase">Días para acumular 1 día de vacación</label>
               <input
                 type="number"

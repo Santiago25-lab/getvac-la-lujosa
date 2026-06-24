@@ -11,6 +11,7 @@ export const getSettings = async (req, res) => {
         checkOutTime: '17:00',
         toleranceMinutes: 10,
         workDays: '1,2,3,4,5',
+        smmlv: 1300000,
         updatedBy: 'Sistema (Inicial)'
       });
     }
@@ -28,7 +29,8 @@ export const updateSettings = async (req, res) => {
     vacationsSaturdaysCount, vacationsSundaysCount, isSplitShift,
     checkInTimeMorning, checkOutTimeMorning, checkInTimeAfternoon, checkOutTimeAfternoon,
     healthCompanyPercentage, pensionCompanyPercentage, compensationFundPercentage,
-    arlRisk1Percentage, arlRisk2Percentage, arlRisk3Percentage, arlRisk4Percentage, arlRisk5Percentage
+    arlRisk1Percentage, arlRisk2Percentage, arlRisk3Percentage, arlRisk4Percentage, arlRisk5Percentage,
+    smmlv
   } = req.body;
 
   try {
@@ -52,6 +54,7 @@ export const updateSettings = async (req, res) => {
         arlRisk3Percentage: arlRisk3Percentage !== undefined ? parseFloat(arlRisk3Percentage) : 2.436,
         arlRisk4Percentage: arlRisk4Percentage !== undefined ? parseFloat(arlRisk4Percentage) : 4.350,
         arlRisk5Percentage: arlRisk5Percentage !== undefined ? parseFloat(arlRisk5Percentage) : 6.960,
+        smmlv: smmlv !== undefined ? parseInt(smmlv) : 1300000,
         updatedBy: req.user.fullName
       });
     } else {
@@ -82,6 +85,7 @@ export const updateSettings = async (req, res) => {
       if (arlRisk3Percentage !== undefined) setting.arlRisk3Percentage = parseFloat(arlRisk3Percentage);
       if (arlRisk4Percentage !== undefined) setting.arlRisk4Percentage = parseFloat(arlRisk4Percentage);
       if (arlRisk5Percentage !== undefined) setting.arlRisk5Percentage = parseFloat(arlRisk5Percentage);
+      if (smmlv !== undefined) setting.smmlv = parseInt(smmlv);
       
       setting.updatedBy = req.user.fullName;
       await setting.save();

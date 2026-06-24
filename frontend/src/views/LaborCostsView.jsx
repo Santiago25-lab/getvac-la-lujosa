@@ -152,6 +152,7 @@ export default function LaborCostsView({ token, userRole }) {
                   <th className="px-6 py-4">Salario Base</th>
                   <th className="px-6 py-4">Prima (Días)</th>
                   <th className="px-6 py-4">Cesantías (Días)</th>
+                  <th className="px-6 py-4">Intereses</th>
                   <th className="px-6 py-4">Vacaciones (Días)</th>
                   <th className="px-6 py-4 text-center">Costo Mensual</th>
                   <th className="px-6 py-4 text-right">Obligación Total</th>
@@ -176,6 +177,10 @@ export default function LaborCostsView({ token, userRole }) {
                     <td className="px-6 py-4 font-medium text-slate-600">
                       <div>{formatCurrency(emp.accumulatedObligations.cesantias)}</div>
                       <div className="text-[10px] text-slate-400 mt-0.5">{emp.accumulatedObligations.daysCesantias} días</div>
+                    </td>
+                    <td className="px-6 py-4 font-medium text-slate-600">
+                      <div>{formatCurrency(emp.accumulatedObligations.intereses)}</div>
+                      <div className="text-[10px] text-slate-400 mt-0.5">{emp.accumulatedObligations.daysIntereses} días</div>
                     </td>
                     <td className="px-6 py-4 font-medium text-slate-600">
                       <div>{formatCurrency(emp.accumulatedObligations.vacaciones)}</div>

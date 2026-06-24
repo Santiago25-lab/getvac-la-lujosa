@@ -113,7 +113,13 @@ export const getLaborCostsDashboard = async (req, res) => {
       const daysCesantias = getCommercialDays(getLastDateInfo('Cesantías'));
       const daysIntereses = getCommercialDays(getLastDateInfo('Intereses de Cesantías'));
 
-      const baseSalaryForBenefits = salary + transport; // Prima y cesantías incluyen auxilio de transporte
+      // Ley colombiana: el auxilio de transporte se incluye en la base liquidadora 
+      // de prima y cesantías SOLO si el salario base es igual o inferior a 2 SMMLV.
+      const smmlv = settings.smmlv || 1300000;
+      let baseSalaryForBenefits = salary;
+      if (salary <= smmlv * 2) {
+        baseSalaryForBenefits += transport;
+      }
 
       const prima = Math.round((baseSalaryForBenefits * daysPrima) / 360);
       const cesantias = Math.round((baseSalaryForBenefits * daysCesantias) / 360);

@@ -12,6 +12,11 @@ const Setting = sequelize.define('Setting', {
     defaultValue: 24.333333333333332,
     allowNull: false,
   },
+  smmlv: {
+    type: DataTypes.INTEGER,
+    defaultValue: 1300000,
+    allowNull: false,
+  },
   checkInTime: {
     type: DataTypes.STRING,
     defaultValue: '08:00',

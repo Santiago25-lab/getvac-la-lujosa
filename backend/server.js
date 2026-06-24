@@ -197,6 +197,7 @@ const seedDatabase = async () => {
         checkOutTime: '17:00',
         toleranceMinutes: 10,
         workDays: '1,2,3,4,5',
+        smmlv: 1300000,
         updatedBy: 'Sistema (Sembrado)'
       });
       console.log('Configuración por defecto creada.');

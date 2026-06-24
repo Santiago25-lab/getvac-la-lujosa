@@ -1,6 +1,7 @@
 import Novelty from '../models/Novelty.js';
 import Employee from '../models/Employee.js';
 import AuditLog from '../models/AuditLog.js';
+import Attendance from '../models/Attendance.js';
 import { Op } from 'sequelize';
 
 export const createNovelty = async (req, res) => {
@@ -66,7 +67,38 @@ export const createNovelty = async (req, res) => {
       });
     }
 
-    // TODO: Aquí podríamos despachar un evento o llamar a una función para recalcular asistencias (Fase 2 extendida)
+    // Fase 2: Recalcular Asistencias Retroactivamente
+    // Buscar si hay inasistencias en este rango de fechas y justificarlas
+    const attendancesToUpdate = await Attendance.findAll({
+      where: {
+        employeeId,
+        date: {
+          [Op.between]: [startDate, endDate]
+        },
+        status: {
+          [Op.in]: ['Ausente', 'Presente', 'Tarde']
+        }
+      }
+    });
+
+    for (const att of attendancesToUpdate) {
+      const oldStatus = att.status;
+      att.status = 'Ausencia Justificada';
+      att.notes = `Justificada por Novedad #${newNovelty.id} (${type}): ${observationsText}`.trim();
+      await att.save();
+
+      // Dejar rastro en auditoría de este cambio retroactivo
+      if (req.user) {
+        await AuditLog.create({
+          userId: req.user.id,
+          username: req.user.username,
+          action: 'Actualizar',
+          target: 'Asistencia',
+          targetId: att.id.toString(),
+          details: `Asistencia del ${att.date} pasó de ${oldStatus} a Ausencia Justificada debido a la Novedad #${newNovelty.id}`
+        });
+      }
+    }
 
     res.status(201).json({ message: 'Novedad creada exitosamente', novelty: newNovelty });
   } catch (error) {

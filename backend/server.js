@@ -536,6 +536,18 @@ sequelize.sync()
           await qi.addColumn('Settings', 'arlRisk5Percentage', { type: sequelize.Sequelize.DECIMAL(5, 3), defaultValue: 6.960 });
           console.log('✅ Migration: columnas financieras añadidas a Settings.');
         }
+        if (!setCols.smmlv) {
+          await qi.addColumn('Settings', 'smmlv', { type: sequelize.Sequelize.INTEGER, defaultValue: 1300000 });
+          console.log('✅ Migration: columna smmlv añadida a Settings.');
+        }
+      }
+
+      const userCols = await qi.describeTable('Users').catch(() => null);
+      if (userCols) {
+        if (!userCols.email) {
+          await qi.addColumn('Users', 'email', { type: sequelize.Sequelize.STRING, allowNull: true });
+          console.log('✅ Migration: columna email añadida a Users.');
+        }
       }
 
     } catch (migErr) {

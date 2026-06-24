@@ -166,14 +166,14 @@ export const createEmployee = async (req, res) => {
       phone: phone || null,
       profilePicture: profilePicture || null,
       contractType: contractType || null,
-      baseSalary: baseSalary || 0,
-      transportAllowance: transportAllowance || 0,
+      baseSalary: baseSalary === '' || baseSalary === undefined ? 0 : Number(baseSalary),
+      transportAllowance: transportAllowance === '' || transportAllowance === undefined ? 0 : Number(transportAllowance),
       arlRiskLevel: arlRiskLevel || 'Riesgo I',
       appliesVacationCalculation: appliesVacationCalculation !== undefined ? appliesVacationCalculation : true,
       isLegacy: isLegacy || false,
       lastVacationCutoffDate: lastVacationCutoffDate || null,
       lastVacationEnjoyedDate: lastVacationEnjoyedDate || null,
-      initialPendingVacationBalance: initialPendingVacationBalance || null
+      initialPendingVacationBalance: initialPendingVacationBalance === '' || initialPendingVacationBalance === undefined ? null : Number(initialPendingVacationBalance)
     });
 
     res.status(201).json({
@@ -235,14 +235,14 @@ export const updateEmployee = async (req, res) => {
     if (phone !== undefined) employee.phone = phone;
     if (profilePicture !== undefined) employee.profilePicture = profilePicture;
     if (contractType !== undefined) employee.contractType = contractType;
-    if (baseSalary !== undefined) employee.baseSalary = baseSalary;
-    if (transportAllowance !== undefined) employee.transportAllowance = transportAllowance;
+    if (baseSalary !== undefined) employee.baseSalary = baseSalary === '' ? null : Number(baseSalary);
+    if (transportAllowance !== undefined) employee.transportAllowance = transportAllowance === '' ? null : Number(transportAllowance);
     if (arlRiskLevel !== undefined) employee.arlRiskLevel = arlRiskLevel;
     if (appliesVacationCalculation !== undefined) employee.appliesVacationCalculation = appliesVacationCalculation;
     if (isLegacy !== undefined) employee.isLegacy = isLegacy;
-    if (lastVacationCutoffDate !== undefined) employee.lastVacationCutoffDate = lastVacationCutoffDate;
-    if (lastVacationEnjoyedDate !== undefined) employee.lastVacationEnjoyedDate = lastVacationEnjoyedDate;
-    if (initialPendingVacationBalance !== undefined) employee.initialPendingVacationBalance = initialPendingVacationBalance;
+    if (lastVacationCutoffDate !== undefined) employee.lastVacationCutoffDate = lastVacationCutoffDate || null;
+    if (lastVacationEnjoyedDate !== undefined) employee.lastVacationEnjoyedDate = lastVacationEnjoyedDate || null;
+    if (initialPendingVacationBalance !== undefined) employee.initialPendingVacationBalance = initialPendingVacationBalance === '' ? null : Number(initialPendingVacationBalance);
 
     await employee.save();
 

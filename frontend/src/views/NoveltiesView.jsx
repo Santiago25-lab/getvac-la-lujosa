@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { FileText, Search, Plus, Calendar, Filter, FileUp, X, CheckCircle2, Clock, Eye, Trash2, Download } from 'lucide-react';
 import { API_URL } from '../config.js';
+import { calculateReturnDate } from '../utils/dateUtils.js';
 
 export default function NoveltiesView({ token, userRole }) {
   const [novelties, setNovelties] = useState([]);
@@ -25,9 +26,16 @@ export default function NoveltiesView({ token, userRole }) {
     coverage: 'Jornada Completa',
     reason: '',
     notes: '',
-    status: 'Activa'
+    status: 'Activa',
+    diasATomar: '',
+    tipoDisfrute: 'Físico'
   });
   const [attachments, setAttachments] = useState([]);
+  
+  // Settings y Calendario para Vacaciones
+  const [settings, setSettings] = useState(null);
+  const [companyHolidays, setCompanyHolidays] = useState([]);
+  const [specialWorkdays, setSpecialWorkdays] = useState([]);
 
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
@@ -56,9 +64,23 @@ export default function NoveltiesView({ token, userRole }) {
         const empData = await empRes.json();
         setEmployees(empData.filter(e => e.status === 'activo'));
       }
+
+      // Cargar dependencias de calendario
+      const settingsRes = await fetch(`${API_URL}/api/settings`, { headers: { 'Authorization': `Bearer ${token}` } });
+      if (settingsRes.ok) setSettings(await settingsRes.json());
+
+      const holidaysRes = await fetch(`${API_URL}/api/company-holidays`, { headers: { 'Authorization': `Bearer ${token}` } });
+      if (holidaysRes.ok) {
+        const data = await holidaysRes.json();
+        setCompanyHolidays(data.map(h => h.date));
+      }
+
+      const specialRes = await fetch(`${API_URL}/api/special-workdays`, { headers: { 'Authorization': `Bearer ${token}` } });
+      if (specialRes.ok) setSpecialWorkdays(await specialRes.json());
+
     } catch (error) {
       console.error('Error al cargar novedades:', error);
-      setErrorMsg('No se pudieron obtener las novedades del servidor.');
+      setErrorMsg('No se pudieron obtener los datos del servidor.');
     } finally {
       setLoading(false);
     }
@@ -70,7 +92,30 @@ export default function NoveltiesView({ token, userRole }) {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData(prev => {
+      const next = { ...prev, [name]: value };
+      // Autocalcular Fecha de Regreso para Vacaciones Físicas
+      if (next.type === 'Vacaciones' && next.startDate && next.diasATomar) {
+        if (next.tipoDisfrute === 'Físico') {
+          const s = settings || {};
+          const returnDate = calculateReturnDate(
+            next.startDate, 
+            parseInt(next.diasATomar, 10), 
+            s.workDays || '1,2,3,4,5', 
+            companyHolidays, 
+            s.vacationsSaturdaysCount || false, 
+            s.vacationsSundaysCount || false, 
+            s.halfWorkDays || '', 
+            specialWorkdays
+          );
+          next.endDate = returnDate;
+        } else {
+          // Compensado: no hay fecha real de regreso
+          next.endDate = next.startDate; 
+        }
+      }
+      return next;
+    });
   };
 
   const handleFileChange = (e) => {
@@ -168,7 +213,7 @@ export default function NoveltiesView({ token, userRole }) {
 
   const noveltyTypes = [
     'Incapacidad', 'Licencia Maternidad', 'Licencia Paternidad', 
-    'Licencia Luto', 'Permiso', 'Suspensión', 'Abandono de Cargo', 'Otro'
+    'Licencia Luto', 'Permiso', 'Suspensión', 'Abandono de Cargo', 'Vacaciones', 'Otro'
   ];
 
   const getStatusColor = (status) => {
@@ -344,25 +389,56 @@ export default function NoveltiesView({ token, userRole }) {
                   </select>
                 </div>
                 
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-500 uppercase">Cobertura</label>
-                  <select
-                    name="coverage"
-                    value={formData.coverage}
-                    onChange={handleInputChange}
-                    className="w-full bg-white border border-slate-200 rounded-2xl py-2.5 px-4 text-sm outline-none focus:border-brand-500 transition"
-                  >
-                    <option value="Jornada Completa">Jornada Completa</option>
-                    <option value="Jornada Mañana">Jornada Mañana</option>
-                    <option value="Jornada Tarde">Jornada Tarde</option>
-                    <option value="Por Horas">Por Horas</option>
-                  </select>
-                </div>
+                {formData.type !== 'Vacaciones' && (
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-500 uppercase">Cobertura</label>
+                    <select
+                      name="coverage"
+                      value={formData.coverage}
+                      onChange={handleInputChange}
+                      className="w-full bg-white border border-slate-200 rounded-2xl py-2.5 px-4 text-sm outline-none focus:border-brand-500 transition"
+                    >
+                      <option value="Jornada Completa">Jornada Completa</option>
+                      <option value="Jornada Mañana">Jornada Mañana</option>
+                      <option value="Jornada Tarde">Jornada Tarde</option>
+                      <option value="Por Horas">Por Horas</option>
+                    </select>
+                  </div>
+                )}
               </div>
+
+              {formData.type === 'Vacaciones' && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-500 uppercase">Días Hábiles a Tomar</label>
+                    <input
+                      type="number"
+                      name="diasATomar"
+                      value={formData.diasATomar}
+                      onChange={handleInputChange}
+                      min="1"
+                      required
+                      className="w-full bg-white border border-slate-200 rounded-2xl py-2.5 px-4 text-sm outline-none focus:border-brand-500 transition"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-500 uppercase">Tipo de Disfrute</label>
+                    <select
+                      name="tipoDisfrute"
+                      value={formData.tipoDisfrute}
+                      onChange={handleInputChange}
+                      className="w-full bg-white border border-slate-200 rounded-2xl py-2.5 px-4 text-sm outline-none focus:border-brand-500 transition"
+                    >
+                      <option value="Físico">Físico</option>
+                      <option value="Compensado">Compensado en Dinero</option>
+                    </select>
+                  </div>
+                </div>
+              )}
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-500 uppercase">Desde</label>
+                  <label className="text-xs font-bold text-slate-500 uppercase">{formData.type === 'Vacaciones' ? 'Fecha de Salida' : 'Desde'}</label>
                   <input
                     type="date"
                     name="startDate"
@@ -373,39 +449,44 @@ export default function NoveltiesView({ token, userRole }) {
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-500 uppercase">Hasta</label>
+                  <label className="text-xs font-bold text-slate-500 uppercase">{formData.type === 'Vacaciones' ? 'Fecha de Regreso (Calculada)' : 'Hasta'}</label>
                   <input
                     type="date"
                     name="endDate"
                     value={formData.endDate}
-                    onChange={handleInputChange}
+                    onChange={formData.type === 'Vacaciones' ? undefined : handleInputChange}
                     required
-                    className="w-full bg-white border border-slate-200 rounded-2xl py-2.5 px-4 text-sm outline-none focus:border-brand-500 transition"
+                    readOnly={formData.type === 'Vacaciones'}
+                    className={`w-full bg-white border border-slate-200 rounded-2xl py-2.5 px-4 text-sm outline-none transition ${formData.type === 'Vacaciones' ? 'bg-slate-50 font-bold text-brand-600 cursor-not-allowed' : 'focus:border-brand-500'}`}
                   />
                 </div>
               </div>
 
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-slate-500 uppercase">Motivo / Descripción</label>
-                <textarea
-                  name="reason"
-                  value={formData.reason}
-                  onChange={handleInputChange}
-                  rows="2"
-                  className="w-full bg-white border border-slate-200 rounded-2xl py-2.5 px-4 text-sm outline-none focus:border-brand-500 transition"
-                  required
-                ></textarea>
-              </div>
+              {formData.type !== 'Vacaciones' && (
+                <>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-500 uppercase">Motivo / Descripción</label>
+                    <textarea
+                      name="reason"
+                      value={formData.reason}
+                      onChange={handleInputChange}
+                      rows="2"
+                      className="w-full bg-white border border-slate-200 rounded-2xl py-2.5 px-4 text-sm outline-none focus:border-brand-500 transition"
+                      required
+                    ></textarea>
+                  </div>
 
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-slate-500 uppercase">Adjuntos (Opcional)</label>
-                <input
-                  type="file"
-                  multiple
-                  onChange={handleFileChange}
-                  className="w-full bg-white border border-slate-200 rounded-2xl py-2 px-4 text-sm outline-none focus:border-brand-500 transition file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-brand-50 file:text-brand-700 hover:file:bg-brand-100"
-                />
-              </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-500 uppercase">Adjuntos (Opcional)</label>
+                    <input
+                      type="file"
+                      multiple
+                      onChange={handleFileChange}
+                      className="w-full bg-white border border-slate-200 rounded-2xl py-2 px-4 text-sm outline-none focus:border-brand-500 transition file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-brand-50 file:text-brand-700 hover:file:bg-brand-100"
+                    />
+                  </div>
+                </>
+              )}
 
               <div className="space-y-1.5">
                 <label className="text-xs font-bold text-slate-500 uppercase">Estado Inicial</label>

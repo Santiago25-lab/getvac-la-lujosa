@@ -67,6 +67,11 @@ export default function EmployeeDetail({ token, employeeId, onViewChange, userRo
     phone: ''
   });
 
+  // Estados para Eliminación
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
+
   // Cargar datos del empleado
   const fetchEmployeeData = async () => {
     try {
@@ -141,6 +146,27 @@ export default function EmployeeDetail({ token, employeeId, onViewChange, userRo
       }
     } catch (err) {
       console.error('Error al cargar jornadas especiales:', err);
+    }
+  };
+
+  const executeDeleteEmployee = async () => {
+    setDeleteLoading(true);
+    setDeleteError('');
+    try {
+      const response = await fetch(`${API_URL}/api/employees/${employeeId}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.message || 'Error al eliminar el empleado.');
+      }
+      setIsDeleteModalOpen(false);
+      onViewChange('employees');
+    } catch (err) {
+      setDeleteError(err.message);
+    } finally {
+      setDeleteLoading(false);
     }
   };
 
@@ -856,13 +882,22 @@ export default function EmployeeDetail({ token, employeeId, onViewChange, userRo
         <div className="flex items-center gap-3">
           {/* Editar Datos */}
           {(userRole === 'Administrador' || userRole === 'Super Usuario') && (
-            <button
-              onClick={handleEditClick}
-              className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-amber-200/50 bg-amber-50 dark:border-amber-900/30 dark:bg-amber-950/10 text-xs font-bold text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-950/20 transition cursor-pointer"
-            >
-              <Edit className="w-4 h-4" />
-              <span>Editar Datos</span>
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleEditClick}
+                className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-amber-200/50 bg-amber-50 dark:border-amber-900/30 dark:bg-amber-950/10 text-xs font-bold text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-950/20 transition cursor-pointer"
+              >
+                <Edit className="w-4 h-4" />
+                <span>Editar Datos</span>
+              </button>
+              <button
+                onClick={() => setIsDeleteModalOpen(true)}
+                className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-rose-200/50 bg-rose-50 dark:border-rose-900/30 dark:bg-rose-950/10 text-xs font-bold text-rose-700 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-950/20 transition cursor-pointer"
+              >
+                <Trash2 className="w-4 h-4" />
+                <span>Eliminar Empleado</span>
+              </button>
+            </div>
           )}
 
           {/* Alternar estado */}
@@ -929,7 +964,13 @@ export default function EmployeeDetail({ token, employeeId, onViewChange, userRo
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-400">Tiempo Servicio:</span>
-                <span className="font-black text-brand-600 dark:text-brand-400">{Math.floor(stats.totalDaysWorked / 365)}a {Math.floor((stats.totalDaysWorked % 365) / 30)}m ({stats.totalDaysWorked} días)</span>
+                <span className="font-black text-brand-600 dark:text-brand-400">
+                  {(() => {
+                    const hire = new Date(employee.hireDate + 'T00:00:00');
+                    const days = Math.max(0, Math.floor((new Date() - hire) / (1000 * 60 * 60 * 24)));
+                    return `${Math.floor(days / 365)}a ${Math.floor((days % 365) / 30)}m (${days} días)`;
+                  })()}
+                </span>
               </div>
             </div>
           </div>
@@ -1917,6 +1958,46 @@ export default function EmployeeDetail({ token, employeeId, onViewChange, userRo
         </div>
       )}
 
+      {/* Modal de Confirmación Crítica (Eliminar Empleado) */}
+      {isDeleteModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-md shadow-2xl p-8 border border-rose-200 dark:border-rose-900/50 animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex flex-col items-center text-center space-y-4">
+              <div className="w-16 h-16 bg-rose-100 text-rose-600 rounded-full flex items-center justify-center">
+                <AlertOctagon className="w-8 h-8" />
+              </div>
+              <h3 className="text-xl font-black text-slate-800 dark:text-white">¿Eliminar Empleado Permanentemente?</h3>
+              <p className="text-sm text-slate-500 dark:text-slate-400">
+                Esta acción borrará a <span className="font-bold">{employee.fullName}</span> y destruirá todos sus registros, novedades y auditorías asociadas. 
+                <br /><br />Esta acción no se puede deshacer.
+              </p>
+
+              {deleteError && (
+                <div className="w-full p-3 bg-rose-50 border border-rose-200 text-rose-600 text-xs font-bold rounded-xl mt-2 text-left">
+                  {deleteError}
+                </div>
+              )}
+
+              <div className="flex w-full gap-3 pt-4">
+                <button
+                  onClick={() => { setIsDeleteModalOpen(false); setDeleteError(''); }}
+                  disabled={deleteLoading}
+                  className="flex-1 py-3 px-4 rounded-xl font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={executeDeleteEmployee}
+                  disabled={deleteLoading}
+                  className="flex-1 py-3 px-4 rounded-xl font-bold text-white bg-rose-600 hover:bg-rose-700 disabled:opacity-50 transition"
+                >
+                  {deleteLoading ? 'Eliminando...' : 'Sí, Eliminar'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

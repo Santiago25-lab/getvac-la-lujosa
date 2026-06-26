@@ -364,7 +364,6 @@ export default function EmployeeList({ token, userRole, onViewChange }) {
                   <th className="py-4 px-4 text-center">Acum.</th>
                   <th className="py-4 px-4 text-center">Tomados</th>
                   <th className="py-4 px-4 text-center">Disp.</th>
-                  <th className="py-4 px-6 text-right">Acciones</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800/30">
@@ -373,7 +372,11 @@ export default function EmployeeList({ token, userRole, onViewChange }) {
                   const isLowBalance = emp.status === 'activo' && stats.availableDays <= 3;
                   
                   return (
-                    <tr key={emp.id} className="hover:bg-brand-50/25 transition duration-150">
+                    <tr 
+                      key={emp.id} 
+                      className="hover:bg-brand-50/50 transition-colors cursor-pointer group"
+                      onClick={() => onViewChange('employee-detail', emp.id)}
+                    >
                       {/* Nombre */}
                       <td className="py-4 px-6">
                         <div className="font-bold text-slate-800 dark:text-slate-200 leading-snug">{emp.fullName}</div>
@@ -426,37 +429,6 @@ export default function EmployeeList({ token, userRole, onViewChange }) {
                           <span>{stats.availableDays}</span>
                           {isLowBalance && <AlertTriangle className="w-3.5 h-3.5 text-rose-500 shrink-0" title="Saldo crítico de días" />}
                         </div>
-                      </td>
-
-                      {/* Acciones */}
-                      <td className="py-4 px-6 text-right space-x-2.5">
-                        <button
-                          onClick={() => onViewChange('employee-detail', emp.id)}
-                          className="inline-flex p-2 rounded-xl bg-brand-500/10 hover:bg-brand-500 hover:text-white text-brand-500 transition duration-150 active:scale-95 cursor-pointer"
-                          title="Ver Expediente"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </button>
-                        
-                        {(userRole === 'Administrador' || userRole === 'Super Usuario') && (
-                          <button
-                            onClick={() => handleEditClick(emp)}
-                            className="inline-flex p-2 rounded-xl bg-amber-500/10 hover:bg-amber-500 hover:text-white text-amber-600 transition duration-150 active:scale-95 cursor-pointer"
-                            title="Editar Empleado"
-                          >
-                            <Edit className="w-4 h-4" />
-                          </button>
-                        )}
-                        
-                        {(userRole === 'Administrador' || userRole === 'Super Usuario') && (
-                          <button
-                            onClick={() => handleDeleteEmployee(emp.id, emp.fullName)}
-                            className="inline-flex p-2 rounded-xl bg-rose-500/10 hover:bg-rose-500 hover:text-white text-rose-500 transition duration-150 active:scale-95 cursor-pointer"
-                            title="Eliminar Empleado"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        )}
                       </td>
                     </tr>
                   );

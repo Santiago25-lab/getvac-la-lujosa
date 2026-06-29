@@ -14,6 +14,7 @@ import SuperUserPanelView from './views/SuperUserPanelView';
 import NoveltiesView from './views/NoveltiesView';
 import VacationsDashboard from './views/VacationsDashboard';
 import LaborCostsView from './views/LaborCostsView';
+import AnalyticsView from './views/AnalyticsView';
 
 export default function App() {
   const [token, setToken] = useState(() => localStorage.getItem('token') || '');
@@ -182,6 +183,12 @@ export default function App() {
             <LaborCostsView
               token={token}
               userRole={user?.role}
+            />
+          )}
+
+          {activeView === 'analytics' && (
+            <AnalyticsView
+              token={token}
             />
           )}
         </main>

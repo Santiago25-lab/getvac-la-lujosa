@@ -64,6 +64,7 @@ import { startVacationCronJob } from './jobs/vacationUpdater.js';
 import noveltyRoutes from './routes/noveltyRoutes.js';
 import laborCostRoutes from './routes/laborCostRoutes.js';
 import benefitPaymentRoutes from './routes/benefitPaymentRoutes.js';
+import analyticsRoutes from './routes/analyticsRoutes.js';
 
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -153,6 +154,9 @@ app.put('/api/absences/:id', authenticateToken, updateAbsence);
 app.use('/api/novelties', noveltyRoutes);
 app.use('/api/labor-costs', laborCostRoutes);
 app.use('/api/benefit-payments', benefitPaymentRoutes);
+
+// Analytics & Reportes
+app.use('/api/analytics', analyticsRoutes);
 
 // Dashboard
 app.get('/api/dashboard/stats', authenticateToken, getDashboardStats);

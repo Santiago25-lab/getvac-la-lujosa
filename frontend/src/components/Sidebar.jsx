@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, Users, Settings, LogOut, CalendarCheck, UserCheck, Clock, FileText, AlertOctagon, ExternalLink, HelpCircle, ShieldCheck, ClipboardSignature, Plus, DollarSign } from 'lucide-react';
+import { LayoutDashboard, Users, Settings, LogOut, CalendarCheck, UserCheck, Clock, FileText, AlertOctagon, ExternalLink, HelpCircle, ShieldCheck, ClipboardSignature, Plus, DollarSign, Activity } from 'lucide-react';
 
 export default function Sidebar({ activeView, onViewChange, user, onLogout }) {
   const menuItems = [
@@ -12,6 +12,7 @@ export default function Sidebar({ activeView, onViewChange, user, onLogout }) {
 
   if (user?.role === 'Super Usuario' || user?.role === 'Recursos Humanos' || user?.role === 'Gerencia') {
     menuItems.push({ id: 'labor-costs', label: 'Costos Laborales', icon: DollarSign });
+    menuItems.push({ id: 'analytics', label: 'Analytics & Reportes', icon: Activity });
   }
 
   if (user?.role === 'Super Usuario') {

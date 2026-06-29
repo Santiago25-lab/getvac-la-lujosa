@@ -35,7 +35,11 @@ export const formatTimeTo12Hour = (timeStr) => {
  * @returns {boolean}
  */
 export const isVacationDayCheck = (dateObj, workDays = '1,2,3,4,5', companyHolidays = [], satCount = false, sunCount = false, halfWorkDays = '', specialWorkdays = []) => {
-  const dateStr = dateObj.toISOString().split('T')[0];
+  const dateStr = [
+    dateObj.getFullYear(),
+    String(dateObj.getMonth() + 1).padStart(2, '0'),
+    String(dateObj.getDate()).padStart(2, '0')
+  ].join('-');
   
   // 0. Si hay una jornada especial configurada para esta fecha
   const specialDay = specialWorkdays.find(sw => sw.date === dateStr);
@@ -188,7 +192,11 @@ export const calculateReturnDate = (
     current.setDate(current.getDate() + 1);
   } while (!isVacationDayCheck(current, '1,2,3,4,5', companyHolidays, false, false, halfWorkDays, specialWorkdays));
   
-  return current.toISOString().split('T')[0];
+  return [
+    current.getFullYear(),
+    String(current.getMonth() + 1).padStart(2, '0'),
+    String(current.getDate()).padStart(2, '0')
+  ].join('-');
 };
 
 /**
@@ -222,5 +230,9 @@ export const calculateLastVacationDay = (
     }
   }
   
-  return current.toISOString().split('T')[0];
+  return [
+    current.getFullYear(),
+    String(current.getMonth() + 1).padStart(2, '0'),
+    String(current.getDate()).padStart(2, '0')
+  ].join('-');
 };

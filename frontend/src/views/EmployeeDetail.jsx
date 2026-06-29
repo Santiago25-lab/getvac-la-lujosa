@@ -1255,16 +1255,6 @@ export default function EmployeeDetail({ token, employeeId, onViewChange, userRo
                       />
                     </div>
 
-                    {bookingDays > 0 && (
-                      <div className="p-4 rounded-2xl bg-brand-500/5 dark:bg-brand-500/10 border border-brand-500/20 flex items-center justify-between text-brand-600 dark:text-brand-400">
-                        <div className="flex items-center gap-2">
-                          <Clock className="w-5 h-5 shrink-0 animate-pulse" />
-                          <span className="text-xs font-bold">Total de días hábiles consumidos:</span>
-                        </div>
-                        <span className="text-base font-black">{bookingDays} días</span>
-                      </div>
-                    )}
-
                     <button
                       type="submit"
                       disabled={bookingLoading || bookingDays === 0 || !!bookingError}

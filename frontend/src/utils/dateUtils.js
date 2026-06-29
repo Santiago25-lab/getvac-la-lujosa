@@ -36,9 +36,9 @@ export const formatTimeTo12Hour = (timeStr) => {
  */
 export const isVacationDayCheck = (dateObj, workDays = '1,2,3,4,5', companyHolidays = [], satCount = false, sunCount = false, halfWorkDays = '', specialWorkdays = []) => {
   const dateStr = [
-    String(dateObj.getFullYear()).padStart(4, '0'),
-    String(dateObj.getMonth() + 1).padStart(2, '0'),
-    String(dateObj.getDate()).padStart(2, '0')
+    String(dateObj.getUTCFullYear()).padStart(4, '0'),
+    String(dateObj.getUTCMonth() + 1).padStart(2, '0'),
+    String(dateObj.getUTCDate()).padStart(2, '0')
   ].join('-');
   
   // 0. Si hay una jornada especial configurada para esta fecha
@@ -60,8 +60,8 @@ export const isVacationDayCheck = (dateObj, workDays = '1,2,3,4,5', companyHolid
   }
   
   // 3. Evaluar día de la semana
-  const day = dateObj.getDay(); // 0 = Domingo, 6 = Sábado
-  const dayOfWeek = day === 0 ? 7 : day; // Mapear 0 a 7
+  const dayOfWeek = dateObj.getUTCDay(); // 0 = Domingo, 1 = Lunes, ..., 6 = Sábado
+  const day = dayOfWeek === 0 ? 7 : dayOfWeek; // Mapear 0 a 7
   
   const workDaysArray = typeof workDays === 'string'
     ? workDays.split(',').map(Number)
@@ -73,9 +73,9 @@ export const isVacationDayCheck = (dateObj, workDays = '1,2,3,4,5', companyHolid
   
   // Si está en la jornada de la empresa o es media jornada, cuenta como vacación.
   // También si se forza el conteo de sábados/domingos.
-  let isWork = workDaysArray.includes(dayOfWeek) || halfWorkDaysArray.includes(dayOfWeek);
-  if (day === 0 && sunCount) isWork = true;
-  if (day === 6 && satCount) isWork = true;
+  let isWork = workDaysArray.includes(day) || halfWorkDaysArray.includes(day);
+  if (dayOfWeek === 0 && sunCount) isWork = true;
+  if (dayOfWeek === 6 && satCount) isWork = true;
   
   return isWork;
 };
@@ -168,11 +168,11 @@ export const calculateReturnDate = (
   if (!startDateStr || !businessDaysNeeded || businessDaysNeeded <= 0) return '';
   
   const [year, month, day] = startDateStr.split('-').map(Number);
-  let current = new Date(year, month - 1, day, 12, 0, 0);
+  let current = new Date(Date.UTC(year, month - 1, day));
   let addedDays = 0;
   
   while (!isVacationDayCheck(current, workDays, companyHolidays, satCount, sunCount, halfWorkDays, specialWorkdays)) {
-    current.setDate(current.getDate() + 1);
+    current.setUTCDate(current.getUTCDate() + 1);
   }
   
   while (addedDays < businessDaysNeeded) {
@@ -180,20 +180,27 @@ export const calculateReturnDate = (
       addedDays++;
     }
     if (addedDays < businessDaysNeeded) {
-      current.setDate(current.getDate() + 1);
+      current.setUTCDate(current.getUTCDate() + 1);
     }
   }
   
-  // Buscar el siguiente día hábil
-  current.setDate(current.getDate() + 1);
+  // Imprimir debug para evaluar por qué falla el 9 de julio
+  console.log(`[DEBUG ReturnDate] Último día de descanso evaluado: ${current.toISOString()}`);
+  
+  // Buscar el siguiente día hábil sumando +1 día de manera estricta
+  current.setUTCDate(current.getUTCDate() + 1);
+  
   while (!isVacationDayCheck(current, '1,2,3,4,5', companyHolidays, false, false, halfWorkDays, specialWorkdays)) {
-    current.setDate(current.getDate() + 1);
+    console.log(`[DEBUG ReturnDate] Evaluando si ${current.toISOString()} es hábil o hay que saltarlo... NO ES HÁBIL, saltando.`);
+    current.setUTCDate(current.getUTCDate() + 1);
   }
   
+  console.log(`[DEBUG ReturnDate] Día hábil encontrado para regresar: ${current.toISOString()}`);
+  
   return [
-    String(current.getFullYear()).padStart(4, '0'),
-    String(current.getMonth() + 1).padStart(2, '0'),
-    String(current.getDate()).padStart(2, '0')
+    String(current.getUTCFullYear()).padStart(4, '0'),
+    String(current.getUTCMonth() + 1).padStart(2, '0'),
+    String(current.getUTCDate()).padStart(2, '0')
   ].join('-');
 };
 
@@ -210,11 +217,11 @@ export const calculateLastVacationDay = (
   if (!startDateStr || !businessDaysNeeded || businessDaysNeeded <= 0) return '';
   
   const [year, month, day] = startDateStr.split('-').map(Number);
-  let current = new Date(year, month - 1, day, 12, 0, 0);
+  let current = new Date(Date.UTC(year, month - 1, day));
   let addedDays = 0;
   
   while (!isVacationDayCheck(current, workDays, companyHolidays, satCount, sunCount, halfWorkDays, specialWorkdays)) {
-    current.setDate(current.getDate() + 1);
+    current.setUTCDate(current.getUTCDate() + 1);
   }
   
   while (addedDays < businessDaysNeeded) {
@@ -222,13 +229,13 @@ export const calculateLastVacationDay = (
       addedDays++;
     }
     if (addedDays < businessDaysNeeded) {
-      current.setDate(current.getDate() + 1);
+      current.setUTCDate(current.getUTCDate() + 1);
     }
   }
   
   return [
-    String(current.getFullYear()).padStart(4, '0'),
-    String(current.getMonth() + 1).padStart(2, '0'),
-    String(current.getDate()).padStart(2, '0')
+    String(current.getUTCFullYear()).padStart(4, '0'),
+    String(current.getUTCMonth() + 1).padStart(2, '0'),
+    String(current.getUTCDate()).padStart(2, '0')
   ].join('-');
 };

@@ -66,7 +66,7 @@ export const getAnalyticsDashboard = async (req, res) => {
         endDate: {
           [Op.gte]: startDate
         },
-        status: 'Aprobada'
+        status: { [Op.in]: ['Activa', 'Finalizada'] }
       }
     });
 
@@ -82,11 +82,11 @@ export const getAnalyticsDashboard = async (req, res) => {
         startDate: {
           [Op.lte]: endDate
         },
-        endDate: {
+        returnDate: {
           [Op.gte]: startDate
         },
         tipoDisfrute: 'Físico',
-        status: 'Aprobada'
+        status: { [Op.in]: ['Aprobada', 'Programada', 'En disfrute', 'Finalizada'] }
       }
     });
 

@@ -167,15 +167,14 @@ export const calculateReturnDate = (
 ) => {
   if (!startDateStr || !businessDaysNeeded || businessDaysNeeded <= 0) return '';
   
-  let current = new Date(startDateStr + 'T00:00:00');
+  const [year, month, day] = startDateStr.split('-').map(Number);
+  let current = new Date(year, month - 1, day, 12, 0, 0);
   let addedDays = 0;
   
-  // Si la fecha de inicio no es un día de vacaciones válido, avanzar hasta el primer día hábil
   while (!isVacationDayCheck(current, workDays, companyHolidays, satCount, sunCount, halfWorkDays, specialWorkdays)) {
     current.setDate(current.getDate() + 1);
   }
   
-  // Contar los días hábiles gozados
   while (addedDays < businessDaysNeeded) {
     if (isVacationDayCheck(current, workDays, companyHolidays, satCount, sunCount, halfWorkDays, specialWorkdays)) {
       addedDays++;
@@ -185,12 +184,11 @@ export const calculateReturnDate = (
     }
   }
   
-  // El día de retorno es estrictamente el siguiente día que debe presentarse a trabajar físicamente.
-  // En Colombia, sin importar si los sábados son hábiles para descontar días, el regreso a labores 
-  // regulares después de vacaciones siempre se empuja al próximo Lunes a Viernes.
-  do {
+  // Buscar el siguiente día hábil
+  current.setDate(current.getDate() + 1);
+  while (!isVacationDayCheck(current, '1,2,3,4,5', companyHolidays, false, false, halfWorkDays, specialWorkdays)) {
     current.setDate(current.getDate() + 1);
-  } while (!isVacationDayCheck(current, '1,2,3,4,5', companyHolidays, false, false, halfWorkDays, specialWorkdays));
+  }
   
   return [
     String(current.getFullYear()).padStart(4, '0'),
@@ -199,9 +197,6 @@ export const calculateReturnDate = (
   ].join('-');
 };
 
-/**
- * Calcula el último día de vacaciones (el día en que se cumple el saldo).
- */
 export const calculateLastVacationDay = (
   startDateStr, 
   businessDaysNeeded, 
@@ -214,7 +209,8 @@ export const calculateLastVacationDay = (
 ) => {
   if (!startDateStr || !businessDaysNeeded || businessDaysNeeded <= 0) return '';
   
-  let current = new Date(startDateStr + 'T00:00:00');
+  const [year, month, day] = startDateStr.split('-').map(Number);
+  let current = new Date(year, month - 1, day, 12, 0, 0);
   let addedDays = 0;
   
   while (!isVacationDayCheck(current, workDays, companyHolidays, satCount, sunCount, halfWorkDays, specialWorkdays)) {

@@ -21,9 +21,9 @@ export default function Sidebar({ activeView, onViewChange, user, onLogout }) {
   }
 
   return (
-    <aside className="w-64 h-screen bg-white text-slate-800 flex flex-col justify-between border-r border-slate-200/80 shrink-0 select-none">
+    <aside className="w-64 h-screen bg-white text-slate-800 flex flex-col justify-between border-r border-slate-200/80 shrink-0 select-none overflow-hidden">
       {/* Encabezado Logo */}
-      <div>
+      <div className="flex flex-col h-full overflow-hidden">
         <div className="h-20 flex items-center gap-3 px-6 border-b border-slate-200/60 bg-white">
           <div className="w-10 h-10 rounded-xl overflow-hidden shadow-sm flex items-center justify-center bg-white border border-slate-100 shrink-0">
             <img src="/logo.png" alt="Logo La Lujosa" className="w-8 h-8 object-contain hover:scale-110 transition-transform duration-300" />
@@ -39,7 +39,7 @@ export default function Sidebar({ activeView, onViewChange, user, onLogout }) {
         </div>
 
         {/* Links de Navegación */}
-        <nav className="p-4 space-y-1 mt-2">
+        <nav className="p-4 space-y-1 mt-2 overflow-y-auto flex-1">
           {menuItems.map(item => {
             const Icon = item.icon;
             const isActive = activeView === item.id || (item.id === 'employees' && activeView === 'employee-detail');
@@ -59,17 +59,6 @@ export default function Sidebar({ activeView, onViewChange, user, onLogout }) {
             );
           })}
           
-          {/* Botón "+ Agregar Empleado" según captura */}
-          {(user?.role === 'Administrador' || user?.role === 'Super Usuario') && (
-            <button
-              onClick={() => onViewChange('employees')}
-              className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-bold bg-brand-600 text-white shadow-md shadow-brand-600/10 hover:bg-brand-700 transition-all duration-200 mt-4 cursor-pointer"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Agregar Empleado</span>
-            </button>
-          )}
-
           {/* Lanzador de Reloj Público */}
           <button
             onClick={() => window.open('/asistencia-qr', '_blank')}

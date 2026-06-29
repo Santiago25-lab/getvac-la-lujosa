@@ -36,7 +36,7 @@ export const formatTimeTo12Hour = (timeStr) => {
  */
 export const isVacationDayCheck = (dateObj, workDays = '1,2,3,4,5', companyHolidays = [], satCount = false, sunCount = false, halfWorkDays = '', specialWorkdays = []) => {
   const dateStr = [
-    dateObj.getFullYear(),
+    String(dateObj.getFullYear()).padStart(4, '0'),
     String(dateObj.getMonth() + 1).padStart(2, '0'),
     String(dateObj.getDate()).padStart(2, '0')
   ].join('-');
@@ -193,7 +193,7 @@ export const calculateReturnDate = (
   } while (!isVacationDayCheck(current, '1,2,3,4,5', companyHolidays, false, false, halfWorkDays, specialWorkdays));
   
   return [
-    current.getFullYear(),
+    String(current.getFullYear()).padStart(4, '0'),
     String(current.getMonth() + 1).padStart(2, '0'),
     String(current.getDate()).padStart(2, '0')
   ].join('-');
@@ -231,7 +231,7 @@ export const calculateLastVacationDay = (
   }
   
   return [
-    current.getFullYear(),
+    String(current.getFullYear()).padStart(4, '0'),
     String(current.getMonth() + 1).padStart(2, '0'),
     String(current.getDate()).padStart(2, '0')
   ].join('-');

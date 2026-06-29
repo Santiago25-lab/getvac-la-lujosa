@@ -13,7 +13,7 @@ export const createNovelty = async (req, res) => {
     
     // Si la novedad es Vacaciones, enrutar a Vacation y crear ausencias si es físico
     if (type === 'Vacaciones') {
-      req.body.returnDate = endDate; // El frontend envía la calculada en endDate
+      req.body.endDate = endDate; // El frontend envía la calculada en endDate
       req.body.notes = observationsText;
       req.body.businessDays = diasATomar;
       req.body.tipoDisfrute = tipoDisfrute || 'Físico';
@@ -52,7 +52,7 @@ export const createNovelty = async (req, res) => {
         const end = new Date(endDate + 'T00:00:00');
         
         let current = new Date(start);
-        while (current < end) { // El endDate es returnDate, es decir, día de regreso
+        while (current < end) { // El endDate es endDate, es decir, día de regreso
           const dateStr = current.toISOString().split('T')[0];
           
           let att = await Attendance.findOne({ where: { employeeId, date: dateStr } });
@@ -200,7 +200,7 @@ export const getNovelties = async (req, res) => {
       employee: v.employee,
       type: 'Vacaciones',
       startDate: v.startDate,
-      endDate: v.returnDate,
+      endDate: v.endDate,
       reason: v.notes || `Disfrute ${v.tipoDisfrute}`,
       status: v.status === 'En disfrute' || v.status === 'Programada' ? 'Activa' 
              : v.status === 'Cancelada' ? 'Rechazada' 

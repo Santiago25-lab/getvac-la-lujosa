@@ -6,7 +6,7 @@ import { isColombianHoliday } from '../utils/colombianHolidays.js';
 // Helper para calcular días hábiles excluyendo fines de semana no laborables, festivos y días especiales
 export const calculateBusinessDays = (
   startDateStr, 
-  returnDateStr, 
+  endDateStr, 
   workDays = '1,2,3,4,5', 
   companyHolidays = [], 
   satCount = false, 
@@ -15,9 +15,9 @@ export const calculateBusinessDays = (
   specialWorkdays = []
 ) => {
   const start = new Date(startDateStr + 'T00:00:00');
-  const returnDate = new Date(returnDateStr + 'T00:00:00');
+  const endDate = new Date(endDateStr + 'T00:00:00');
   
-  if (returnDate <= start) return 0;
+  if (endDate <= start) return 0;
   
   let businessDays = 0;
   let current = new Date(start);
@@ -31,8 +31,8 @@ export const calculateBusinessDays = (
     : (Array.isArray(halfWorkDays) ? halfWorkDays.map(Number) : []);
 
   // Se recorre desde el día de inicio hasta el día ANTERIOR a la fecha de regreso.
-  // El "returnDate" representa el día en que el empleado vuelve a laborar físicamente.
-  while (current < returnDate) {
+  // El "endDate" representa el día en que el empleado vuelve a laborar físicamente.
+  while (current < endDate) {
     const day = current.getDay(); // 0 = Domingo, 6 = Sábado
     const dayOfWeek = day === 0 ? 7 : day; // Mapear 0 a 7
     const dateStr = current.toISOString().split('T')[0];
@@ -65,11 +65,11 @@ export const calculateBusinessDays = (
 };
 
 export const registerVacation = async (req, res) => {
-  const { employeeId, startDate, returnDate, notes, tipoDisfrute, calendarDays, fechaNotificacion, responsableAprobacion } = req.body;
+  const { employeeId, startDate, endDate, notes, tipoDisfrute, calendarDays, fechaNotificacion, responsableAprobacion } = req.body;
 
   try {
-    if (!employeeId || !startDate || !returnDate) {
-      return res.status(400).json({ message: 'El id del empleado, fecha de inicio y fecha de regreso son requeridos.' });
+    if (!employeeId || !startDate || !endDate) {
+      return res.status(400).json({ message: 'El id del empleado, fecha de inicio y fecha de fin son requeridos.' });
     }
 
     const employee = await Employee.findByPk(employeeId, {
@@ -85,10 +85,10 @@ export const registerVacation = async (req, res) => {
     }
 
     const start = new Date(startDate);
-    const ret = new Date(returnDate);
+    const end = new Date(endDate);
 
-    if (ret <= start) {
-      return res.status(400).json({ message: 'La fecha de regreso debe ser posterior a la fecha de inicio.' });
+    if (end < start) {
+      return res.status(400).json({ message: 'La fecha de fin debe ser posterior o igual a la fecha de inicio.' });
     }
 
     // Obtener políticas horarias
@@ -109,7 +109,7 @@ export const registerVacation = async (req, res) => {
     // Calcular días hábiles
     const businessDays = calculateBusinessDays(
       startDate, 
-      returnDate, 
+      endDate, 
       settings.workDays || '1,2,3,4,5',
       companyHolidaysList,
       settings.vacationsSaturdaysCount, 
@@ -143,7 +143,7 @@ export const registerVacation = async (req, res) => {
     const vacation = await Vacation.create({
       employeeId,
       startDate,
-      returnDate,
+      endDate,
       businessDays,
       notes,
       tipoDisfrute,
@@ -223,7 +223,7 @@ export const getDashboardStats = async (req, res) => {
       // Analizar historial de vacaciones para vacaciones actuales y próximas
       for (const vac of emp.vacations) {
         const start = new Date(vac.startDate + 'T00:00:00');
-        const ret = new Date(vac.returnDate + 'T00:00:00');
+        const ret = new Date(vac.endDate + 'T00:00:00');
 
         // Actualmente en vacaciones: hoy está entre start (inclusive) y ret (exclusive, porque ret es el regreso a trabajar)
         if (today >= start && today < ret) {
@@ -231,7 +231,7 @@ export const getDashboardStats = async (req, res) => {
             employeeName: emp.fullName,
             department: emp.department,
             startDate: vac.startDate,
-            returnDate: vac.returnDate,
+            endDate: vac.endDate,
             businessDays: vac.businessDays
           });
         }
@@ -242,7 +242,7 @@ export const getDashboardStats = async (req, res) => {
             employeeName: emp.fullName,
             department: emp.department,
             startDate: vac.startDate,
-            returnDate: vac.returnDate,
+            endDate: vac.endDate,
             businessDays: vac.businessDays
           });
         }

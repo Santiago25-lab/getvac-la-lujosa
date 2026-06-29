@@ -565,7 +565,7 @@ export const getAttendanceStats = async (req, res) => {
         where: {
           status: { [Op.in]: ['Programada', 'En disfrute', 'Finalizada'] },
           startDate: { [Op.lte]: todayStr },
-          returnDate: { [Op.gt]: todayStr }
+          endDate: { [Op.gt]: todayStr }
         }
       });
       const vacationEmployeeIds = new Set(todayVacations.map(v => v.employeeId));
@@ -785,8 +785,8 @@ export const getEmployeeMonthlyReport = async (req, res) => {
         status: { [Op.in]: ['Programada', 'En disfrute', 'Finalizada'] },
         [Op.or]: [
           { startDate: { [Op.between]: [startDateStr, endDateStr] } },
-          { returnDate: { [Op.between]: [startDateStr, endDateStr] } },
-          { startDate: { [Op.lte]: startDateStr }, returnDate: { [Op.gte]: endDateStr } }
+          { endDate: { [Op.between]: [startDateStr, endDateStr] } },
+          { startDate: { [Op.lte]: startDateStr }, endDate: { [Op.gte]: endDateStr } }
         ]
       }
     });
@@ -845,7 +845,7 @@ export const getEmployeeMonthlyReport = async (req, res) => {
       });
 
       const hasVacation = vacations.find(v => {
-        return currentDayStr >= v.startDate && currentDayStr < v.returnDate;
+        return currentDayStr >= v.startDate && currentDayStr < v.endDate;
       });
 
       const manualAbsence = absences.find(a => a.date === currentDayStr);

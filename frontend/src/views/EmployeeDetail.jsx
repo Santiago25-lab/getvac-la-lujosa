@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { ChevronLeft, CalendarRange, Clock, CalendarDays, CheckCircle2, AlertTriangle, Trash2, FileText, UserSquare2, RefreshCw, ClipboardSignature, ShieldCheck, AlertOctagon, Edit, X } from 'lucide-react';
-import { formatDateFriendly, calculateBusinessDays, calculateReturnDate, calculateLastVacationDay } from '../utils/dateUtils';
+import { formatDateFriendly, calculateBusinessDays, calculateLastVacationDay } from '../utils/dateUtils';
 import { exportEmployeeHistoryToPDF } from '../utils/exportUtils';
 import { API_URL } from '../config.js';
 
@@ -25,7 +25,7 @@ export default function EmployeeDetail({ token, employeeId, onViewChange, userRo
 
   // Estados para Registro de Vacaciones
   const [startDate, setStartDate] = useState('');
-  const [returnDate, setReturnDate] = useState('');
+
   const [lastVacationDay, setLastVacationDay] = useState('');
   const [notes, setNotes] = useState('');
   const [bookingDays, setBookingDays] = useState(0);
@@ -600,15 +600,8 @@ export default function EmployeeDetail({ token, employeeId, onViewChange, userRo
 
   // Escuchar cambios de fecha para calcular días hábiles en tiempo real
   useEffect(() => {
-    if (startDate && returnDate) {
-      const days = calculateBusinessDays(
-        startDate,
-        returnDate,
-        settings?.workDays || '1,2,3,4,5',
-        companyHolidays,
-        settings?.vacationsSaturdaysCount || false,
-        settings?.vacationsSundaysCount || false
-      );
+    const days = parseInt(requestedDays) || 0;
+    if (startDate && days > 0) {
       setBookingDays(days);
       
       if (employee && days > employee.vacationStats.availableDays) {
@@ -620,12 +613,12 @@ export default function EmployeeDetail({ token, employeeId, onViewChange, userRo
       setBookingDays(0);
       setBookingError('');
     }
-  }, [startDate, returnDate, employee, settings, companyHolidays]);
+  }, [startDate, requestedDays, employee]);
 
   const handleBookVacation = async (e) => {
     e.preventDefault();
-    if (!startDate || !returnDate) {
-      setBookingError('Por favor selecciona las fechas de inicio y regreso.');
+    if (!startDate || !lastVacationDay) {
+      setBookingError('Por favor selecciona la fecha de inicio y los días hábiles a tomar.');
       return;
     }
 
@@ -652,7 +645,7 @@ export default function EmployeeDetail({ token, employeeId, onViewChange, userRo
         body: JSON.stringify({
           employeeId: employee.id,
           startDate,
-          returnDate,
+          endDate: lastVacationDay,
           notes,
           tipoDisfrute,
           fechaNotificacion: fechaNotificacion || null,
@@ -668,7 +661,6 @@ export default function EmployeeDetail({ token, employeeId, onViewChange, userRo
 
       // Limpiar formulario y recargar
       setStartDate('');
-      setReturnDate('');
       setRequestedDays('');
       setNotes('');
       setTipoDisfrute('Físico');
@@ -1109,16 +1101,6 @@ export default function EmployeeDetail({ token, employeeId, onViewChange, userRo
                             const newStart = e.target.value;
                             setStartDate(newStart);
                             if (newStart && requestedDays > 0) {
-                              const nextReturn = calculateReturnDate(
-                                newStart,
-                                parseInt(requestedDays),
-                                settings?.workDays || '1,2,3,4,5',
-                                companyHolidays,
-                                settings?.vacationsSaturdaysCount || false,
-                                settings?.vacationsSundaysCount || false,
-                                settings?.halfWorkDays || '',
-                                specialWorkdays
-                              );
                               const lastDay = calculateLastVacationDay(
                                 newStart,
                                 parseInt(requestedDays),
@@ -1129,7 +1111,6 @@ export default function EmployeeDetail({ token, employeeId, onViewChange, userRo
                                 settings?.halfWorkDays || '',
                                 specialWorkdays
                               );
-                              setReturnDate(nextReturn);
                               setLastVacationDay(lastDay);
                             }
                           }}
@@ -1148,16 +1129,6 @@ export default function EmployeeDetail({ token, employeeId, onViewChange, userRo
                             const days = e.target.value;
                             setRequestedDays(days);
                             if (startDate && days > 0) {
-                              const nextReturn = calculateReturnDate(
-                                startDate,
-                                parseInt(days),
-                                settings?.workDays || '1,2,3,4,5',
-                                companyHolidays,
-                                settings?.vacationsSaturdaysCount || false,
-                                settings?.vacationsSundaysCount || false,
-                                settings?.halfWorkDays || '',
-                                specialWorkdays
-                              );
                               const lastDay = calculateLastVacationDay(
                                 startDate,
                                 parseInt(days),
@@ -1168,10 +1139,8 @@ export default function EmployeeDetail({ token, employeeId, onViewChange, userRo
                                 settings?.halfWorkDays || '',
                                 specialWorkdays
                               );
-                              setReturnDate(nextReturn);
                               setLastVacationDay(lastDay);
                             } else {
-                              setReturnDate('');
                               setLastVacationDay('');
                             }
                           }}
@@ -1180,15 +1149,7 @@ export default function EmployeeDetail({ token, employeeId, onViewChange, userRo
                         />
                       </div>
 
-                      <div className="space-y-1.5">
-                        <label className="text-[10px] font-bold text-slate-450 uppercase tracking-widest pl-1">Fecha de Regreso (Auto / Manual)</label>
-                        <input
-                          type="date"
-                          value={returnDate}
-                          onChange={(e) => setReturnDate(e.target.value)}
-                          className="w-full bg-white dark:bg-slate-950/40 border border-brand-200/60 dark:border-slate-850/60 rounded-2xl py-2.5 px-4 text-xs outline-none focus:border-brand-500 transition font-bold"
-                        />
-                      </div>
+
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -1237,9 +1198,7 @@ export default function EmployeeDetail({ token, employeeId, onViewChange, userRo
                         </div>
                         <div className="flex items-center gap-2">
                           <AlertOctagon className="w-4 h-4 text-emerald-500" />
-                          <p className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                            Debe presentarse a trabajar el: <span className="text-emerald-600 dark:text-emerald-400">{formatDateFriendly(returnDate)}</span>
-                          </p>
+
                         </div>
                       </div>
                     )}
@@ -1302,7 +1261,7 @@ export default function EmployeeDetail({ token, employeeId, onViewChange, userRo
                         {employee.vacations.map(vac => (
                           <tr key={vac.id} className="hover:bg-brand-50/20 transition">
                             <td className="py-3.5 pr-4 font-bold text-slate-850 dark:text-white">{formatDateFriendly(vac.startDate)}</td>
-                            <td className="py-3.5 px-4 font-bold text-slate-850 dark:text-white">{formatDateFriendly(vac.returnDate)}</td>
+                            <td className="py-3.5 px-4 font-bold text-slate-850 dark:text-white">{formatDateFriendly(vac.endDate)}</td>
                             <td className="py-3.5 px-4 text-center">
                               <span className="inline-block px-2 py-0.5 text-[10px] font-black rounded bg-slate-100 dark:bg-slate-800 text-slate-650 dark:text-slate-350">
                                 {vac.businessDays} hábiles

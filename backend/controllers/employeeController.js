@@ -51,9 +51,9 @@ export const calculateEmployeeVacationStats = async (employee, customSettings = 
   }
   // Si tomó vacaciones registradas en el sistema, buscar la más reciente
   if (vacations && vacations.length > 0) {
-    const sortedVacs = [...vacations].sort((a, b) => new Date(b.returnDate) - new Date(a.returnDate));
+    const sortedVacs = [...vacations].sort((a, b) => new Date(b.endDate) - new Date(a.endDate));
     // La fecha más reciente
-    const mostRecentReturn = sortedVacs[0].returnDate;
+    const mostRecentReturn = sortedVacs[0].endDate;
     if (new Date(mostRecentReturn) > new Date(lastVacationDate)) {
       lastVacationDate = mostRecentReturn;
     }

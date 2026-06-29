@@ -147,63 +147,6 @@ export const formatDateFriendly = (dateStr) => {
  * 
  * @param {string} startDateStr - Fecha de salida YYYY-MM-DD
  * @param {number} businessDaysNeeded - Días hábiles de vacaciones
- * @param {string|Array} workDays - Configuración de días laborables
- * @param {Array} companyHolidays - Días no laborables especiales de la empresa
- * @param {boolean} satCount 
- * @param {boolean} sunCount 
- * @param {string|Array} halfWorkDays 
- * @param {Array} specialWorkdays 
- * @returns {string} Fecha de retorno YYYY-MM-DD
- */
-export const calculateReturnDate = (
-  startDateStr, 
-  businessDaysNeeded, 
-  workDays = '1,2,3,4,5', 
-  companyHolidays = [], 
-  satCount = false, 
-  sunCount = false,
-  halfWorkDays = '',
-  specialWorkdays = []
-) => {
-  if (!startDateStr || !businessDaysNeeded || businessDaysNeeded <= 0) return '';
-  
-  const [year, month, day] = startDateStr.split('-').map(Number);
-  let current = new Date(Date.UTC(year, month - 1, day));
-  let addedDays = 0;
-  
-  while (!isVacationDayCheck(current, workDays, companyHolidays, satCount, sunCount, halfWorkDays, specialWorkdays)) {
-    current.setUTCDate(current.getUTCDate() + 1);
-  }
-  
-  while (addedDays < businessDaysNeeded) {
-    if (isVacationDayCheck(current, workDays, companyHolidays, satCount, sunCount, halfWorkDays, specialWorkdays)) {
-      addedDays++;
-    }
-    if (addedDays < businessDaysNeeded) {
-      current.setUTCDate(current.getUTCDate() + 1);
-    }
-  }
-  
-  // Imprimir debug para evaluar por qué falla el 9 de julio
-  console.log(`[DEBUG ReturnDate] Último día de descanso evaluado: ${current.toISOString()}`);
-  
-  // Buscar el siguiente día hábil sumando +1 día de manera estricta
-  current.setUTCDate(current.getUTCDate() + 1);
-  
-  while (!isVacationDayCheck(current, '1,2,3,4,5', companyHolidays, false, false, halfWorkDays, specialWorkdays)) {
-    console.log(`[DEBUG ReturnDate] Evaluando si ${current.toISOString()} es hábil o hay que saltarlo... NO ES HÁBIL, saltando.`);
-    current.setUTCDate(current.getUTCDate() + 1);
-  }
-  
-  console.log(`[DEBUG ReturnDate] Día hábil encontrado para regresar: ${current.toISOString()}`);
-  
-  return [
-    String(current.getUTCFullYear()).padStart(4, '0'),
-    String(current.getUTCMonth() + 1).padStart(2, '0'),
-    String(current.getUTCDate()).padStart(2, '0')
-  ].join('-');
-};
-
 export const calculateLastVacationDay = (
   startDateStr, 
   businessDaysNeeded, 

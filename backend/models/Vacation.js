@@ -15,7 +15,7 @@ const Vacation = sequelize.define('Vacation', {
     type: DataTypes.DATEONLY,
     allowNull: false,
   },
-  returnDate: {
+  endDate: {
     type: DataTypes.DATEONLY,
     allowNull: false,
   },

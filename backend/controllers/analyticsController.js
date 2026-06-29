@@ -82,7 +82,7 @@ export const getAnalyticsDashboard = async (req, res) => {
         startDate: {
           [Op.lte]: endDate
         },
-        returnDate: {
+        endDate: {
           [Op.gte]: startDate
         },
         tipoDisfrute: 'Físico',

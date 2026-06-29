@@ -8,6 +8,7 @@ export default function LaborCostsView({ token, userRole }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedEmployee, setSelectedEmployee] = useState(null);
+  const [activeTab, setActiveTab] = useState('mensual');
 
   useEffect(() => {
     fetchData();
@@ -74,21 +75,16 @@ export default function LaborCostsView({ token, userRole }) {
 
   const riskStyles = getVacationRiskLevel();
 
-  // Datos para el gráfico Donut del Offcanvas
+  // Datos para el gráfico Donut del Offcanvas (Mensual)
   let donutData = [];
   if (selectedEmployee) {
-    const { monthlyCosts, accumulatedObligations, baseSalary, transportAllowance } = selectedEmployee;
-    const neto = (baseSalary || 0) + (transportAllowance || 0);
-    const seguridadSocial = monthlyCosts.salud + monthlyCosts.pension + monthlyCosts.ccf + monthlyCosts.arl;
-    // Dividimos las prestaciones acumuladas para ver su impacto (anualizado simulado mensual o usar las mensuales)
-    // El ticket pide: Salario Neto vs. Seguridad Social vs. Prestaciones
-    // Podemos usar el "costo mensual estimado de prestaciones" que equivale a aprox 21.83%
-    const prestacionesMensualizadas = neto * 0.2183;
+    const { monthlyCosts, baseSalary, transportAllowance } = selectedEmployee;
+    const seguridadSocial = (monthlyCosts?.salud || 0) + (monthlyCosts?.pension || 0) + (monthlyCosts?.ccf || 0) + (monthlyCosts?.arl || 0);
 
     donutData = [
-      { name: 'Salario Neto', value: neto, color: '#3b82f6' }, // blue-500
-      { name: 'Seguridad Social', value: seguridadSocial, color: '#10b981' }, // emerald-500
-      { name: 'Prestaciones', value: prestacionesMensualizadas, color: '#f59e0b' } // amber-500
+      { name: 'Salario Base', value: baseSalary || 0, color: '#3b82f6' }, // blue-500
+      ...(transportAllowance ? [{ name: 'Aux. Transporte', value: transportAllowance, color: '#8b5cf6' }] : []), // violet-500
+      { name: 'Seg. Social y Parafiscales', value: seguridadSocial, color: '#10b981' } // emerald-500
     ];
   }
 
@@ -108,10 +104,10 @@ export default function LaborCostsView({ token, userRole }) {
         </div>
 
         {/* Nivel 1: Resumen Ejecutivo Mejorado */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           
-          {/* Tarjeta 1: Flujo de Caja (Nómina + Carga) */}
-          <div className="bg-brand-600 rounded-2xl p-6 border border-brand-500 shadow-lg shadow-brand-500/20 text-white relative overflow-hidden flex flex-col justify-between">
+          {/* Tarjeta 1: Flujo de Caja (Nómina + Carga) - Protagonista */}
+          <div className="md:col-span-2 bg-brand-600 rounded-2xl p-6 border border-brand-500 shadow-lg shadow-brand-500/20 text-white relative overflow-hidden flex flex-col justify-between">
             <div className="absolute -right-8 -bottom-8 opacity-10">
               <DollarSign className="w-40 h-40" />
             </div>
@@ -134,33 +130,29 @@ export default function LaborCostsView({ token, userRole }) {
             </div>
           </div>
 
-          {/* Tarjeta 2: Pasivo Prestacional (Deuda) */}
-          <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm relative overflow-hidden flex flex-col justify-between">
+          {/* Tarjeta 2: Pasivo Prestacional (Deuda) - Neutral y Secundaria */}
+          <div className="bg-slate-50 rounded-2xl p-5 border border-slate-200/60 shadow-sm relative overflow-hidden flex flex-col justify-between">
             <div className="relative z-10 flex items-center justify-between">
-              <h2 className="text-sm font-extrabold text-slate-800 uppercase tracking-wider flex items-center gap-2">
-                <Briefcase className="w-4 h-4 text-rose-500" /> Pasivo Prestacional Total
+              <h2 className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                <Briefcase className="w-3.5 h-3.5" /> Deuda Futura (Provisiones)
               </h2>
             </div>
-            <div className="relative z-10 mt-4">
-              <p className="text-xs text-slate-500 mb-1">Deuda acumulada a la fecha</p>
-              <h3 className="text-4xl font-black tracking-tight text-slate-900">{formatCurrency(data?.dashboard.accumulated.total || 0)}</h3>
+            <div className="relative z-10 mt-3">
+              <p className="text-[10px] text-slate-400 mb-0.5">Pasivo prestacional total proyectado</p>
+              <h3 className="text-2xl font-black tracking-tight text-slate-700">{formatCurrency(data?.dashboard.accumulated.total || 0)}</h3>
             </div>
-            <div className="relative z-10 mt-4 grid grid-cols-2 md:grid-cols-4 gap-2 text-xs font-medium text-slate-600">
-              <div className="bg-slate-50 px-2 py-1.5 rounded-lg border border-slate-100">
-                <span className="block text-[9px] text-slate-400 font-bold uppercase">Prima</span>
-                {formatCurrency(data?.dashboard.accumulated.prima || 0)}
+            <div className="relative z-10 mt-4 grid grid-cols-2 gap-1.5 text-[10px] font-medium text-slate-500">
+              <div className="bg-white px-2 py-1 rounded border border-slate-100 flex justify-between">
+                <span>Prima:</span> <span className="font-bold">{formatCurrency(data?.dashboard.accumulated.prima || 0)}</span>
               </div>
-              <div className="bg-slate-50 px-2 py-1.5 rounded-lg border border-slate-100">
-                <span className="block text-[9px] text-slate-400 font-bold uppercase">Cesantías</span>
-                {formatCurrency(data?.dashboard.accumulated.cesantias || 0)}
+              <div className="bg-white px-2 py-1 rounded border border-slate-100 flex justify-between">
+                <span>Cesantías:</span> <span className="font-bold">{formatCurrency(data?.dashboard.accumulated.cesantias || 0)}</span>
               </div>
-              <div className="bg-slate-50 px-2 py-1.5 rounded-lg border border-slate-100">
-                <span className="block text-[9px] text-slate-400 font-bold uppercase">Intereses</span>
-                {formatCurrency(data?.dashboard.accumulated.intereses || 0)}
+              <div className="bg-white px-2 py-1 rounded border border-slate-100 flex justify-between">
+                <span>Intereses:</span> <span className="font-bold">{formatCurrency(data?.dashboard.accumulated.intereses || 0)}</span>
               </div>
-              <div className={`px-2 py-1.5 rounded-lg border ${riskStyles.bg} ${riskStyles.border} ${riskStyles.color}`}>
-                <span className="block text-[9px] font-bold uppercase opacity-80">Vacaciones</span>
-                {formatCurrency(data?.dashboard.accumulated.vacaciones || 0)}
+              <div className="bg-white px-2 py-1 rounded border border-slate-100 flex justify-between">
+                <span>Vacaciones:</span> <span className="font-bold">{formatCurrency(data?.dashboard.accumulated.vacaciones || 0)}</span>
               </div>
             </div>
           </div>
@@ -180,6 +172,7 @@ export default function LaborCostsView({ token, userRole }) {
                   <th className="px-6 py-4">Empleado</th>
                   <th className="px-6 py-4 hidden md:table-cell">Cargo</th>
                   <th className="px-6 py-4">Salario Base</th>
+                  <th className="px-6 py-4 hidden md:table-cell">Seguridad Social + Parafiscales</th>
                   <th className="px-6 py-4 text-right">Costo Mensual Total</th>
                 </tr>
               </thead>
@@ -199,9 +192,24 @@ export default function LaborCostsView({ token, userRole }) {
                     <td className="px-6 py-4 font-semibold text-slate-600">
                       {formatCurrency(emp.baseSalary)}
                     </td>
+                    <td className="px-6 py-4 hidden md:table-cell font-medium text-slate-500">
+                      {formatCurrency(
+                        (emp.monthlyCosts?.salud || 0) + 
+                        (emp.monthlyCosts?.pension || 0) + 
+                        (emp.monthlyCosts?.arl || 0) + 
+                        (emp.monthlyCosts?.ccf || 0)
+                      )}
+                    </td>
                     <td className="px-6 py-4 text-right">
-                      <span className="inline-flex items-center gap-1 font-bold text-slate-700 bg-slate-50 group-hover:bg-white px-2.5 py-1 rounded-lg border border-slate-100 transition-colors">
-                        {formatCurrency(emp.monthlyCosts.total)}
+                      <span className="inline-flex items-center gap-1 font-bold text-brand-700 bg-brand-50 group-hover:bg-white px-2.5 py-1 rounded-lg border border-brand-100 transition-colors">
+                        {formatCurrency(
+                          (emp.baseSalary || 0) + 
+                          (emp.transportAllowance || 0) + 
+                          (emp.monthlyCosts?.salud || 0) + 
+                          (emp.monthlyCosts?.pension || 0) + 
+                          (emp.monthlyCosts?.arl || 0) + 
+                          (emp.monthlyCosts?.ccf || 0)
+                        )}
                         <ChevronRight className="w-4 h-4 text-brand-500 opacity-50 group-hover:opacity-100 transition-opacity" />
                       </span>
                     </td>
@@ -246,102 +254,180 @@ export default function LaborCostsView({ token, userRole }) {
               </button>
             </div>
 
+            {/* Tabs */}
+            <div className="flex border-b border-slate-200">
+              <button
+                className={`flex-1 py-3 text-xs font-bold uppercase tracking-wider transition-colors border-b-2 ${activeTab === 'mensual' ? 'border-brand-600 text-brand-700 bg-brand-50/50' : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50'}`}
+                onClick={() => setActiveTab('mensual')}
+              >
+                Liquidación Mensual
+              </button>
+              <button
+                className={`flex-1 py-3 text-xs font-bold uppercase tracking-wider transition-colors border-b-2 ${activeTab === 'pasivo' ? 'border-brand-600 text-brand-700 bg-brand-50/50' : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50'}`}
+                onClick={() => setActiveTab('pasivo')}
+              >
+                Pasivos (A futuro)
+              </button>
+            </div>
+
             {/* Cuerpo del Offcanvas */}
-            <div className="flex-1 overflow-y-auto p-6 space-y-8">
+            <div className="flex-1 overflow-y-auto p-6">
               
-              {/* Gráfico Donut */}
-              <div>
-                <h3 className="text-xs font-extrabold text-slate-400 uppercase tracking-widest mb-4">Composición del Costo</h3>
-                <div className="h-48 w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <RechartsPieChart>
-                      <Pie
-                        data={donutData}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={60}
-                        outerRadius={80}
-                        paddingAngle={5}
-                        dataKey="value"
-                      >
-                        {donutData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.color} />
-                        ))}
-                      </Pie>
-                      <RechartsTooltip 
-                        formatter={(value) => formatCurrency(value)}
-                        contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                      />
-                      <Legend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{ fontSize: '12px', fontWeight: 600 }}/>
-                    </RechartsPieChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-
-              {/* Prestaciones Acumuladas */}
-              <div>
-                <h3 className="text-xs font-extrabold text-slate-400 uppercase tracking-widest mb-3 pb-2 border-b border-slate-100">
-                  Pasivo Prestacional a la Fecha
-                </h3>
-                <div className="space-y-3">
-                  <div className="flex justify-between items-center">
-                    <div className="flex items-center gap-1">
-                      <span className="text-sm font-medium text-slate-600">Prima de Servicios</span>
-                      <div className="group relative">
-                        <Info className="w-3.5 h-3.5 text-slate-300 cursor-pointer" />
-                        <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 w-48 p-2 bg-slate-800 text-white text-[10px] rounded opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-10 shadow-lg text-center">
-                          1 mes de salario por año. Se paga semestralmente.
-                        </div>
-                      </div>
+              {activeTab === 'mensual' && (
+                <div className="space-y-8 animate-in fade-in duration-300">
+                  {/* Gráfico Donut Mensual */}
+                  <div>
+                    <h3 className="text-xs font-extrabold text-slate-400 uppercase tracking-widest mb-4">Composición Costo Mensual</h3>
+                    <div className="h-48 w-full">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <RechartsPieChart>
+                          <Pie
+                            data={donutData}
+                            cx="50%"
+                            cy="50%"
+                            innerRadius={60}
+                            outerRadius={80}
+                            paddingAngle={5}
+                            dataKey="value"
+                          >
+                            {donutData.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={entry.color} />
+                            ))}
+                          </Pie>
+                          <RechartsTooltip 
+                            formatter={(value) => formatCurrency(value)}
+                            contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                          />
+                          <Legend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{ fontSize: '12px', fontWeight: 600 }}/>
+                        </RechartsPieChart>
+                      </ResponsiveContainer>
                     </div>
-                    <span className="text-sm font-bold text-slate-800">{formatCurrency(selectedEmployee.accumulatedObligations.prima)}</span>
                   </div>
 
-                  <div className="flex justify-between items-center">
-                    <div className="flex items-center gap-1">
-                      <span className="text-sm font-medium text-slate-600">Cesantías</span>
-                      <div className="group relative">
-                        <Info className="w-3.5 h-3.5 text-slate-300 cursor-pointer" />
-                        <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 w-48 p-2 bg-slate-800 text-white text-[10px] rounded opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-10 shadow-lg text-center">
-                          1 mes de salario por año trabajado. Consignado anualmente al fondo.
-                        </div>
+                  {/* Desglose Mensual */}
+                  <div>
+                    <h3 className="text-xs font-extrabold text-slate-400 uppercase tracking-widest mb-3 pb-2 border-b border-slate-100">
+                      Desglose del Gasto de Caja
+                    </h3>
+                    <div className="space-y-3">
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm font-medium text-slate-600">Salario Base</span>
+                        <span className="text-sm font-bold text-slate-800">{formatCurrency(selectedEmployee.baseSalary)}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm font-medium text-slate-600">Auxilio de Transporte</span>
+                        <span className="text-sm font-bold text-slate-800">{formatCurrency(selectedEmployee.transportAllowance || 0)}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm font-medium text-slate-600">Salud (Empleador)</span>
+                        <span className="text-sm font-bold text-slate-800">{formatCurrency(selectedEmployee.monthlyCosts?.salud || 0)}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm font-medium text-slate-600">Pensión (Empleador)</span>
+                        <span className="text-sm font-bold text-slate-800">{formatCurrency(selectedEmployee.monthlyCosts?.pension || 0)}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm font-medium text-slate-600">ARL</span>
+                        <span className="text-sm font-bold text-slate-800">{formatCurrency(selectedEmployee.monthlyCosts?.arl || 0)}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm font-medium text-slate-600">Parafiscales (CCF/SENA/ICBF)</span>
+                        <span className="text-sm font-bold text-slate-800">{formatCurrency(selectedEmployee.monthlyCosts?.ccf || 0)}</span>
                       </div>
                     </div>
-                    <span className="text-sm font-bold text-slate-800">{formatCurrency(selectedEmployee.accumulatedObligations.cesantias)}</span>
-                  </div>
-
-                  <div className="flex justify-between items-center">
-                    <div className="flex items-center gap-1">
-                      <span className="text-sm font-medium text-slate-600">Intereses Cesantías</span>
-                      <div className="group relative">
-                        <Info className="w-3.5 h-3.5 text-slate-300 cursor-pointer" />
-                        <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 w-48 p-2 bg-slate-800 text-white text-[10px] rounded opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-10 shadow-lg text-center">
-                          12% anual sobre las cesantías. Pagado al empleado en enero.
-                        </div>
-                      </div>
+                    
+                    <div className="mt-4 bg-brand-50 border border-brand-100 rounded-xl p-4 flex justify-between items-center">
+                      <span className="text-xs font-bold uppercase tracking-wider text-brand-700">Total Desembolso Mes</span>
+                      <span className="text-lg font-black text-brand-700">
+                        {formatCurrency(
+                          (selectedEmployee.baseSalary || 0) + 
+                          (selectedEmployee.transportAllowance || 0) + 
+                          (selectedEmployee.monthlyCosts?.salud || 0) + 
+                          (selectedEmployee.monthlyCosts?.pension || 0) + 
+                          (selectedEmployee.monthlyCosts?.arl || 0) + 
+                          (selectedEmployee.monthlyCosts?.ccf || 0)
+                        )}
+                      </span>
                     </div>
-                    <span className="text-sm font-bold text-slate-800">{formatCurrency(selectedEmployee.accumulatedObligations.intereses)}</span>
-                  </div>
-
-                  <div className="flex justify-between items-center">
-                    <div className="flex items-center gap-1">
-                      <span className="text-sm font-medium text-slate-600">Vacaciones ({Math.floor(selectedEmployee.accumulatedObligations.vacationDays)} días)</span>
-                      <div className="group relative">
-                        <Info className="w-3.5 h-3.5 text-slate-300 cursor-pointer" />
-                        <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 w-48 p-2 bg-slate-800 text-white text-[10px] rounded opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-10 shadow-lg text-center">
-                          15 días hábiles de descanso remunerado por año trabajado.
-                        </div>
-                      </div>
-                    </div>
-                    <span className="text-sm font-bold text-slate-800">{formatCurrency(selectedEmployee.accumulatedObligations.vacaciones)}</span>
                   </div>
                 </div>
+              )}
 
-                <div className="mt-4 bg-rose-50 border border-rose-100 rounded-xl p-4 flex justify-between items-center">
-                  <span className="text-xs font-bold uppercase tracking-wider text-rose-600">Obligación Total</span>
-                  <span className="text-lg font-black text-rose-600">{formatCurrency(selectedEmployee.accumulatedObligations.total)}</span>
+              {activeTab === 'pasivo' && (
+                <div className="space-y-6 animate-in fade-in duration-300">
+                  <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
+                    <AlertCircle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+                    <p className="text-xs text-amber-700 leading-relaxed font-medium">
+                      Valores provisionados proyectados. No representan un pago mensual inmediato, sino la deuda acumulada con el empleado a la fecha actual.
+                    </p>
+                  </div>
+
+                  {/* Prestaciones Acumuladas */}
+                  <div>
+                    <h3 className="text-xs font-extrabold text-slate-400 uppercase tracking-widest mb-3 pb-2 border-b border-slate-100">
+                      Pasivo Prestacional a la Fecha
+                    </h3>
+                    <div className="space-y-3">
+                      <div className="flex justify-between items-center">
+                        <div className="flex items-center gap-1">
+                          <span className="text-sm font-medium text-slate-600">Prima de Servicios</span>
+                          <div className="group relative">
+                            <Info className="w-3.5 h-3.5 text-slate-300 cursor-pointer" />
+                            <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 w-48 p-2 bg-slate-800 text-white text-[10px] rounded opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-10 shadow-lg text-center">
+                              1 mes de salario por año. Se paga semestralmente.
+                            </div>
+                          </div>
+                        </div>
+                        <span className="text-sm font-bold text-slate-800">{formatCurrency(selectedEmployee.accumulatedObligations?.prima || 0)}</span>
+                      </div>
+
+                      <div className="flex justify-between items-center">
+                        <div className="flex items-center gap-1">
+                          <span className="text-sm font-medium text-slate-600">Cesantías</span>
+                          <div className="group relative">
+                            <Info className="w-3.5 h-3.5 text-slate-300 cursor-pointer" />
+                            <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 w-48 p-2 bg-slate-800 text-white text-[10px] rounded opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-10 shadow-lg text-center">
+                              1 mes de salario por año trabajado. Consignado anualmente al fondo.
+                            </div>
+                          </div>
+                        </div>
+                        <span className="text-sm font-bold text-slate-800">{formatCurrency(selectedEmployee.accumulatedObligations?.cesantias || 0)}</span>
+                      </div>
+
+                      <div className="flex justify-between items-center">
+                        <div className="flex items-center gap-1">
+                          <span className="text-sm font-medium text-slate-600">Intereses Cesantías</span>
+                          <div className="group relative">
+                            <Info className="w-3.5 h-3.5 text-slate-300 cursor-pointer" />
+                            <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 w-48 p-2 bg-slate-800 text-white text-[10px] rounded opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-10 shadow-lg text-center">
+                              12% anual sobre las cesantías. Pagado al empleado en enero.
+                            </div>
+                          </div>
+                        </div>
+                        <span className="text-sm font-bold text-slate-800">{formatCurrency(selectedEmployee.accumulatedObligations?.intereses || 0)}</span>
+                      </div>
+
+                      <div className="flex justify-between items-center">
+                        <div className="flex items-center gap-1">
+                          <span className="text-sm font-medium text-slate-600">Vacaciones ({Math.floor(selectedEmployee.accumulatedObligations?.vacationDays || 0)} días)</span>
+                          <div className="group relative">
+                            <Info className="w-3.5 h-3.5 text-slate-300 cursor-pointer" />
+                            <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 w-48 p-2 bg-slate-800 text-white text-[10px] rounded opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-10 shadow-lg text-center">
+                              15 días hábiles de descanso remunerado por año trabajado.
+                            </div>
+                          </div>
+                        </div>
+                        <span className="text-sm font-bold text-slate-800">{formatCurrency(selectedEmployee.accumulatedObligations?.vacaciones || 0)}</span>
+                      </div>
+                    </div>
+
+                    <div className="mt-4 bg-slate-100 border border-slate-200 rounded-xl p-4 flex justify-between items-center">
+                      <span className="text-xs font-bold uppercase tracking-wider text-slate-700">Deuda Proyectada Total</span>
+                      <span className="text-lg font-black text-slate-800">{formatCurrency(selectedEmployee.accumulatedObligations?.total || 0)}</span>
+                    </div>
+                  </div>
                 </div>
-              </div>
+              )}
 
             </div>
           </div>

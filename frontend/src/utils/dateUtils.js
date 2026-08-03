@@ -183,3 +183,5 @@ export const calculateLastVacationDay = (
     String(current.getUTCDate()).padStart(2, '0')
   ].join('-');
 };
+
+export const calculateReturnDate = calculateLastVacationDay;

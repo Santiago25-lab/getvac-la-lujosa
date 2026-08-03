@@ -147,6 +147,7 @@ export const formatDateFriendly = (dateStr) => {
  * 
  * @param {string} startDateStr - Fecha de salida YYYY-MM-DD
  * @param {number} businessDaysNeeded - Días hábiles de vacaciones
+ */
 export const calculateLastVacationDay = (
   startDateStr, 
   businessDaysNeeded, 

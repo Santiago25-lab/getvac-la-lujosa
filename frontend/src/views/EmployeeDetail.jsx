@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { ChevronLeft, CalendarRange, Clock, CalendarDays, CheckCircle2, AlertTriangle, Trash2, FileText, UserSquare2, RefreshCw, ClipboardSignature, ShieldCheck, AlertOctagon, Edit, X } from 'lucide-react';
+import { ChevronLeft, CalendarRange, Clock, CalendarDays, CheckCircle2, AlertTriangle, Trash2, FileText, UserSquare2, RefreshCw, ClipboardSignature, ShieldCheck, AlertOctagon, Edit, X, PauseCircle, XCircle } from 'lucide-react';
 import { formatDateFriendly, calculateBusinessDays, calculateLastVacationDay } from '../utils/dateUtils';
 import { exportEmployeeHistoryToPDF } from '../utils/exportUtils';
 import { API_URL } from '../config.js';
@@ -37,6 +37,8 @@ export default function EmployeeDetail({ token, employeeId, onViewChange, userRo
 
   // Nuevos campos legales de Fase 1 (Vacaciones)
   const [tipoDisfrute, setTipoDisfrute] = useState('Físico');
+  const [compensatedDays, setCompensatedDays] = useState('');
+  const [bookingWarnings, setBookingWarnings] = useState([]);
   const [fechaNotificacion, setFechaNotificacion] = useState('');
   const [responsableAprobacion, setResponsableAprobacion] = useState('');
 
@@ -600,7 +602,7 @@ export default function EmployeeDetail({ token, employeeId, onViewChange, userRo
 
   // Escuchar cambios de fecha para calcular días hábiles en tiempo real
   useEffect(() => {
-    const days = parseInt(requestedDays) || 0;
+    const days = (parseInt(requestedDays) || 0) + (tipoDisfrute === 'Mixto' ? (parseInt(compensatedDays) || 0) : 0);
     if (startDate && days > 0) {
       setBookingDays(days);
       
@@ -613,11 +615,12 @@ export default function EmployeeDetail({ token, employeeId, onViewChange, userRo
       setBookingDays(0);
       setBookingError('');
     }
-  }, [startDate, requestedDays, employee]);
+  }, [startDate, requestedDays, compensatedDays, tipoDisfrute, employee]);
 
   const handleBookVacation = async (e) => {
     e.preventDefault();
-    if (!startDate || !lastVacationDay) {
+    const isMoneyOnly = tipoDisfrute === 'Dinero';
+    if (!startDate || (!isMoneyOnly && !lastVacationDay)) {
       setBookingError('Por favor selecciona la fecha de inicio y los días hábiles a tomar.');
       return;
     }
@@ -634,6 +637,7 @@ export default function EmployeeDetail({ token, employeeId, onViewChange, userRo
 
     setBookingLoading(true);
     setBookingError('');
+    setBookingWarnings([]);
 
     try {
       const response = await fetch(`${API_URL}/api/vacations`, {
@@ -645,7 +649,9 @@ export default function EmployeeDetail({ token, employeeId, onViewChange, userRo
         body: JSON.stringify({
           employeeId: employee.id,
           startDate,
-          endDate: lastVacationDay,
+          endDate: isMoneyOnly ? startDate : lastVacationDay,
+          businessDays: isMoneyOnly ? parseInt(requestedDays) : undefined,
+          compensatedDays: tipoDisfrute === 'Mixto' ? parseInt(compensatedDays) || 0 : undefined,
           notes,
           tipoDisfrute,
           fechaNotificacion: fechaNotificacion || null,
@@ -660,8 +666,10 @@ export default function EmployeeDetail({ token, employeeId, onViewChange, userRo
       }
 
       // Limpiar formulario y recargar
+      setBookingWarnings(data.warnings || []);
       setStartDate('');
       setRequestedDays('');
+      setCompensatedDays('');
       setNotes('');
       setTipoDisfrute('Físico');
       setFechaNotificacion('');
@@ -695,6 +703,32 @@ export default function EmployeeDetail({ token, employeeId, onViewChange, userRo
       fetchEmployeeData();
     } catch (err) {
       alert(err.message || 'Error al procesar la solicitud.');
+    }
+  };
+
+  const handleInterruptVacation = async (vac) => {
+    const fechaSuspension = window.prompt(`Fecha de interrupción (AAAA-MM-DD), entre el día siguiente a ${vac.startDate} y ${vac.endDate}:`);
+    if (!fechaSuspension) return;
+    const motivoSuspension = window.prompt('Motivo de la interrupción (ej: incapacidad médica):', 'Incapacidad médica');
+    if (!motivoSuspension) return;
+
+    try {
+      const response = await fetch(`${API_URL}/api/vacations/${vac.id}/interrupt`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ fechaSuspension, motivoSuspension })
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.message || 'Error al interrumpir las vacaciones.');
+      }
+      alert(data.message);
+      fetchEmployeeData();
+    } catch (err) {
+      alert(err.message);
     }
   };
 
@@ -1090,10 +1124,22 @@ export default function EmployeeDetail({ token, employeeId, onViewChange, userRo
                     </div>
                   )}
 
+                  {bookingWarnings.length > 0 && (
+                    <div className="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-2xl text-amber-800 text-xs font-semibold space-y-1.5">
+                      <div className="flex items-center gap-2 font-black">
+                        <AlertTriangle className="w-4 h-4 text-amber-500" />
+                        <span>Vacaciones registradas con advertencias legales:</span>
+                      </div>
+                      <ul className="list-disc pl-6 space-y-0.5">
+                        {bookingWarnings.map(w => <li key={w}>{w}</li>)}
+                      </ul>
+                    </div>
+                  )}
+
                   <form onSubmit={handleBookVacation} className="space-y-4 font-semibold">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <div className="space-y-1.5">
-                        <label className="text-[10px] font-bold text-slate-450 uppercase tracking-widest pl-1">Fecha de Salida</label>
+                        <label className="text-[10px] font-bold text-slate-450 uppercase tracking-widest pl-1">{tipoDisfrute === 'Dinero' ? 'Fecha del Acuerdo / Pago' : 'Fecha de Salida'}</label>
                         <input
                           type="date"
                           value={startDate}
@@ -1119,7 +1165,7 @@ export default function EmployeeDetail({ token, employeeId, onViewChange, userRo
                       </div>
 
                       <div className="space-y-1.5">
-                        <label className="text-[10px] font-bold text-slate-450 uppercase tracking-widest pl-1">Días Hábiles a Tomar</label>
+                        <label className="text-[10px] font-bold text-slate-450 uppercase tracking-widest pl-1">{tipoDisfrute === 'Dinero' ? 'Días a Compensar en Dinero' : 'Días Hábiles de Descanso'}</label>
                         <input
                           type="number"
                           min="1"
@@ -1148,6 +1194,20 @@ export default function EmployeeDetail({ token, employeeId, onViewChange, userRo
                           className="w-full bg-slate-100/60 dark:bg-slate-950/40 border border-slate-200/60 dark:border-slate-850/60 rounded-2xl py-2.5 px-4 text-xs outline-none focus:border-brand-500 transition font-bold"
                         />
                       </div>
+
+                      {tipoDisfrute === 'Mixto' && (
+                        <div className="space-y-1.5">
+                          <label className="text-[10px] font-bold text-slate-450 uppercase tracking-widest pl-1">Días Compensados en Dinero</label>
+                          <input
+                            type="number"
+                            min="1"
+                            value={compensatedDays}
+                            onChange={(e) => setCompensatedDays(e.target.value)}
+                            placeholder="Ej: 5"
+                            className="w-full bg-slate-100/60 dark:bg-slate-950/40 border border-slate-200/60 dark:border-slate-850/60 rounded-2xl py-2.5 px-4 text-xs outline-none focus:border-brand-500 transition font-bold"
+                          />
+                        </div>
+                      )}
 
 
                     </div>
@@ -1188,7 +1248,13 @@ export default function EmployeeDetail({ token, employeeId, onViewChange, userRo
                       </div>
                     </div>
 
-                    {lastVacationDay && (
+                    {(tipoDisfrute === 'Dinero' || tipoDisfrute === 'Mixto') && (
+                      <div className="p-3 bg-amber-50 border border-amber-200 rounded-2xl text-[11px] font-semibold text-amber-800">
+                        Art. 189 CST: solo se puede compensar en dinero hasta la mitad de las vacaciones, y debe existir acuerdo escrito con el trabajador.
+                      </div>
+                    )}
+
+                    {lastVacationDay && tipoDisfrute !== 'Dinero' && (
                       <div className="p-4 bg-brand-50/50 border border-brand-100 dark:bg-brand-950/20 dark:border-brand-900/50 rounded-2xl flex flex-col gap-2">
                         <div className="flex items-center gap-2">
                           <CheckCircle2 className="w-4 h-4 text-brand-500" />
@@ -1249,7 +1315,7 @@ export default function EmployeeDetail({ token, employeeId, onViewChange, userRo
                       <thead>
                         <tr className="text-slate-400 font-black border-b border-slate-100 dark:border-slate-800/40 uppercase tracking-widest text-[9px] pb-3">
                           <th className="pb-3 pr-4">Salida</th>
-                          <th className="pb-3 px-4">Regreso</th>
+                          <th className="pb-3 px-4">Último día</th>
                           <th className="pb-3 px-4 text-center">Consumidos</th>
                           <th className="pb-3 px-4 text-center">Disfrute</th>
                           <th className="pb-3 px-4 text-center">Estado</th>
@@ -1280,7 +1346,11 @@ export default function EmployeeDetail({ token, employeeId, onViewChange, userRo
                             </td>
                             <td className="py-3.5 px-4 text-center">
                               <span className={`inline-block px-2.5 py-0.5 text-[9px] font-black border rounded-full select-none uppercase tracking-wider ${
-                                vac.status === 'Programada'
+                                vac.status === 'Cancelada'
+                                  ? 'bg-slate-100 text-slate-500 border-slate-200 line-through'
+                                  : vac.status === 'Suspendida'
+                                  ? 'bg-violet-50 text-violet-700 border-violet-200'
+                                  : vac.status === 'Programada'
                                   ? 'bg-brand-50 text-brand-700 border-brand-200'
                                   : vac.status === 'En disfrute'
                                     ? 'bg-amber-50 text-amber-700 border-amber-250 dark:bg-amber-950/20 dark:text-amber-455 dark:border-amber-900/50'
@@ -1292,14 +1362,25 @@ export default function EmployeeDetail({ token, employeeId, onViewChange, userRo
                             <td className="py-3.5 px-4 max-w-[150px] truncate" title={vac.notes}>
                               {vac.notes || 'Sin observaciones'}
                             </td>
-                            <td className="py-3.5 pl-4 text-right space-x-2">
-                              <button
-                                onClick={() => handleDeleteVacation(vac.id, vac.businessDays)}
-                                className="inline-flex p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500 hover:text-white text-rose-500 transition duration-150"
-                                title="Eliminar registro"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
+                            <td className="py-3.5 pl-4 text-right space-x-2 whitespace-nowrap">
+                              {vac.tipoDisfrute !== 'Dinero' && ['Programada', 'En disfrute'].includes(vac.status) && (
+                                <button
+                                  onClick={() => handleInterruptVacation(vac)}
+                                  className="inline-flex p-1.5 rounded-lg bg-violet-500/10 hover:bg-violet-500 hover:text-white text-violet-600 transition duration-150"
+                                  title="Interrumpir (incapacidad u otra causa, Art. 188 CST)"
+                                >
+                                  <PauseCircle className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                              {vac.status !== 'Cancelada' && (
+                                <button
+                                  onClick={() => handleDeleteVacation(vac.id, vac.businessDays)}
+                                  className="inline-flex p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500 hover:text-white text-rose-500 transition duration-150"
+                                  title="Cancelar registro (queda en el historial)"
+                                >
+                                  <XCircle className="w-3.5 h-3.5" />
+                                </button>
+                              )}
                             </td>
                           </tr>
                         ))}

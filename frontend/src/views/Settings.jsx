@@ -1,255 +1,191 @@
 import React, { useEffect, useState } from 'react';
-import { Settings, Info, Save, ShieldAlert, CheckCircle2, ListFilter, ShieldCheck } from 'lucide-react';
+import { Scale, ShieldAlert, ShieldCheck, CheckCircle2, AlertTriangle, ArrowRight } from 'lucide-react';
 import { API_URL } from '../config.js';
 
-export default function SettingsView({ token, userRole }) {
-  const [days, setDays] = useState(30);
-  const [updatedBy, setUpdatedBy] = useState('');
-  const [updatedAt, setUpdatedAt] = useState('');
+// Resumen de cumplimiento: compara la política configurada por la empresa
+// con los mínimos del Código Sustantivo del Trabajo que expone el backend.
+export default function SettingsView({ token, onViewChange }) {
+  const [settings, setSettings] = useState(null);
+  const [legal, setLegal] = useState(null);
+  const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [saveLoading, setSaveLoading] = useState(false);
-  
-  const [successMsg, setSuccessMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
 
-  // Historial simulado de auditoría (para un toque sumamente profesional)
-  const [auditLogs, setAuditLogs] = useState([
-    { id: 1, action: 'Cambio de configuración', details: 'Días por acumulación fijados en 30 días.', user: 'Administrador Principal', date: '2026-05-10T14:32:00' },
-    { id: 2, action: 'Sembrado de base de datos', details: 'Configuración inicial generada por el sistema (30 días).', user: 'Sistema (Inicial)', date: '2026-05-18T03:37:00' }
-  ]);
-
-  const fetchSettings = async () => {
-    try {
-      const response = await fetch(`${API_URL}/api/settings`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-
-      if (!response.ok) {
-        throw new Error('Error al obtener la configuración.');
-      }
-
-      const data = await response.json();
-      setDays(Math.round(data.daysRequiredForOneVacationDay * 100) / 100);
-      setUpdatedBy(data.updatedBy || 'Sistema');
-      
-      const dateStr = data.updatedAt ? new Date(data.updatedAt).toLocaleString('es-ES') : 'Inicial';
-      setUpdatedAt(dateStr);
-    } catch (err) {
-      console.error(err);
-      setErrorMsg('No se pudo establecer conexión con el servidor.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
-    fetchSettings();
-  }, [token]);
-
-  const handleSaveSettings = async (e) => {
-    e.preventDefault();
-    if (userRole !== 'Administrador' && userRole !== 'Super Usuario') return;
-
-    if (!days || isNaN(days) || days <= 0) {
-      setErrorMsg('Por favor ingresa un número entero de días válido y mayor que cero.');
-      return;
-    }
-
-    setSaveLoading(true);
-    setSuccessMsg('');
-    setErrorMsg('');
-
-    try {
-      const response = await fetch(`${API_URL}/api/settings`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ daysRequiredForOneVacationDay: parseFloat(days) })
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Error al guardar configuración.');
+    const headers = { 'Authorization': `Bearer ${token}` };
+    const load = async () => {
+      try {
+        const [settingsRes, legalRes, logsRes] = await Promise.all([
+          fetch(`${API_URL}/api/settings`, { headers }),
+          fetch(`${API_URL}/api/settings/legal-framework`, { headers }),
+          fetch(`${API_URL}/api/audit-logs`, { headers })
+        ]);
+        if (!settingsRes.ok || !legalRes.ok) throw new Error('No se pudo cargar la configuración.');
+        setSettings(await settingsRes.json());
+        setLegal(await legalRes.json());
+        if (logsRes.ok) {
+          const allLogs = await logsRes.json();
+          setLogs(allLogs.filter(log => log.target === 'settings').slice(0, 10));
+        }
+      } catch (err) {
+        setErrorMsg(err.message || 'No se pudo establecer conexión con el servidor.');
+      } finally {
+        setLoading(false);
       }
-
-      setSuccessMsg('¡Parámetros del sistema actualizados con éxito!');
-      setUpdatedBy(data.setting.updatedBy);
-      setUpdatedAt(new Date(data.setting.updatedAt).toLocaleString('es-ES'));
-      
-      // Agregar al log de auditoría en tiempo real
-      setAuditLogs(prev => [
-        {
-          id: Date.now(),
-          action: 'Actualización de configuración',
-          details: `Días por acumulación fijados en ${days} días trabajados.`,
-          user: data.setting.updatedBy,
-          date: data.setting.updatedAt
-        },
-        ...prev
-      ]);
-    } catch (err) {
-      setErrorMsg(err.message || 'Error en el servidor al guardar.');
-    } finally {
-      setSaveLoading(false);
-    }
-  };
+    };
+    load();
+  }, [token]);
 
   if (loading) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center p-8">
         <div className="w-10 h-10 border-4 border-brand-500 border-t-transparent rounded-full animate-spin mb-4" />
-        <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Cargando parámetros del sistema...</p>
+        <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Cargando reglas laborales...</p>
       </div>
     );
   }
 
-  const cannotEdit = userRole !== 'Super Usuario' && userRole !== 'Administrador';
+  const cst = legal?.cst || {};
+  const rules = settings && legal ? [
+    ...Object.entries(legal.policyFields).map(([key, field]) => ({
+      label: field.label,
+      company: settings[key] ?? field.default,
+      legal: `${field.min} – ${field.max}`,
+      reference: field.legal,
+      ok: Number(settings[key] ?? field.default) >= field.min && Number(settings[key] ?? field.default) <= field.max
+    })),
+    {
+      label: 'Aviso previo incumplido',
+      company: settings.vacationNoticeMode === 'bloquear' ? 'Bloquear registro' : 'Advertir',
+      legal: 'Decisión de la empresa',
+      reference: 'Art. 187 CST',
+      ok: true
+    },
+    {
+      label: 'Vacaciones anticipadas',
+      company: settings.allowAdvanceVacations === false ? 'No permitidas' : 'Permitidas con advertencia',
+      legal: 'Decisión de la empresa',
+      reference: 'El derecho nace al cumplir 1 año (Art. 186 CST); antes, solo por acuerdo.',
+      ok: true
+    },
+    {
+      label: 'Descontar suspensiones / licencias no remuneradas',
+      company: settings.discountUnpaidLeaveFromVacations === false ? 'No' : 'Sí',
+      legal: 'Facultad del empleador',
+      reference: 'Arts. 51 y 53 CST',
+      ok: true
+    },
+    {
+      label: 'Disfrute mínimo continuo por año',
+      company: `${cst.MIN_CONTINUOUS_DAYS_PER_YEAR} días hábiles`,
+      legal: 'Fijo por ley',
+      reference: 'Art. 190 CST',
+      ok: true
+    },
+    {
+      label: 'Acumulación máxima',
+      company: `${cst.MAX_ACCUMULATION_YEARS} años (${cst.MAX_ACCUMULATION_YEARS_SPECIAL} en cargos especiales)`,
+      legal: 'Fijo por ley',
+      reference: 'Art. 190 CST: técnicos, especializados, de confianza o extranjeros.',
+      ok: true
+    }
+  ] : [];
 
   return (
-    <div className="flex-1 p-8 overflow-y-auto space-y-8 select-none animate-fade-in">
-      
-      <div>
-        <h1 className="text-2xl font-black text-slate-800 dark:text-white tracking-tight">
-          Configuración y Parámetros del Sistema
-        </h1>
-        <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">
-          Ajusta las políticas operativas del motor de cálculo de acumulación de vacaciones.
-        </p>
+    <div className="flex-1 p-8 overflow-y-auto space-y-8 animate-fade-in">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-black text-slate-800 dark:text-white tracking-tight">Reglas Laborales Vigentes</h1>
+          <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">
+            Política de la empresa comparada con los mínimos del Código Sustantivo del Trabajo.
+          </p>
+        </div>
+        {onViewChange && (
+          <button
+            onClick={() => onViewChange('superuser')}
+            className="self-start md:self-auto bg-brand-500 hover:bg-brand-600 text-white font-bold py-2.5 px-4 rounded-xl text-xs flex items-center gap-2 transition"
+          >
+            <span>Editar en Panel Super</span>
+            <ArrowRight className="w-4 h-4" />
+          </button>
+        )}
       </div>
 
+      {errorMsg && (
+        <div className="p-4 bg-rose-500/10 border border-rose-500/20 text-rose-500 rounded-2xl text-xs font-semibold flex items-center gap-2.5">
+          <ShieldAlert className="w-4 h-4 shrink-0" />
+          <span>{errorMsg}</span>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
-        
-        {/* Panel Izquierdo: Formulario de Configuración */}
-        <div className="xl:col-span-2 space-y-6">
-          <div className="glass-card p-6 space-y-6">
-            
-            <div className="flex items-center gap-2.5 pb-4 border-b border-slate-100 dark:border-slate-800/40">
-              <div className="p-1.5 rounded-lg bg-brand-500/10 text-brand-500">
-                <Settings className="w-5 h-5" />
-              </div>
-              <h3 className="text-lg font-bold text-slate-800 dark:text-white">Motor de Acumulación</h3>
+        <div className="xl:col-span-2 glass-card p-6 space-y-5">
+          <div className="flex items-center gap-2.5 pb-4 border-b border-slate-100 dark:border-slate-800/40">
+            <div className="p-1.5 rounded-lg bg-indigo-500/10 text-indigo-500">
+              <Scale className="w-5 h-5" />
             </div>
+            <h3 className="text-lg font-bold text-slate-800 dark:text-white">Vacaciones</h3>
+          </div>
 
-            {successMsg && (
-              <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 rounded-2xl text-xs font-semibold flex items-center gap-2.5">
-                <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-500" />
-                <span>{successMsg}</span>
-              </div>
-            )}
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead>
+                <tr className="text-slate-400 font-black uppercase tracking-widest text-[9px] border-b border-slate-100 dark:border-slate-800/40">
+                  <th className="pb-3 pr-4">Regla</th>
+                  <th className="pb-3 px-4">Empresa</th>
+                  <th className="pb-3 px-4">Ley</th>
+                  <th className="pb-3 pl-4">Referencia</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800/40">
+                {rules.map(rule => (
+                  <tr key={rule.label}>
+                    <td className="py-3 pr-4 font-bold text-slate-700 dark:text-slate-200">
+                      <span className="inline-flex items-center gap-2">
+                        {rule.ok
+                          ? <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+                          : <AlertTriangle className="w-4 h-4 text-rose-500 shrink-0" />}
+                        {rule.label}
+                      </span>
+                    </td>
+                    <td className="py-3 px-4 font-black text-brand-600">{String(rule.company)}</td>
+                    <td className="py-3 px-4 font-semibold text-slate-500">{rule.legal}</td>
+                    <td className="py-3 pl-4 text-slate-400 font-medium max-w-xs">{rule.reference}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
 
-            {errorMsg && (
-              <div className="p-4 bg-rose-500/10 border border-rose-500/20 text-rose-500 dark:text-rose-450 rounded-2xl text-xs font-semibold flex items-center gap-2.5">
-                <ShieldAlert className="w-4 h-4 shrink-0 text-rose-500" />
-                <span>{errorMsg}</span>
-              </div>
-            )}
-
-            {/* Aviso de sólo lectura para HR */}
-            {cannotEdit && (
-              <div className="p-4 bg-amber-500/5 dark:bg-amber-500/10 border border-amber-500/20 rounded-2xl text-xs text-amber-600 dark:text-amber-400 flex items-center gap-2.5 font-medium">
-                <ShieldAlert className="w-4 h-4 shrink-0 text-amber-500" />
-                <span>Modo de visualización. Solo los usuarios con rol de <b>Super Usuario</b> pueden modificar estos valores.</span>
-              </div>
-            )}
-
-            <form onSubmit={handleSaveSettings} className="space-y-6">
-              
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
-                  Regla de Acumulación (Días Trabajados por 1 Día de Vacaciones)
-                </label>
-                <div className="flex items-center gap-4">
-                  <input
-                    type="number"
-                    step="any"
-                    value={days}
-                    onChange={(e) => setDays(e.target.value)}
-                    disabled={cannotEdit}
-                    className="w-32 bg-white border border-slate-200 rounded-2xl py-3 px-4 text-base font-extrabold text-slate-800 outline-none focus:border-brand-500 transition focus:ring-2 focus:ring-brand-500/10 disabled:opacity-50"
-                  />
-                  <div className="text-sm font-semibold text-slate-500">
-                    días trabajados = <span className="text-brand-500 font-extrabold">1 día de vacaciones</span> acumulado.
-                  </div>
-                </div>
-                
-                <div className="p-3.5 rounded-2xl bg-amber-500/5 border border-amber-500/10 text-xs text-slate-500 font-medium leading-relaxed max-w-xl space-y-1 mt-2">
-                  <div className="font-bold text-slate-700">💡 Tip de Configuración Operativa:</div>
-                  <p>
-                    Para cumplir exactamente con la regla estándar de **15 días hábiles de vacaciones por cada 365 días de servicio** (1 año de trabajo), el valor del multiplicador debe ser de **24.33** días trabajados por cada día ganado.
-                  </p>
-                </div>
-              </div>
-
-              {/* Ejemplo práctico interactivo */}
-              <div className="p-4 rounded-2xl bg-brand-50/50 border border-brand-100 flex items-start gap-3">
-                <Info className="w-5 h-5 text-brand-500 shrink-0 mt-0.5" />
-                <div className="text-xs text-slate-500 font-medium leading-relaxed">
-                  <span className="font-bold text-slate-700 block mb-1">Fórmula en Ejecución:</span>
-                  Ejemplo: Si un empleado lleva <b>365 días</b> trabajados, con el multiplicador en <b>{days}</b>, su acumulado automático será:
-                  <div className="mt-1.5 p-2 rounded bg-white border border-slate-150 font-mono text-[11px] text-brand-500 font-black inline-block">
-                    Math.floor( 365 / {days} ) = {Math.floor(365 / (parseFloat(days) || 24.33))} días de vacaciones acumulados.
-                  </div>
-                </div>
-              </div>
-
-              {/* Metadatos del último cambio */}
-              <div className="pt-4 border-t border-slate-100 flex flex-col md:flex-row justify-between text-xs text-slate-400 gap-2">
-                <div>Última actualización por: <span className="font-bold text-slate-600">{updatedBy}</span></div>
-                <div>Fecha del cambio: <span className="font-bold text-slate-600">{updatedAt}</span></div>
-              </div>
-
-              {/* Botón de Guardar */}
-              {!cannotEdit && (
-                <button
-                  type="submit"
-                  disabled={saveLoading}
-                  className="w-full md:w-auto bg-brand-500 hover:bg-brand-600 text-white font-bold py-3 px-6 rounded-2xl shadow-lg shadow-brand-500/10 hover:shadow-xl transition duration-200 flex items-center justify-center gap-2 self-end"
-                >
-                  <Save className="w-4 h-4" />
-                  <span>{saveLoading ? 'Guardando...' : 'Guardar Cambios'}</span>
-                </button>
-              )}
-
-            </form>
+          <div className="pt-4 border-t border-slate-100 dark:border-slate-800/40 text-xs text-slate-400">
+            Última actualización por <span className="font-bold text-slate-600 dark:text-slate-300">{settings?.updatedBy || 'Sistema'}</span>
+            {settings?.updatedAt && <> el <span className="font-bold text-slate-600 dark:text-slate-300">{new Date(settings.updatedAt).toLocaleString('es-CO')}</span></>}
           </div>
         </div>
 
-        {/* Panel Derecho: Historial de Cambios / Auditoría */}
-        <div>
-          <div className="glass-card p-6 h-full flex flex-col">
-            <div className="flex items-center gap-2.5 mb-5 border-b border-slate-100 dark:border-slate-800/40 pb-4">
-              <div className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-500">
-                <ShieldCheck className="w-5 h-5" />
-              </div>
-              <div>
-                <h3 className="text-lg font-bold text-slate-800 dark:text-white">Auditoría de Cambios</h3>
-                <p className="text-[11px] text-slate-450 dark:text-slate-400 font-semibold tracking-wide">Registro de eventos de seguridad</p>
-              </div>
+        <div className="glass-card p-6 flex flex-col">
+          <div className="flex items-center gap-2.5 mb-5 border-b border-slate-100 dark:border-slate-800/40 pb-4">
+            <div className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-500">
+              <ShieldCheck className="w-5 h-5" />
             </div>
-
-            <div className="flex-1 space-y-4 overflow-y-auto max-h-[380px] pr-1">
-              {auditLogs.map((log) => (
-                <div key={log.id} className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/50 dark:border-slate-800/20 text-xs space-y-1.5 hover:scale-[1.01] transition-transform">
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold text-brand-500">{log.action}</span>
-                    <span className="text-[10px] text-slate-400 font-semibold">{new Date(log.date).toLocaleDateString('es-ES')}</span>
+            <h3 className="text-lg font-bold text-slate-800 dark:text-white">Cambios de Configuración</h3>
+          </div>
+          {logs.length === 0 ? (
+            <p className="text-xs font-semibold text-slate-400">Aún no hay cambios registrados.</p>
+          ) : (
+            <div className="space-y-3 overflow-y-auto max-h-[420px] pr-1">
+              {logs.map(log => (
+                <div key={log.id} className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/50 dark:border-slate-800/20 text-xs space-y-1">
+                  <div className="flex justify-between">
+                    <span className="font-bold text-brand-500">{log.username}</span>
+                    <span className="text-[10px] text-slate-400 font-semibold">{new Date(log.createdAt).toLocaleString('es-CO')}</span>
                   </div>
-                  <p className="text-slate-500 dark:text-slate-400 leading-relaxed">
-                    {log.details}
-                  </p>
-                  <div className="text-[10px] text-slate-400 pt-1 flex justify-between font-medium">
-                    <span>Autor: <b>{log.user}</b></span>
-                    <span>{new Date(log.date).toLocaleTimeString('es-ES', {hour: '2-digit', minute:'2-digit'})}</span>
-                  </div>
+                  <p className="text-slate-500 dark:text-slate-400 break-words line-clamp-3">{log.details}</p>
                 </div>
               ))}
             </div>
-          </div>
+          )}
         </div>
-
       </div>
     </div>
   );

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { ShieldCheck, Briefcase, History, Save, Plus, Trash2, Edit, CheckCircle2, ShieldAlert, Info, Users, X, Calendar } from 'lucide-react';
 import { API_URL } from '../config.js';
 import { getColombianHolidays } from '../utils/colombianHolidays.js';
+import VacationPolicyFields from '../components/VacationPolicyFields.jsx';
 
 export default function SuperUserPanelView({ token, userRole }) {
   const [logs, setLogs] = useState([]);
@@ -14,8 +15,9 @@ export default function SuperUserPanelView({ token, userRole }) {
     fullName: '',
     role: 'Administrador'
   });
+  const [legalFramework, setLegalFramework] = useState(null);
   const [settings, setSettings] = useState({
-    daysRequiredForOneVacationDay: 24.33,
+    vacationDaysPerYear: 15,
     workDays: '1,2,3,4,5',
     halfWorkDays: '',
     checkInTime: '08:00',
@@ -83,6 +85,13 @@ export default function SuperUserPanelView({ token, userRole }) {
       }
 
       // Fetch Company Holidays
+      const legalRes = await fetch(`${API_URL}/api/settings/legal-framework`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (legalRes.ok) {
+        setLegalFramework(await legalRes.json());
+      }
+
       const holidaysRes = await fetch(`${API_URL}/api/company-holidays`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -555,16 +564,6 @@ export default function SuperUserPanelView({ token, userRole }) {
               </div>
             </div>
 
-            <div className="space-y-1">
-              <label className="text-xs font-bold text-slate-500 uppercase">Días para acumular 1 día de vacación</label>
-              <input
-                type="number"
-                step="any"
-                value={settings.daysRequiredForOneVacationDay}
-                onChange={(e) => setSettings({ ...settings, daysRequiredForOneVacationDay: parseFloat(e.target.value) })}
-                className="w-full bg-white border border-slate-200 rounded-xl py-2 px-3 text-sm font-bold text-slate-800 outline-none focus:border-brand-500 transition"
-              />
-            </div>
 
             <div className="space-y-2">
               <label className="text-xs font-bold text-slate-500 uppercase block">Días Laborables</label>
@@ -694,6 +693,8 @@ export default function SuperUserPanelView({ token, userRole }) {
                 className="w-full bg-white border border-slate-200 rounded-xl py-2 px-3 text-sm font-bold text-slate-800 outline-none focus:border-brand-500 transition"
               />
             </div>
+
+            <VacationPolicyFields settings={settings} setSettings={setSettings} legal={legalFramework} />
 
             <div className="flex items-center gap-2.5 pt-4 pb-2 border-b border-slate-100">
               <div className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-500">

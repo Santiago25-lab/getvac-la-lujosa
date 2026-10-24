@@ -118,6 +118,37 @@ const Setting = sequelize.define('Setting', {
     type: DataTypes.BOOLEAN,
     defaultValue: false,
   },
+  // Políticas de vacaciones de la empresa. Los límites legales viven en utils/laborLaw.js
+  vacationDaysPerYear: {
+    type: DataTypes.FLOAT,
+    defaultValue: 15,
+    allowNull: false,
+  },
+  vacationNoticeDays: {
+    type: DataTypes.INTEGER,
+    defaultValue: 15,
+    allowNull: false,
+  },
+  vacationNoticeMode: {
+    type: DataTypes.STRING,
+    defaultValue: 'advertir', // 'advertir' | 'bloquear'
+    allowNull: false,
+  },
+  maxMoneyCompensationPercent: {
+    type: DataTypes.FLOAT,
+    defaultValue: 50,
+    allowNull: false,
+  },
+  allowAdvanceVacations: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: true,
+    allowNull: false,
+  },
+  discountUnpaidLeaveFromVacations: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: true,
+    allowNull: false,
+  },
   isSplitShift: {
     type: DataTypes.BOOLEAN,
     defaultValue: false,

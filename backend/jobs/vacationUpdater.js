@@ -20,13 +20,13 @@ export const startVacationCronJob = () => {
         }
       );
 
-      // 2. Pasar "En disfrute" a "Finalizada" si ya llegó o pasó la fecha de regreso
+      // 2. Pasar "En disfrute" a "Finalizada" cuando ya pasó el último día de descanso (endDate inclusive)
       const activeToFinished = await Vacation.update(
         { status: 'Finalizada' },
         {
           where: {
             status: 'En disfrute',
-            returnDate: { [Op.lte]: todayStr }
+            endDate: { [Op.lt]: todayStr }
           }
         }
       );

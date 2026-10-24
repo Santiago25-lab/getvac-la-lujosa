@@ -1,4 +1,16 @@
 import { Setting } from '../models/index.js';
+import { CST, POLICY_FIELDS, VACATION_NOTICE_MODES, validatePolicyUpdate } from '../utils/laborLaw.js';
+
+// Campos de política laboral configurables por empresa (validados contra el CST)
+const POLICY_KEYS = [
+  'vacationDaysPerYear', 'vacationNoticeDays', 'vacationNoticeMode', 'maxMoneyCompensationPercent',
+  'allowAdvanceVacations', 'discountUnpaidLeaveFromVacations'
+];
+
+// Marco legal que el frontend usa para mostrar mínimos y explicar cada regla
+export const getLegalFramework = (req, res) => {
+  res.json({ cst: CST, policyFields: POLICY_FIELDS, vacationNoticeModes: VACATION_NOTICE_MODES });
+};
 
 export const getSettings = async (req, res) => {
   try {
@@ -33,10 +45,21 @@ export const updateSettings = async (req, res) => {
     smmlv
   } = req.body;
 
+  const legalErrors = validatePolicyUpdate(req.body);
+  if (legalErrors.length > 0) {
+    return res.status(400).json({ message: legalErrors.join(' '), errors: legalErrors });
+  }
+
+  const policyUpdates = {};
+  for (const key of POLICY_KEYS) {
+    if (req.body[key] !== undefined && req.body[key] !== '') policyUpdates[key] = req.body[key];
+  }
+
   try {
     let setting = await Setting.findOne();
     if (!setting) {
       setting = await Setting.create({
+        ...policyUpdates,
         daysRequiredForOneVacationDay: daysRequiredForOneVacationDay !== undefined ? parseFloat(daysRequiredForOneVacationDay) : 24.333333333333332,
         checkInTime: checkInTime || '08:00',
         checkOutTime: checkOutTime || '17:00',
@@ -86,6 +109,7 @@ export const updateSettings = async (req, res) => {
       if (arlRisk4Percentage !== undefined) setting.arlRisk4Percentage = parseFloat(arlRisk4Percentage);
       if (arlRisk5Percentage !== undefined) setting.arlRisk5Percentage = parseFloat(arlRisk5Percentage);
       if (smmlv !== undefined) setting.smmlv = parseInt(smmlv);
+      Object.assign(setting, policyUpdates);
       
       setting.updatedBy = req.user.fullName;
       await setting.save();

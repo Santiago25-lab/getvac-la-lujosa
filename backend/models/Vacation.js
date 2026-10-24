@@ -36,6 +36,16 @@ const Vacation = sequelize.define('Vacation', {
     type: DataTypes.INTEGER,
     allowNull: true,
   },
+  // Días pagados en dinero (Art. 189 CST). En 'Dinero' coincide con businessDays.
+  compensatedDays: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    defaultValue: 0,
+  },
+  registeredBy: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
   fechaNotificacion: {
     type: DataTypes.DATEONLY,
     allowNull: true,

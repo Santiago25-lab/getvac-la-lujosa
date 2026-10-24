@@ -39,7 +39,10 @@ export default function EmployeeList({ token, userRole, onViewChange }) {
     lastVacationEnjoyedDate: '',
     initialPendingVacationBalance: '',
     initialCesantiasBalance: '',
-    initialPrimaDays: ''
+    initialPrimaDays: '',
+    extendedVacationAccumulation: false,
+    terminationDate: '',
+    terminationReason: ''
   });
 
   const fetchEmployees = async () => {
@@ -107,7 +110,10 @@ export default function EmployeeList({ token, userRole, onViewChange }) {
       lastVacationEnjoyedDate: emp.lastVacationEnjoyedDate || '',
       initialPendingVacationBalance: emp.initialPendingVacationBalance || '',
       initialCesantiasBalance: emp.initialCesantiasBalance || '',
-      initialPrimaDays: emp.initialPrimaDays || ''
+      initialPrimaDays: emp.initialPrimaDays || '',
+      extendedVacationAccumulation: emp.extendedVacationAccumulation === true,
+      terminationDate: emp.terminationDate || '',
+      terminationReason: emp.terminationReason || ''
     });
     setEditingEmployeeId(emp.id);
     setIsEditMode(true);
@@ -134,7 +140,10 @@ export default function EmployeeList({ token, userRole, onViewChange }) {
       lastVacationEnjoyedDate: '',
       initialPendingVacationBalance: '',
       initialCesantiasBalance: '',
-      initialPrimaDays: ''
+      initialPrimaDays: '',
+      extendedVacationAccumulation: false,
+      terminationDate: '',
+      terminationReason: ''
     });
     setEditingEmployeeId(null);
     setIsEditMode(false);
@@ -641,6 +650,25 @@ export default function EmployeeList({ token, userRole, onViewChange }) {
                     Incluir en cálculo automático de vacaciones
                   </label>
                 </div>
+                {formData.contractType === 'Prestación de Servicios' && (
+                  <p className="text-[11px] font-semibold text-amber-700 pl-7">
+                    La prestación de servicios no es contrato de trabajo: no genera vacaciones aunque esta casilla esté marcada.
+                  </p>
+                )}
+
+                <div className="flex items-center gap-3">
+                  <input
+                    type="checkbox"
+                    name="extendedVacationAccumulation"
+                    checked={formData.extendedVacationAccumulation}
+                    onChange={(e) => setFormData(prev => ({ ...prev, extendedVacationAccumulation: e.target.checked }))}
+                    className="w-4 h-4 text-brand-500 rounded border-slate-300 focus:ring-brand-500 transition"
+                    id="extendedAccumulationCheckbox"
+                  />
+                  <label htmlFor="extendedAccumulationCheckbox" className="text-sm font-semibold text-slate-700 cursor-pointer select-none">
+                    Puede acumular vacaciones hasta 4 años (técnico, especializado, de confianza o extranjero · Art. 190 CST)
+                  </label>
+                </div>
 
                 <div className="flex items-center gap-3 mt-2">
                   <input
@@ -753,6 +781,43 @@ export default function EmployeeList({ token, userRole, onViewChange }) {
                   <option value="inactivo">Inactivo</option>
                 </select>
               </div>
+
+              {formData.status === 'inactivo' && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 rounded-2xl border border-rose-100 bg-rose-50/40">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-500 pl-1 uppercase tracking-wide">Fecha de Retiro</label>
+                    <input
+                      type="date"
+                      name="terminationDate"
+                      value={formData.terminationDate}
+                      onChange={handleInputChange}
+                      className="w-full bg-white border border-slate-200 rounded-2xl py-2.5 px-4 text-sm outline-none focus:border-brand-500 transition"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-500 pl-1 uppercase tracking-wide">Motivo de Retiro</label>
+                    <select
+                      name="terminationReason"
+                      value={formData.terminationReason}
+                      onChange={handleInputChange}
+                      className="w-full bg-white border border-slate-200 rounded-2xl py-2.5 px-4 text-sm outline-none focus:border-brand-500 transition"
+                    >
+                      <option value="">Seleccionar...</option>
+                      <option value="Renuncia">Renuncia voluntaria</option>
+                      <option value="Terminación con justa causa">Terminación con justa causa (Art. 62 CST)</option>
+                      <option value="Terminación sin justa causa">Terminación sin justa causa (Art. 64 CST)</option>
+                      <option value="Vencimiento del plazo">Vencimiento del plazo pactado</option>
+                      <option value="Terminación de la obra">Terminación de la obra o labor</option>
+                      <option value="Mutuo acuerdo">Mutuo acuerdo</option>
+                      <option value="Pensión">Reconocimiento de pensión</option>
+                      <option value="Otro">Otro</option>
+                    </select>
+                  </div>
+                  <p className="md:col-span-2 text-[11px] font-semibold text-rose-700">
+                    Las vacaciones dejan de causarse en la fecha de retiro, y las pendientes se pagan en la liquidación (Art. 189 CST).
+                  </p>
+                </div>
+              )}
 
               {/* Botón de Enviar */}
               <button

@@ -17,7 +17,6 @@ export const createNovelty = async (req, res) => {
       req.body.notes = observationsText;
       req.body.businessDays = diasATomar;
       req.body.tipoDisfrute = tipoDisfrute || 'Físico';
-      req.body.calendarDays = diasATomar;
       
       // Mockear la response para atraparla
       let vacationResult = null;
@@ -46,13 +45,13 @@ export const createNovelty = async (req, res) => {
 
       const newVacation = vacationResult.vacation;
 
-      // Generar ausencias si es físico
-      if (tipoDisfrute === 'Físico') {
-        const start = new Date(startDate + 'T00:00:00');
-        const end = new Date(endDate + 'T00:00:00');
+      // Marcar asistencia en los días de descanso real (Físico o Mixto)
+      if (newVacation.tipoDisfrute !== 'Dinero') {
+        const start = new Date(startDate + 'T00:00:00Z');
+        const end = new Date(endDate + 'T00:00:00Z');
         
         let current = new Date(start);
-        while (current < end) { // El endDate es endDate, es decir, día de regreso
+        while (current <= end) { // endDate es el último día de descanso (inclusive)
           const dateStr = current.toISOString().split('T')[0];
           
           let att = await Attendance.findOne({ where: { employeeId, date: dateStr } });
@@ -68,11 +67,11 @@ export const createNovelty = async (req, res) => {
             att.notes = `Vacaciones físicas aprobadas (Ref: Vacación #${newVacation.id})`;
             await att.save();
           }
-          current.setDate(current.getDate() + 1);
+          current.setUTCDate(current.getUTCDate() + 1);
         }
       }
 
-      return res.status(201).json({ message: 'Vacaciones registradas exitosamente en el sistema principal', novelty: newVacation });
+      return res.status(201).json({ message: 'Vacaciones registradas exitosamente en el sistema principal', novelty: newVacation, warnings: vacationResult.warnings || [] });
     }
     
     // Validar datos básicos

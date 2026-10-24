@@ -169,6 +169,7 @@ export default function App() {
             <SettingsView
               token={token}
               userRole={user?.role}
+              onViewChange={handleViewChange}
             />
           )}
 

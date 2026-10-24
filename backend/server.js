@@ -7,7 +7,7 @@ import { User, Employee, Vacation, Setting, Attendance, Permission, Absence, Com
 import { authenticateToken, requireRole } from './middleware/authMiddleware.js';
 
 import { login, getProfile } from './controllers/authController.js';
-import { getSettings, updateSettings } from './controllers/settingsController.js';
+import { getSettings, updateSettings, getLegalFramework } from './controllers/settingsController.js';
 import { getCompanyHolidays, createCompanyHoliday, deleteCompanyHoliday } from './controllers/companyHolidayController.js';
 
 import {
@@ -21,7 +21,8 @@ import {
   registerVacation,
   deleteVacation,
   getDashboardStats,
-  updateVacationStatus
+  updateVacationStatus,
+  interruptVacation
 } from './controllers/vacationController.js';
 
 // Nuevos controladores de StaffFlow RH
@@ -92,6 +93,7 @@ app.get('/api/auth/profile', authenticateToken, getProfile);
 
 // Configuración
 app.get('/api/settings', authenticateToken, getSettings);
+app.get('/api/settings/legal-framework', authenticateToken, getLegalFramework);
 app.put('/api/settings', authenticateToken, requireRole('Super Usuario'), updateSettings);
 
 // Empleados
@@ -125,6 +127,7 @@ app.delete('/api/company-holidays/:id', authenticateToken, requireRole('Super Us
 app.post('/api/vacations', authenticateToken, registerVacation);
 app.delete('/api/vacations/:id', authenticateToken, deleteVacation);
 app.put('/api/vacations/:id/status', authenticateToken, requireRole(['Administrador', 'Super Usuario']), updateVacationStatus);
+app.post('/api/vacations/:id/interrupt', authenticateToken, requireRole(['Administrador', 'Super Usuario']), interruptVacation);
 
 // Jornadas Especiales
 app.use('/api/special-workdays', specialWorkdayRoutes);
@@ -571,6 +574,60 @@ sequelize.sync()
     } catch (migErr) {
       console.warn('⚠️ Migraciones opcionales con advertencia (no crítico):', migErr.message);
     }
+
+    // ── Migraciones del motor legal (cada columna es independiente) ──────────
+    const qiLegal = sequelize.getQueryInterface();
+    const { DataTypes: DT } = sequelize.Sequelize;
+    const ensureColumns = async (table, columns) => {
+      const cols = await qiLegal.describeTable(table).catch(() => null);
+      if (!cols) return;
+      for (const [name, definition] of Object.entries(columns)) {
+        if (cols[name]) continue;
+        try {
+          await qiLegal.addColumn(table, name, definition);
+          console.log(`✅ Migration: columna ${name} añadida a ${table}.`);
+        } catch (err) {
+          console.warn(`⚠️ Migration: no se pudo añadir ${table}.${name}:`, err.message);
+        }
+      }
+    };
+    const ensureEnumValues = async (enumName, values) => {
+      if (sequelize.getDialect() !== 'postgres') return;
+      for (const val of values) {
+        await sequelize.query(`ALTER TYPE "${enumName}" ADD VALUE IF NOT EXISTS '${val}'`).catch(() => {});
+      }
+    };
+
+    await ensureColumns('Vacations', {
+      tipoDisfrute: { type: DT.ENUM('Físico', 'Dinero', 'Mixto'), allowNull: false, defaultValue: 'Físico' },
+      calendarDays: { type: DT.INTEGER, allowNull: true },
+      compensatedDays: { type: DT.INTEGER, allowNull: false, defaultValue: 0 },
+      fechaNotificacion: { type: DT.DATEONLY, allowNull: true },
+      responsableAprobacion: { type: DT.STRING, allowNull: true },
+      registeredBy: { type: DT.STRING, allowNull: true },
+      fechaSuspension: { type: DT.DATEONLY, allowNull: true },
+      motivoSuspension: { type: DT.TEXT, allowNull: true },
+      fechaReanudacion: { type: DT.DATEONLY, allowNull: true },
+    });
+    await ensureEnumValues('enum_Vacations_status', ['Pendiente', 'Aprobada', 'Programada', 'En disfrute', 'Suspendida', 'Finalizada', 'Cancelada']);
+    await ensureEnumValues('enum_Attendances_status', ['Ausencia Justificada', 'Vacaciones']);
+
+    await ensureColumns('Employees', {
+      terminationDate: { type: DT.DATEONLY, allowNull: true },
+      terminationReason: { type: DT.STRING, allowNull: true },
+      extendedVacationAccumulation: { type: DT.BOOLEAN, allowNull: false, defaultValue: false },
+    });
+
+    await ensureColumns('Settings', {
+      vacationsSaturdaysCount: { type: DT.BOOLEAN, defaultValue: false },
+      vacationsSundaysCount: { type: DT.BOOLEAN, defaultValue: false },
+      vacationDaysPerYear: { type: DT.FLOAT, allowNull: false, defaultValue: 15 },
+      vacationNoticeDays: { type: DT.INTEGER, allowNull: false, defaultValue: 15 },
+      vacationNoticeMode: { type: DT.STRING, allowNull: false, defaultValue: 'advertir' },
+      maxMoneyCompensationPercent: { type: DT.FLOAT, allowNull: false, defaultValue: 50 },
+      allowAdvanceVacations: { type: DT.BOOLEAN, allowNull: false, defaultValue: true },
+      discountUnpaidLeaveFromVacations: { type: DT.BOOLEAN, allowNull: false, defaultValue: true },
+    });
     // ─────────────────────────────────────────────────────────────────────────
 
     await seedDatabase();

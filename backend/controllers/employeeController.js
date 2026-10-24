@@ -1,85 +1,128 @@
-import { Employee, Vacation, Setting, Attendance, Permission, Absence, AuditLog } from '../models/index.js';
+import { Employee, Vacation, Setting, Attendance, Permission, Absence, AuditLog, Novelty } from '../models/index.js';
+import { Op } from 'sequelize';
+import {
+  resolveVacationPolicy,
+  days360,
+  accruedVacationDays,
+  overlapDays,
+  todayBogota,
+  addDays,
+  contractGeneratesVacations,
+  maxAccumulationYears,
+  SUSPENSION_NOVELTY_TYPES,
+} from '../utils/laborLaw.js';
+
+// Fecha hasta la cual se causan vacaciones: retiro, o hoy si sigue activo.
+const getServiceEndDate = (employee) => {
+  if (employee.terminationDate) return employee.terminationDate;
+  // Compatibilidad: inactivos sin fecha de retiro registrada
+  if (employee.status !== 'activo') return new Date(employee.updatedAt).toISOString().split('T')[0];
+  return todayBogota();
+};
 
 // Función helper para calcular las estadísticas de vacaciones de un empleado
 export const calculateEmployeeVacationStats = async (employee, customSettings = null) => {
+  const settings = customSettings || await Setting.findOne() || {};
+  const policy = resolveVacationPolicy(settings);
   const isLegacy = employee.isLegacy;
-  const hireDate = isLegacy && employee.lastVacationCutoffDate 
-    ? new Date(employee.lastVacationCutoffDate) 
-    : new Date(employee.hireDate);
-    
-  const endDate = employee.status === 'activo' ? new Date() : new Date(employee.updatedAt);
-  
-  // Calcular días totales transcurridos
-  const diffTime = endDate - hireDate;
-  const totalDaysWorked = diffTime > 0 ? Math.floor(diffTime / (1000 * 60 * 60 * 24)) : 0;
+  const accrualStart = isLegacy && employee.lastVacationCutoffDate
+    ? employee.lastVacationCutoffDate
+    : employee.hireDate;
 
-  // Fórmula colombiana: (15 * días trabajados) / 360
+  // Días de servicio en año comercial (360). El último día de servicio se incluye.
+  const serviceEnd = getServiceEndDate(employee);
+  const serviceDays = days360(accrualStart, addDays(serviceEnd, 1));
+
+  // Arts. 51 y 53 CST: los periodos de suspensión pueden descontarse del tiempo de servicio
+  let unpaidLeaveDays = 0;
+  if (policy.discountUnpaidLeaveFromVacations) {
+    const suspensions = (employee.novelties || await Novelty.findAll({
+      where: { employeeId: employee.id, type: { [Op.in]: SUSPENSION_NOVELTY_TYPES } }
+    })).filter(n => SUSPENSION_NOVELTY_TYPES.includes(n.type) && n.status !== 'Cancelada');
+    unpaidLeaveDays = suspensions.reduce(
+      (sum, n) => sum + overlapDays(n.startDate, n.endDate, accrualStart, serviceEnd), 0
+    );
+  }
+  const totalDaysWorked = Math.max(0, serviceDays - unpaidLeaveDays);
+
+  const generatesVacations = employee.appliesVacationCalculation !== false
+    && contractGeneratesVacations(employee.contractType);
+
   let accruedDays = 0;
-  if (employee.appliesVacationCalculation !== false) {
-    accruedDays = Number(((15 * totalDaysWorked) / 360).toFixed(2));
+  if (generatesVacations) {
+    accruedDays = Number(accruedVacationDays(totalDaysWorked, policy.vacationDaysPerYear).toFixed(2));
     if (isLegacy && employee.initialPendingVacationBalance) {
       accruedDays += Number(employee.initialPendingVacationBalance);
     }
   }
 
-  // Días tomados (suma de businessDays de todas sus vacaciones)
   const vacations = employee.vacations || await Vacation.findAll({ where: { employeeId: employee.id } });
-  
-  // Para empleados legacy, solo contar vacaciones tomadas DESPUÉS del lastVacationCutoffDate
-  let relevantVacations = vacations;
-  if (isLegacy && employee.lastVacationCutoffDate) {
-    const cutoffDate = new Date(employee.lastVacationCutoffDate);
-    relevantVacations = vacations.filter(vac => new Date(vac.startDate) > cutoffDate);
-  }
-  
-  const takenDays = relevantVacations.reduce((sum, vac) => sum + vac.businessDays, 0);
 
-  // Días disponibles
+  // Las canceladas no consumen saldo. En legacy solo cuentan las posteriores al corte.
+  let relevantVacations = vacations.filter(vac => vac.status !== 'Cancelada');
+  if (isLegacy && employee.lastVacationCutoffDate) {
+    relevantVacations = relevantVacations.filter(vac => vac.startDate > employee.lastVacationCutoffDate);
+  }
+
+  const takenDays = relevantVacations.reduce((sum, vac) => sum + Number(vac.businessDays || 0), 0);
+  const compensatedDays = relevantVacations.reduce((sum, vac) => {
+    if (vac.tipoDisfrute === 'Dinero') return sum + Number(vac.businessDays || 0);
+    if (vac.tipoDisfrute === 'Mixto') return sum + Number(vac.compensatedDays || 0);
+    return sum;
+  }, 0);
+
   const availableDays = Number((accruedDays - takenDays).toFixed(2));
 
-  // Cálculo económico
+  // Valor aproximado: salario ordinario diario × días pendientes (Art. 192 CST, salario fijo)
   let economicValue = 0;
-  if (employee.baseSalary && employee.baseSalary > 0) {
-    const dailyValue = employee.baseSalary / 30;
-    economicValue = Number((dailyValue * availableDays).toFixed(2));
+  const salary = Number(employee.baseSalary) || 0;
+  if (salary > 0) {
+    economicValue = Number(((salary / 30) * availableDays).toFixed(2));
   }
 
-  // Tiempo sin vacaciones (Meses)
-  let lastVacationDate = employee.hireDate;
-  if (employee.lastVacationEnjoyedDate) {
-    lastVacationDate = employee.lastVacationEnjoyedDate;
+  // Tiempo sin disfrutar vacaciones: solo cuentan las de descanso físico ya iniciadas
+  const today = todayBogota();
+  let lastVacationDate = employee.lastVacationEnjoyedDate || employee.hireDate;
+  for (const vac of relevantVacations) {
+    if (vac.tipoDisfrute === 'Dinero' || vac.startDate > today) continue;
+    const enjoyedUntil = vac.endDate < today ? vac.endDate : today;
+    if (enjoyedUntil > lastVacationDate) lastVacationDate = enjoyedUntil;
   }
-  // Si tomó vacaciones registradas en el sistema, buscar la más reciente
-  if (vacations && vacations.length > 0) {
-    const sortedVacs = [...vacations].sort((a, b) => new Date(b.endDate) - new Date(a.endDate));
-    // La fecha más reciente
-    const mostRecentReturn = sortedVacs[0].endDate;
-    if (new Date(mostRecentReturn) > new Date(lastVacationDate)) {
-      lastVacationDate = mostRecentReturn;
-    }
-  }
+  const monthsSinceLastVacation = Math.floor(days360(lastVacationDate, today) / 30);
 
-  const msSinceLastVacation = new Date() - new Date(lastVacationDate);
-  const monthsSinceLastVacation = Math.floor(msSinceLastVacation / (1000 * 60 * 60 * 24 * 30.44));
+  // Art. 190 CST: acumulación máxima de 2 años (4 en cargos especiales)
+  const accumulationYears = maxAccumulationYears(employee);
+  const accumulationLimitDays = policy.vacationDaysPerYear * accumulationYears;
 
   return {
     totalDaysWorked,
+    unpaidLeaveDays,
     accruedDays,
     takenDays,
+    compensatedDays,
     availableDays,
     economicValue,
-    monthsSinceLastVacation
+    monthsSinceLastVacation,
+    completedServiceYears: Math.floor(days360(employee.hireDate, addDays(serviceEnd, 1)) / 360),
+    vacationDaysPerYear: policy.vacationDaysPerYear,
+    accumulationYears,
+    accumulationLimitDays,
+    exceedsAccumulation: availableDays > accumulationLimitDays,
+    generatesVacations
   };
 };
 
 export const getEmployees = async (req, res) => {
   try {
     const employees = await Employee.findAll({
-      include: [{ model: Vacation, as: 'vacations' }],
+      include: [
+        { model: Vacation, as: 'vacations' },
+        { model: Novelty, as: 'novelties', where: { type: SUSPENSION_NOVELTY_TYPES }, required: false }
+      ],
       order: [['fullName', 'ASC']]
     });
 
-    const settings = await Setting.findOne() || { daysRequiredForOneVacationDay: 24.333333333333332 };
+    const settings = await Setting.findOne() || {};
 
     const employeeListWithStats = [];
     for (const emp of employees) {
@@ -154,7 +197,10 @@ export const createEmployee = async (req, res) => {
       lastVacationEnjoyedDate,
       initialPendingVacationBalance,
       initialCesantiasBalance,
-      initialPrimaDays
+      initialPrimaDays,
+      terminationDate,
+      terminationReason,
+      extendedVacationAccumulation
     } = req.body;
 
     const employee = await Employee.create({
@@ -177,7 +223,10 @@ export const createEmployee = async (req, res) => {
       lastVacationEnjoyedDate: lastVacationEnjoyedDate || null,
       initialPendingVacationBalance: initialPendingVacationBalance === '' || initialPendingVacationBalance === undefined ? null : Number(initialPendingVacationBalance),
       initialCesantiasBalance: initialCesantiasBalance === '' || initialCesantiasBalance === undefined ? null : Number(initialCesantiasBalance),
-      initialPrimaDays: initialPrimaDays === '' || initialPrimaDays === undefined ? null : Number(initialPrimaDays)
+      initialPrimaDays: initialPrimaDays === '' || initialPrimaDays === undefined ? null : Number(initialPrimaDays),
+      terminationDate: terminationDate || null,
+      terminationReason: terminationReason || null,
+      extendedVacationAccumulation: extendedVacationAccumulation === true
     });
 
     res.status(201).json({
@@ -221,7 +270,10 @@ export const updateEmployee = async (req, res) => {
       lastVacationEnjoyedDate,
       initialPendingVacationBalance,
       initialCesantiasBalance,
-      initialPrimaDays
+      initialPrimaDays,
+      terminationDate,
+      terminationReason,
+      extendedVacationAccumulation
     } = req.body;
 
     // Detect changes for AuditLog
@@ -230,6 +282,7 @@ export const updateEmployee = async (req, res) => {
     if (position && position !== employee.position) changes.push(`Cargo: ${employee.position} -> ${position}`);
     if (baseSalary !== undefined && baseSalary !== employee.baseSalary) changes.push(`Salario Base: ${employee.baseSalary} -> ${baseSalary}`);
     if (arlRiskLevel !== undefined && arlRiskLevel !== employee.arlRiskLevel) changes.push(`Nivel ARL: ${employee.arlRiskLevel} -> ${arlRiskLevel}`);
+    if (terminationDate !== undefined && (terminationDate || null) !== employee.terminationDate) changes.push(`Fecha Retiro: ${employee.terminationDate || 'N/A'} -> ${terminationDate || 'N/A'}`);
 
     employee.fullName = fullName || employee.fullName;
     employee.documentNumber = documentNumber || employee.documentNumber;
@@ -251,6 +304,9 @@ export const updateEmployee = async (req, res) => {
     if (initialPendingVacationBalance !== undefined) employee.initialPendingVacationBalance = initialPendingVacationBalance === '' ? null : Number(initialPendingVacationBalance);
     if (initialCesantiasBalance !== undefined) employee.initialCesantiasBalance = initialCesantiasBalance === '' ? null : Number(initialCesantiasBalance);
     if (initialPrimaDays !== undefined) employee.initialPrimaDays = initialPrimaDays === '' ? null : Number(initialPrimaDays);
+    if (terminationDate !== undefined) employee.terminationDate = terminationDate || null;
+    if (terminationReason !== undefined) employee.terminationReason = terminationReason || null;
+    if (extendedVacationAccumulation !== undefined) employee.extendedVacationAccumulation = extendedVacationAccumulation === true;
 
     await employee.save();
 

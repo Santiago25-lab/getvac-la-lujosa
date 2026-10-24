@@ -33,11 +33,6 @@ const Employee = sequelize.define('Employee', {
     defaultValue: 'activo',
     allowNull: false,
   },
-  baseSalary: {
-    type: DataTypes.INTEGER,
-    defaultValue: 0,
-    allowNull: false,
-  },
   transportAllowance: {
     type: DataTypes.INTEGER,
     defaultValue: 0,
@@ -97,6 +92,21 @@ const Employee = sequelize.define('Employee', {
   initialPrimaDays: {
     type: DataTypes.INTEGER,
     allowNull: true,
+  },
+  // Fecha real de terminación del contrato: base de la liquidación (Arts. 189 y 249 CST)
+  terminationDate: {
+    type: DataTypes.DATEONLY,
+    allowNull: true,
+  },
+  terminationReason: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  // Art. 190 CST: técnicos, especializados, de confianza o extranjeros pueden acumular hasta 4 años
+  extendedVacationAccumulation: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false,
+    allowNull: false,
   },
 }, {
   timestamps: true,

@@ -125,7 +125,7 @@ export default function VacationsDashboard({ token, userRole, onViewChange }) {
                 <tr className="bg-slate-50/70 text-slate-500 font-bold border-b border-slate-200/60">
                   <th className="py-4 px-6">Empleado</th>
                   <th className="py-4 px-4 text-center">Salario Base</th>
-                  <th className="py-4 px-4 text-center">Fórmula (15/360)</th>
+                  <th className="py-4 px-4 text-center">Fórmula (días/año ÷ 360)</th>
                   <th className="py-4 px-4 text-center">Días Causados</th>
                   <th className="py-4 px-4 text-center">Días Tomados</th>
                   <th className="py-4 px-4 text-center">Días Pendientes</th>
@@ -168,18 +168,14 @@ export default function VacationsDashboard({ token, userRole, onViewChange }) {
                           +{(stats.availableDays % 1).toFixed(2)} acumulado
                         </div>
                         
-                        {/* Alertas de Acumulación */}
-                        {(stats.availableDays >= 45) ? (
-                          <div className="inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-rose-100 text-rose-700 border border-rose-200 mt-1" title="Acumulación excesiva de vacaciones">
-                            🚨 Excesivo (+45d)
+                        {/* Alertas de Acumulación: tope de 2 años (4 en cargos especiales), Art. 190 CST */}
+                        {stats.exceedsAccumulation ? (
+                          <div className="inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-rose-100 text-rose-700 border border-rose-200 mt-1" title={`Supera el tope legal de ${stats.accumulationLimitDays} días (${stats.accumulationYears} años, Art. 190 CST)`}>
+                            🚨 Supera tope legal ({stats.accumulationLimitDays}d)
                           </div>
-                        ) : (stats.availableDays >= 30) ? (
-                          <div className="inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-orange-100 text-orange-700 border border-orange-200 mt-1" title="Más de dos períodos vacacionales acumulados">
-                            ⚠ Crítico (+30d)
-                          </div>
-                        ) : (stats.availableDays >= 25) ? (
-                          <div className="inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-700 border border-amber-200 mt-1" title="Próximo a acumulación elevada">
-                            ⚠ Alerta (+25d)
+                        ) : (stats.availableDays >= (stats.accumulationLimitDays || 30) * 0.8) ? (
+                          <div className="inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-700 border border-amber-200 mt-1" title={`Cerca del tope legal de ${stats.accumulationLimitDays} días`}>
+                            ⚠ Cerca del tope ({stats.accumulationLimitDays}d)
                           </div>
                         ) : null}
 

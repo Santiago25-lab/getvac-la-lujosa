@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Clock, Search, Calendar, Filter, Users, UserCheck, AlertOctagon, UserX, Plus, Edit3, MessageSquare, ClipboardSignature, Download } from 'lucide-react';
+import { Clock, Search, Calendar, Filter, Users, UserCheck, AlertOctagon, UserX, Plus, Edit3, MessageSquare, ClipboardSignature, Download, ChevronDown } from 'lucide-react';
 import { API_URL } from '../config.js';
+import { isColombianHoliday, getColombianHolidays } from '../utils/colombianHolidays.js';
 import { formatTimeTo12Hour } from '../utils/dateUtils.js';
 
 export default function AttendanceView({ token, userRole }) {
@@ -16,6 +17,10 @@ export default function AttendanceView({ token, userRole }) {
     weeklyTrend: []
   });
   const [employees, setEmployees] = useState([]); // Para el combobox del registro manual
+  // Calendario de la empresa: jornada, días no laborables y jornadas especiales
+  const [calendar, setCalendar] = useState({ settings: null, companyHolidays: [], specialWorkdays: [] });
+  // Días desplegados en la lista (por defecto solo hoy)
+  const [expandedDates, setExpandedDates] = useState(() => new Set([new Date().toLocaleDateString('en-CA', { timeZone: 'America/Bogota' })]));
   
   // Filtros
   const [search, setSearch] = useState('');
@@ -205,12 +210,21 @@ export default function AttendanceView({ token, userRole }) {
         queryParams.append('endDate', new Date().toLocaleDateString('en-CA', { timeZone: 'America/Bogota' }));
       }
 
-      const [recordsRes, empRes, novRes, vacRes] = await Promise.all([
+      const [recordsRes, empRes, novRes, vacRes, settingsRes, holidaysRes, specialRes] = await Promise.all([
         fetch(`${API_URL}/api/attendance?${queryParams.toString()}`, { headers: { 'Authorization': `Bearer ${token}` } }),
         fetch(`${API_URL}/api/employees`, { headers: { 'Authorization': `Bearer ${token}` } }),
         fetch(`${API_URL}/api/novelties`, { headers: { 'Authorization': `Bearer ${token}` } }),
         fetch(`${API_URL}/api/dashboard/stats`, { headers: { 'Authorization': `Bearer ${token}` } }),
+        fetch(`${API_URL}/api/settings`, { headers: { 'Authorization': `Bearer ${token}` } }),
+        fetch(`${API_URL}/api/company-holidays`, { headers: { 'Authorization': `Bearer ${token}` } }),
+        fetch(`${API_URL}/api/special-workdays`, { headers: { 'Authorization': `Bearer ${token}` } }),
       ]);
+
+      setCalendar({
+        settings: settingsRes.ok ? await settingsRes.json() : null,
+        companyHolidays: holidaysRes.ok ? await holidaysRes.json() : [],
+        specialWorkdays: specialRes.ok ? await specialRes.json() : [],
+      });
 
       if (recordsRes.ok) setRecords(await recordsRes.json());
       if (empRes.ok) {
@@ -365,7 +379,15 @@ export default function AttendanceView({ token, userRole }) {
           </p>
         </div>
 
-        {(userRole === 'Administrador' || userRole === 'Super Usuario') && (
+        <div className="flex items-center gap-3">
+          <button
+            onClick={exportToCSV}
+            className="flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition shadow-md shadow-emerald-500/10 hover:shadow-emerald-500/20 "
+          >
+            <Download className="w-4 h-4" />
+            <span>Exportar CSV</span>
+          </button>
+          {(userRole === 'Administrador' || userRole === 'Super Usuario') && (
           <button
             onClick={() => setShowManualModal(true)}
             className="flex items-center gap-2 bg-gradient-to-r from-brand-600 to-brand-500 hover:from-brand-500 hover:to-brand-450 text-white px-5 py-3 rounded-2xl text-xs font-bold uppercase tracking-wider shadow-lg shadow-brand-500/10 transition active:scale-[0.98]"
@@ -374,6 +396,7 @@ export default function AttendanceView({ token, userRole }) {
             Registro Manual
           </button>
         )}
+        </div>
       </div>
 
       {/* Alertas */}
@@ -512,14 +535,7 @@ export default function AttendanceView({ token, userRole }) {
             />
           </div>
 
-          {/* Botón Exportar */}
-          <button
-            onClick={exportToCSV}
-            className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition shadow-md shadow-emerald-500/10 hover:shadow-emerald-500/20 col-span-full sm:col-span-1"
-          >
-            <Download className="w-4 h-4" />
-            <span>Exportar CSV</span>
-          </button>
+
 
         </div>
 
@@ -568,9 +584,40 @@ export default function AttendanceView({ token, userRole }) {
                 dateStr >= n.startDate &&
                 dateStr <= n.endDate
               );
-            const empHasVacation = (empId, dateStr) =>
-              records.find(r => r.employeeId === empId && r.date === dateStr && r.status === 'Vacaciones') ||
-              false; // vacaciones se reflejan en el reporte
+            // Vacaciones de descanso (no las pagadas en dinero) que cubren el día; endDate es el último día
+            const empHasVacation = (emp, dateStr) =>
+              (emp.vacations || []).some(v =>
+                v.status !== 'Cancelada' && v.tipoDisfrute !== 'Dinero' && dateStr >= v.startDate && dateStr <= v.endDate
+              );
+
+            // ¿Se trabaja ese día? Jornada especial > festivo / día no laborable de la empresa > días de la semana
+            const dayInfo = (dateStr) => {
+              const special = calendar.specialWorkdays.find(sw => sw.date === dateStr);
+              if (special) return special.type === 'No Laborable' ? { work: false, reason: special.observation || 'Jornada especial no laborable' } : { work: true };
+              const national = getColombianHolidays(Number(dateStr.slice(0, 4))).find(h => h.date === dateStr);
+              if (national || isColombianHoliday(dateStr)) return { work: false, reason: `Festivo: ${national?.name || 'festivo nacional'}` };
+              const company = calendar.companyHolidays.find(h => h.date === dateStr);
+              if (company) return { work: false, reason: company.reason || 'Día no laborable de la empresa' };
+              const s = calendar.settings;
+              if (!s) return { work: true };
+              const dow = new Date(`${dateStr}T12:00:00Z`).getUTCDay() || 7;
+              const days = `${s.workDays || ''},${s.halfWorkDays || ''}`.split(',').map(Number);
+              return days.includes(dow) ? { work: true } : { work: false, reason: 'Día no laboral' };
+            };
+
+            // Hoy, antes de la hora de entrada + tolerancia, nadie está ausente todavía
+            const s = calendar.settings;
+            const entryTime = (s?.isSplitShift ? s?.checkInTimeMorning : s?.checkInTime) || '08:00';
+            const [entryH, entryM] = entryTime.split(':').map(Number);
+            const nowBogota = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Bogota' }));
+            const beforeEntryLimit = nowBogota.getHours() * 60 + nowBogota.getMinutes() < entryH * 60 + entryM + Number(s?.toleranceMinutes || 0);
+
+            const toggleDate = (dateStr) => setExpandedDates(prev => {
+              const next = new Set(prev);
+              if (next.has(dateStr)) next.delete(dateStr); else next.add(dateStr);
+              return next;
+            });
+            const filtersActive = Boolean(search || department || status || startDate || endDate);
 
             // Config de estado visual
             const statusConfig = {
@@ -581,6 +628,9 @@ export default function AttendanceView({ token, userRole }) {
               completado:  { rowBg: '',                 dot: 'bg-brand-500',  badge: 'bg-brand-50 text-brand-700 border-brand-200',   label: 'Completado' },
               tarde:       { rowBg: 'bg-amber-50/30',  dot: 'bg-amber-500',  badge: 'bg-amber-50 text-amber-700 border-amber-200',  label: '⚡ Retardo' },
               ausente:     { rowBg: 'bg-rose-50/40',   dot: 'bg-rose-400',   badge: 'bg-rose-50 text-rose-700 border-rose-200',    label: 'Ausente' },
+              pendiente:   { rowBg: '',                 dot: 'bg-slate-300',  badge: 'bg-slate-50 text-slate-500 border-slate-200', label: 'Sin marcar aún' },
+              justificada: { rowBg: 'bg-amber-50/60',  dot: 'bg-amber-400',  badge: 'bg-amber-100 text-amber-700 border-amber-200',  label: '📋 Justificada' },
+              libre:       { rowBg: 'bg-slate-50/60',  dot: 'bg-slate-300',  badge: 'bg-slate-100 text-slate-500 border-slate-200', label: 'No laboral' },
             };
 
             const TagBadge = ({ label, style }) => (
@@ -602,6 +652,8 @@ export default function AttendanceView({ token, userRole }) {
                     return true;
                   });
 
+                  const info = dayInfo(date);
+                  const isExpanded = filtersActive || expandedDates.has(date);
                   const dayAttRecords = records.filter(r => r.date === date);
                   const presentCount = dayAttRecords.filter(r => ['Presente', 'Salida registrada'].includes(r.status)).length;
                   const lateCount = dayAttRecords.filter(r => r.status === 'Tarde').length;
@@ -610,26 +662,33 @@ export default function AttendanceView({ token, userRole }) {
                   return (
                     <div key={date}>
                       {/* Subtítulo de fecha */}
-                      <div className={`flex items-center justify-between px-6 py-3.5 sticky top-0 z-10 ${
-                        isToday ? 'bg-brand-50 border-l-4 border-brand-500' : 'bg-slate-50 border-l-4 border-slate-200'
+                      <button
+                        type="button"
+                        onClick={() => toggleDate(date)}
+                        aria-expanded={isExpanded}
+                        className={`w-full text-left flex items-center justify-between px-6 py-3.5 sticky top-0 z-10 cursor-pointer ${
+                        isToday ? 'bg-brand-50 border-l-4 border-brand-500' : 'bg-slate-50 border-l-4 border-slate-200 hover:bg-slate-100/80'
                       }`}>
                         <div className="flex items-center gap-3">
+                          <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${isExpanded ? '' : '-rotate-90'}`} />
                           <div className={`p-1.5 rounded-xl ${isToday ? 'bg-brand-100 text-brand-700' : 'bg-slate-100 text-slate-500'}`}>
                             <Calendar className="w-3.5 h-3.5" />
                           </div>
                           <span className={`text-xs font-black uppercase tracking-widest ${isToday ? 'text-brand-700' : 'text-slate-600'}`}>
-                            {isToday ? '🟢 HOY — ' : ''}{dayLabel}
+                            {isToday ? 'Hoy — ' : ''}{dayLabel}
                           </span>
                         </div>
                         <div className="flex items-center gap-2 flex-wrap">
+                          {!info.work && <span className="text-[10px] font-black bg-slate-200 text-slate-600 px-2 py-0.5 rounded-full">{info.reason}</span>}
                           <span className="text-[10px] font-black bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">{presentCount} presentes</span>
                           {lateCount > 0 && <span className="text-[10px] font-black bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">{lateCount} retardos</span>}
                           {novCount > 0 && <span className="text-[10px] font-black bg-amber-50 text-amber-600 border border-amber-200 px-2 py-0.5 rounded-full">{novCount} novedades</span>}
                           <span className="text-[10px] font-semibold text-slate-400">{filteredEmps.length} empleados</span>
                         </div>
-                      </div>
+                      </button>
 
                       {/* Fila por empleado */}
+                      {isExpanded && (
                       <div className="divide-y divide-slate-50 dark:divide-slate-800/20">
                         {filteredEmps.map(emp => {
                           const att = dayAttRecords.find(r => r.employeeId === emp.id);
@@ -645,24 +704,34 @@ export default function AttendanceView({ token, userRole }) {
                             halfDayType = activeNovelty.coverage === 'Jornada Mañana' ? 'Mañana' : 'Tarde';
                           }
 
-                          if (att) {
+                          const hasMarks = att && (att.checkIn || att.checkOut || att.checkOutMorning || att.checkInAfternoon);
+
+                          if (att && att.status === 'Vacaciones') {
+                            stateKey = 'vacaciones';
+                          } else if (att && att.status === 'Ausencia Justificada' && !hasMarks) {
+                            stateKey = 'justificada';
+                          } else if (hasMarks) {
                             if (att.status === 'Tarde') stateKey = 'tarde';
                             else if (att.status === 'Salida registrada') stateKey = 'completado';
                             else stateKey = 'presente';
+                          } else if (empHasVacation(emp, date) || activeNovelty?.type === 'Vacaciones') {
+                            stateKey = 'vacaciones';
                           } else if (activeNovelty) {
                             if (isHalfDayPermission) {
                               stateKey = 'ausente'; // Fila gris, pero tendrá etiquetas en la media jornada
+                            } else if (['Incapacidad', 'Accidente de Trabajo'].includes(activeNovelty.type)) {
+                              stateKey = 'incapacidad';
                             } else {
-                              if (activeNovelty.type === 'Incapacidad') {
-                                stateKey = 'incapacidad';
-                              } else {
-                                stateKey = 'permiso'; // Jornada completa para licencias/permisos
-                              }
+                              stateKey = 'permiso'; // Jornada completa para licencias/permisos
                             }
+                          } else if (!info.work) {
+                            stateKey = 'libre';
+                          } else if (isToday && beforeEntryLimit) {
+                            stateKey = 'pendiente';
                           }
 
                           const cfg = statusConfig[stateKey];
-                          const isFullJustified = ['vacaciones','incapacidad','permiso'].includes(stateKey);
+                          const isFullJustified = ['vacaciones', 'incapacidad', 'permiso', 'justificada'].includes(stateKey);
                           // Si es permiso parcial, usamos una fila gris suave especial
                           const rowClass = `flex items-center gap-3 md:gap-4 px-6 py-3.5 hover:brightness-[0.98] transition group ${isHalfDayPermission && !att ? 'bg-slate-100/70 text-slate-500' : cfg.rowBg}`;
 
@@ -726,7 +795,7 @@ export default function AttendanceView({ token, userRole }) {
                                 <div className="text-center min-w-[52px]">
                                   <div className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Horas</div>
                                   <div className="text-xs font-extrabold text-slate-700">
-                                    {att?.workedHours || (isFullJustified ? '—' : <span className="text-rose-400">0h</span>)}
+                                    {att?.workedHours && att.workedHours !== 'N/A' ? att.workedHours : (isFullJustified || ['libre', 'pendiente'].includes(stateKey) ? '—' : <span className="text-rose-400">0h</span>)}
                                   </div>
                                 </div>
 
@@ -757,6 +826,7 @@ export default function AttendanceView({ token, userRole }) {
                           );
                         })}
                       </div>
+                      )}
                     </div>
                   );
                 })}

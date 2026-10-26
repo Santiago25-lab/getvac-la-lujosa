@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Calendar, Search, Bell, AlertTriangle, ClipboardSignature } from 'lucide-react';
 import { API_URL } from '../config.js';
 
-export default function Navbar({ activeView, token, onViewChange }) {
+export default function Navbar({ activeView, token, onViewChange, onSearch }) {
+  const [searchText, setSearchText] = useState('');
   const [currentTime, setCurrentTime] = useState(new Date());
   const [notifications, setNotifications] = useState([]);
   const [showDropdown, setShowDropdown] = useState(false);
@@ -121,7 +122,16 @@ export default function Navbar({ activeView, token, onViewChange }) {
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <input
             type="text"
-            placeholder="Buscar..."
+            placeholder="Buscar empleado..."
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && searchText.trim()) {
+                onSearch?.(searchText.trim());
+                setSearchText('');
+              }
+            }}
+            aria-label="Buscar empleado por nombre o documento"
             className="w-full pl-9 pr-4 py-2 rounded-full bg-slate-100/80 border-none focus:outline-none focus:ring-2 focus:ring-brand-500/20 text-xs font-semibold placeholder-slate-400 text-slate-700"
           />
         </div>

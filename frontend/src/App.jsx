@@ -24,6 +24,8 @@ export default function App() {
   });
   const [activeView, setActiveView] = useState('dashboard');
   const [selectedEmployeeId, setSelectedEmployeeId] = useState(null);
+  // Búsqueda lanzada desde la cabecera: abre Empleados ya filtrado
+  const [employeeSearch, setEmployeeSearch] = useState({ text: '', id: 0 });
   
   // Enrutamiento simplificado de ruta pública para asistencia
   const [currentPath, setCurrentPath] = useState(window.location.pathname);
@@ -101,7 +103,12 @@ export default function App() {
       {/* Contenedor Principal Derecho */}
       <div className="flex-1 flex flex-col h-full overflow-hidden">
         {/* Cabecera Horizontal */}
-        <Navbar activeView={activeView} token={token} onViewChange={handleViewChange} />
+        <Navbar
+          activeView={activeView}
+          token={token}
+          onViewChange={handleViewChange}
+          onSearch={(text) => { setEmployeeSearch(prev => ({ text, id: prev.id + 1 })); setActiveView('employees'); }}
+        />
 
         {/* Panel de Vistas Dinámicas */}
         <main className="flex-1 overflow-hidden flex flex-col">
@@ -112,6 +119,7 @@ export default function App() {
           {activeView === 'employees' && (
             <EmployeeList
               token={token}
+              externalSearch={employeeSearch}
               userRole={user?.role}
               onViewChange={handleViewChange}
             />

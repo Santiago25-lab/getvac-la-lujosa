@@ -7,14 +7,19 @@ import { API_URL } from '../config.js';
 // Días con máximo dos decimales (evita mostrar 24.380000000000003)
 const formatDays = (value) => Math.round((Number(value) || 0) * 100) / 100;
 
-export default function EmployeeList({ token, userRole, onViewChange }) {
+export default function EmployeeList({ token, userRole, onViewChange, externalSearch }) {
   const [employees, setEmployees] = useState([]);
   const [departments, setDepartments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   
   // Estados de Filtros
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState(externalSearch?.text || '');
+
+  // Nueva búsqueda desde la cabecera
+  useEffect(() => {
+    if (externalSearch?.id) setSearchTerm(externalSearch.text);
+  }, [externalSearch]);
   const [deptFilter, setDeptFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   

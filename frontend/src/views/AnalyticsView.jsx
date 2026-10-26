@@ -33,6 +33,14 @@ function HealthBadge({ level }) {
   );
 }
 
+const MONTHS = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+// '2026-10-05' → '5 oct'; '2026-10' → 'oct 2026'
+const formatTick = (key) => {
+  const [y, m, d] = String(key).split('-');
+  if (!m) return key;
+  return d ? `${Number(d)} ${MONTHS[Number(m) - 1]}` : `${MONTHS[Number(m) - 1]} ${y}`;
+};
+
 export default function AnalyticsView({ token }) {
   const [period, setPeriod] = useState('1m'); // '1m', '3m', '6m', '1y'
   const [data, setData] = useState(null);
@@ -284,9 +292,9 @@ export default function AnalyticsView({ token }) {
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                    <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#64748b' }} axisLine={false} tickLine={false} dy={10} />
+                    <XAxis dataKey="name" tickFormatter={formatTick} tick={{ fontSize: 11, fill: '#64748b' }} axisLine={false} tickLine={false} dy={10} />
                     <YAxis tick={{ fontSize: 11, fill: '#64748b' }} axisLine={false} tickLine={false} />
-                    <RechartsTooltip 
+                    <RechartsTooltip labelFormatter={formatTick} 
                       contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 15px -3px rgb(0 0 0 / 0.1)' }}
                       labelStyle={{ fontWeight: 'bold', color: '#1e293b', marginBottom: '8px' }}
                     />

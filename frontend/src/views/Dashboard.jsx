@@ -5,6 +5,7 @@ import {
   ChevronRight, CalendarDays, CheckCircle2, XCircle
 } from 'lucide-react';
 import { API_URL } from '../config.js';
+import { getColombianHolidays } from '../utils/colombianHolidays.js';
 
 export default function Dashboard({ token, onViewChange }) {
   const [data, setData] = useState({
@@ -97,7 +98,8 @@ export default function Dashboard({ token, onViewChange }) {
   const vencidasIds = new Set(vencidas.map(v => v.id));
   const proximasVencer = (laborCosts.employees || [])
     .filter(e => !vencidasIds.has(e.id) && e.accumulatedObligations?.vacationDays >= 15)
-    .map(e => ({ id: e.id, fullName: e.fullName, days: e.accumulatedObligations.vacationDays }));
+    .map(e => ({ id: e.id, fullName: e.fullName, days: e.accumulatedObligations.vacationDays }))
+    .sort((x, y) => y.days - x.days);
 
   // Bloque 4: Próximos Eventos
   const today = new Date();
@@ -111,6 +113,9 @@ export default function Dashboard({ token, onViewChange }) {
   const upcomingEvents = [
     ...(stats.upcomingVacations || []).map(v => ({ type: 'Vacaciones', title: `Salida: ${v.employeeName}`, date: v.startDate, color: 'bg-emerald-50 text-emerald-600 border-emerald-200' })),
     ...(stats.currentlyOnVacation || []).map(v => ({ type: 'Último día', title: `Último día de vacaciones: ${v.employeeName}`, date: v.endDate, color: 'bg-indigo-50 text-indigo-600 border-indigo-200' })),
+    ...[today.getFullYear(), today.getFullYear() + 1].flatMap(y => getColombianHolidays(y))
+      .filter(h => { const d = new Date(h.date + 'T00:00:00'); return d >= today && d <= new Date(today.getTime() + 30 * 86400000); })
+      .map(h => ({ type: 'Festivo', title: h.name, date: h.date, color: 'bg-rose-50 text-rose-600 border-rose-200' })),
     ...(holidays || []).filter(h => new Date(h.date + 'T00:00:00') >= today).map(h => ({ type: 'No laborable', title: h.reason, date: h.date, color: 'bg-rose-50 text-rose-600 border-rose-200' })),
     ...(specialWorkdays || []).filter(s => new Date(s.date + 'T00:00:00') >= today).map(s => ({ type: 'Jornada Esp.', title: s.observation || s.type, date: s.date, color: 'bg-amber-50 text-amber-600 border-amber-200' }))
   ].sort((a, b) => new Date(a.date) - new Date(b.date)).slice(0, 5); // Tomar los próximos 5

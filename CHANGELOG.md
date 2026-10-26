@@ -8,6 +8,16 @@ Este documento mantiene un registro histórico de las modificaciones, correccion
 
 ---
 
+## [Evolución 5] - 26 de Octubre de 2026 — Orden y mejoras sobre el diseño actual
+
+- **Asistencias & Faltas:** cada día se puede plegar (hoy abierto, los demás cerrados con su resumen). Sábados, domingos, festivos y días no laborables se muestran como "No laboral" en lugar de "Ausente"; hoy, antes de la hora de entrada más la tolerancia, como "Sin marcar aún". Los días de vacaciones o de ausencia justificada ya no aparecen como "Presente", y las vacaciones registradas desde el expediente se reconocen. "Exportar CSV" pasa a la cabecera.
+- **Panel Super:** organizado en pestañas (Empresa, Jornada, Vacaciones, Nómina, Usuarios, Auditoría) con el mismo estilo del expediente. La auditoría se muestra de 50 en 50, y "Filtrar logs" lleva directo a esa pestaña.
+- **Dashboard:** "Próximos eventos" incluye los festivos nacionales de los próximos 30 días; "Conviene programar vacaciones" ordenado de mayor a menor.
+- **Buscador de la cabecera:** ahora busca empleados y abre el directorio filtrado.
+- **Analytics:** fechas del eje legibles (26 sep).
+
+---
+
 ## [Evolución 4] - 26 de Octubre de 2026 — Correcciones de interfaz (diseño original)
 
 Se probó un rediseño completo de la interfaz y se revirtió a petición del usuario: se conserva el diseño original y solo se aplican las correcciones de datos y lógica.

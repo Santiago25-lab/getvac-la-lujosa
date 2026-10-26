@@ -40,6 +40,8 @@ export default function SuperUserPanelView({ token, userRole }) {
   const thisYear = new Date().getFullYear();
   const [activeHolidayYear, setActiveHolidayYear] = useState(thisYear);
   const [settingsWarnings, setSettingsWarnings] = useState([]);
+  const [tab, setTab] = useState('empresa');
+  const [auditLimit, setAuditLimit] = useState(50);
   
   // Jornadas Especiales
   const [specialWorkdays, setSpecialWorkdays] = useState([]);
@@ -435,6 +437,16 @@ export default function SuperUserPanelView({ token, userRole }) {
     });
   };
 
+  const SETTINGS_TABS = ['empresa', 'jornada', 'vacaciones', 'nomina'];
+  const PANEL_TABS = [
+    { id: 'empresa', label: 'Empresa', title: 'Datos de la Empresa', icon: Briefcase },
+    { id: 'jornada', label: 'Jornada', title: 'Jornada Laboral', icon: Calendar },
+    { id: 'vacaciones', label: 'Vacaciones', title: 'Políticas de Vacaciones', icon: ShieldCheck },
+    { id: 'nomina', label: 'Nómina', title: 'Nómina y Aportes', icon: Info },
+    { id: 'usuarios', label: 'Usuarios', title: 'Usuarios', icon: Users },
+    { id: 'auditoria', label: 'Auditoría', title: 'Auditoría', icon: History },
+  ];
+
   const filteredLogs = auditFilterUsername 
     ? logs.filter(log => log.username && log.username.toLowerCase() === auditFilterUsername.toLowerCase())
     : logs;
@@ -476,18 +488,40 @@ export default function SuperUserPanelView({ token, userRole }) {
         </div>
       )}
 
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
-        
-        {/* Bloque 1: Reglas de la Empresa */}
+      {/* Pestañas de configuración (mismo estilo que el expediente del empleado) */}
+      <div className="flex flex-wrap bg-white border border-slate-200 rounded-3xl p-1.5 shadow-sm gap-1">
+        {PANEL_TABS.map(t => (
+          <button
+            key={t.id}
+            type="button"
+            onClick={() => { setTab(t.id); setSuccessMsg(''); setErrorMsg(''); }}
+            className={`flex-1 min-w-[130px] py-3 text-xs font-bold uppercase tracking-wider rounded-2xl transition duration-150 flex items-center justify-center gap-2 ${
+              tab === t.id
+                ? 'bg-brand-500 text-white shadow-md shadow-brand-500/10'
+                : 'text-slate-450 hover:bg-slate-100 hover:text-slate-800'
+            }`}
+          >
+            <t.icon className="w-4 h-4" />
+            <span>{t.label}</span>
+          </button>
+        ))}
+      </div>
+
+      {SETTINGS_TABS.includes(tab) && (
+        <div className={tab === 'empresa' ? 'grid grid-cols-1 xl:grid-cols-2 gap-8 items-start' : ''}>
         <div className="glass-card p-6 space-y-6">
-          <div className="flex items-center gap-2.5 pb-4 border-b border-slate-100">
-            <div className="p-1.5 rounded-lg bg-brand-500/10 text-brand-500">
-              <ShieldCheck className="w-5 h-5" />
+          {tab === 'empresa' && (
+            <div className="flex items-center gap-2.5 pb-4 border-b border-slate-100">
+              <div className="p-1.5 rounded-lg bg-brand-500/10 text-brand-500">
+                <ShieldCheck className="w-5 h-5" />
+              </div>
+              <h3 className="text-lg font-bold text-slate-800">{PANEL_TABS.find(t => t.id === tab)?.title}</h3>
             </div>
-            <h3 className="text-lg font-bold text-slate-800">Reglas de la Empresa</h3>
-          </div>
+          )}
 
           <form onSubmit={handleSaveSettings} className="space-y-4">
+          {tab === 'empresa' && (
+            <>
             <div className="space-y-1">
               <label className="text-xs font-bold text-slate-500 uppercase">Nombre de la Empresa</label>
               <input
@@ -556,8 +590,10 @@ export default function SuperUserPanelView({ token, userRole }) {
               />
             </div>
 
-            <LegalValuesFields settings={settings} setSettings={setSettings} legal={legalFramework} />
-
+            </>
+          )}
+          {tab === 'jornada' && (
+            <>
             <div className="flex items-center gap-2.5 pt-4 pb-2 border-b border-slate-100">
               <div className="p-1.5 rounded-lg bg-rose-500/10 text-rose-500">
                 <Calendar className="w-5 h-5" />
@@ -709,6 +745,10 @@ export default function SuperUserPanelView({ token, userRole }) {
 
             <WorkScheduleSummary settings={settings} legal={legalFramework} />
 
+            </>
+          )}
+          {tab === 'vacaciones' && (
+            <>
             <VacationPolicyFields settings={settings} setSettings={setSettings} legal={legalFramework} />
 
             <div className="flex flex-col gap-2 p-3 bg-slate-50 dark:bg-slate-950/20 rounded-2xl border border-slate-100 dark:border-slate-800 ">
@@ -742,10 +782,18 @@ export default function SuperUserPanelView({ token, userRole }) {
             </div>
 
 
+            </>
+          )}
+          {tab === 'nomina' && (
+            <>
+            <LegalValuesFields settings={settings} setSettings={setSettings} legal={legalFramework} />
+
             <SocialSecurityFields settings={settings} setSettings={setSettings} legal={legalFramework} />
 
             <WorkRulesInfo legal={legalFramework} />
 
+            </>
+          )}
             <button
               type="submit"
               className="w-full bg-brand-500 hover:bg-brand-600 text-white font-bold py-2.5 px-4 rounded-xl shadow-lg shadow-brand-500/10 transition flex items-center justify-center gap-2"
@@ -756,6 +804,8 @@ export default function SuperUserPanelView({ token, userRole }) {
           </form>
         </div>
 
+        {tab === 'empresa' && (
+          <>
         {/* Bloque 2: Gestión de Departamentos */}
         <div className="glass-card p-6 space-y-6">
           <div className="flex items-center gap-2.5 pb-4 border-b border-slate-100">
@@ -799,8 +849,13 @@ export default function SuperUserPanelView({ token, userRole }) {
           </div>
         </div>
 
-      </div>
+          </>
+        )}
+        </div>
+      )}
 
+      {tab === 'jornada' && (
+        <>
       {/* Jornadas Especiales */}
       <div className="glass-card p-6 space-y-6">
         <div className="flex items-center gap-2.5 pb-4 border-b border-slate-100">
@@ -1078,6 +1133,11 @@ export default function SuperUserPanelView({ token, userRole }) {
 
       </div>
 
+        </>
+      )}
+
+      {tab === 'usuarios' && (
+        <>
       {/* Bloque: Gestión de Usuarios */}
       <div className="glass-card p-6 space-y-6">
         <div className="flex items-center gap-2.5 pb-4 border-b border-slate-100">
@@ -1175,7 +1235,7 @@ export default function SuperUserPanelView({ token, userRole }) {
                   </td>
                   <td className="py-2.5 px-3 text-right space-x-2">
                     <button
-                      onClick={() => setAuditFilterUsername(u.username)}
+                      onClick={() => { setAuditFilterUsername(u.username); setTab('auditoria'); }}
                       className="inline-flex items-center justify-center px-2 py-1 rounded bg-violet-50 hover:bg-violet-100 text-violet-750 text-[10px] font-bold transition uppercase tracking-wide cursor-pointer border border-violet-200"
                       title="Filtrar Auditoría"
                     >
@@ -1204,6 +1264,11 @@ export default function SuperUserPanelView({ token, userRole }) {
         </div>
       </div>
 
+        </>
+      )}
+
+      {tab === 'auditoria' && (
+        <>
       {/* Bloque 3: Historial de Auditoría */}
       <div className="glass-card p-6 space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
@@ -1248,7 +1313,7 @@ export default function SuperUserPanelView({ token, userRole }) {
                   </td>
                 </tr>
               ) : (
-                filteredLogs.map((log) => (
+                filteredLogs.slice(0, auditLimit).map((log) => (
                   <tr key={log.id} className="border-b border-slate-50 hover:bg-slate-50/50 transition">
                     <td className="py-2.5 px-3 font-medium text-slate-500">
                       {new Date(log.createdAt).toLocaleString('es-ES')}
@@ -1277,7 +1342,21 @@ export default function SuperUserPanelView({ token, userRole }) {
             </tbody>
           </table>
         </div>
+        {filteredLogs.length > auditLimit && (
+          <div className="text-center">
+            <button
+              type="button"
+              onClick={() => setAuditLimit(auditLimit + 50)}
+              className="px-4 py-2 rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-600 hover:bg-slate-50 transition"
+            >
+              Ver más registros ({filteredLogs.length - auditLimit} restantes)
+            </button>
+          </div>
+        )}
       </div>
+
+        </>
+      )}
 
       {/* Modal de Edición de Usuario */}
       {isUserEditModalOpen && editingUser && (

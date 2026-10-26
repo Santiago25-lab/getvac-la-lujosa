@@ -8,6 +8,35 @@ Este documento mantiene un registro histórico de las modificaciones, correccion
 
 ---
 
+## [Evolución 4] - 26 de Octubre de 2026 — Rediseño de la interfaz
+
+### 🎨 Sistema de diseño "Registro" (`frontend/src/index.css`)
+- Tipografía Public Sans (interfaz) y Source Serif 4 (títulos y cifras), con números tabulares.
+- Neutros cálidos, un solo color de acción (petróleo) y color de estado solo cuando significa algo: verde en regla, ocre atención, rojo incumplimiento.
+- Las escalas de Tailwind se redefinen en un solo lugar, así que todas las vistas heredan el estilo.
+- Componentes compartidos en `components/ui.jsx` (`PageHeader`, `Section`, `Metric`, `Badge`, `EmptyState`) y formatos en `components/styles.js`.
+
+### 🧭 Navegación
+- Menú agrupado (Personas, Finanzas, Administración) en `navigation.js`. "Panel Super" pasa a llamarse **Configuración**, y la antigua "Configuración", **Reglas laborales**.
+- La cabecera muestra la ubicación (miga de pan) en lugar de repetir el título; se quitó un buscador que no hacía nada.
+- La barra lateral muestra el nombre y el logo de la empresa configurados y el usuario conectado.
+
+### 🖥️ Vistas
+- **Inicio:** estado del personal hoy, una sola lista de "Requiere atención" ordenada por gravedad, próximos 15 días (incluye festivos nacionales) y costo de la nómina explicado.
+- **Configuración:** organizada en pestañas (Empresa, Jornada y calendario, Vacaciones, Nómina y aportes, Usuarios, Auditoría).
+- **Empleados, Vacaciones, Novedades, Asistencia, Costos laborales, Analítica, Reglas laborales y Expediente:** encabezados uniformes, columnas con nombres claros, cada cifra con su explicación.
+- **Login** en dos columnas, sin degradados.
+
+### 🐛 Correcciones encontradas en el rediseño
+- Inicio: "Ausentes" leía un campo inexistente (siempre 0); los festivos y las jornadas especiales mostraban nombres vacíos; la alerta de "vacaciones vencidas" no usaba el tope legal; para el rol Administrador la página fallaba por no tener acceso a costos.
+- Analítica: "Saludable" y "Atención" estaban fijos; con cero marcaciones mostraba 100% de puntualidad.
+- Novedades: cancelar unas vacaciones desde la tabla fallaba; las fechas salían en formato técnico.
+- Asistencia: filtro de áreas con valores inventados.
+- Cifras con ruido decimal (24.380000000000003) y lupas de búsqueda deformadas.
+- Un hook de React declarado después de un `return` condicional en `App.jsx`.
+
+---
+
 ## [Evolución 3] - 26 de Octubre de 2026 — Panel Super y cálculos según la ley vigente en 2026
 
 ### ⚖️ Panel Super: configuración de la empresa

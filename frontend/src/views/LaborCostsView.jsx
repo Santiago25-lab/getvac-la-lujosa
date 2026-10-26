@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { DollarSign, PieChart, Users, AlertCircle, Briefcase, ChevronRight, X, Clock, Info } from 'lucide-react';
 import { PieChart as RechartsPieChart, Pie, Cell, Tooltip as RechartsTooltip, ResponsiveContainer, Legend } from 'recharts';
 import { API_URL } from '../config';
+import { PageHeader, Section, Metric, EmptyState } from '../components/ui.jsx';
 
 // Aportes a cargo del empleador (seguridad social y parafiscales).
 const employerContributions = (c) =>
@@ -42,23 +43,6 @@ export default function LaborCostsView({ token, userRole }) {
     }).format(amount);
   };
 
-  // Lógica de colores de riesgo para vacaciones (Umbrales)
-  const getVacationRiskLevel = () => {
-    if (!data) return { color: 'text-brand-600', bg: 'bg-brand-50', border: 'border-brand-200' };
-    const nomina = data.dashboard.monthly.nomina;
-    const vacaciones = data.dashboard.accumulated.vacaciones;
-    
-    if (nomina === 0) return { color: 'text-brand-600', bg: 'bg-brand-50', border: 'border-brand-200' };
-
-    const ratio = vacaciones / nomina;
-    if (ratio >= 1) {
-      return { color: 'text-rose-600', bg: 'bg-rose-50', border: 'border-rose-500' }; // Crítico: Pasivo > 1 nómina
-    } else if (ratio >= 0.5) {
-      return { color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-500' }; // Advertencia
-    }
-    return { color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-500' }; // Saludable
-  };
-
   if (loading) {
     return (
       <div className="p-8 flex items-center justify-center h-full">
@@ -77,8 +61,6 @@ export default function LaborCostsView({ token, userRole }) {
     );
   }
 
-  const riskStyles = getVacationRiskLevel();
-
   // Datos para el gráfico Donut del Offcanvas (Mensual)
   let donutData = [];
   if (selectedEmployee) {
@@ -86,136 +68,104 @@ export default function LaborCostsView({ token, userRole }) {
     const seguridadSocial = employerContributions(monthlyCosts);
 
     donutData = [
-      { name: 'Salario Base', value: baseSalary || 0, color: '#3b82f6' }, // blue-500
-      ...(transportAllowance ? [{ name: 'Aux. Transporte', value: transportAllowance, color: '#8b5cf6' }] : []), // violet-500
-      { name: 'Seg. Social y Parafiscales', value: seguridadSocial, color: '#10b981' } // emerald-500
+      { name: 'Salario', value: baseSalary || 0, color: '#2d6d7b' },
+      ...(transportAllowance ? [{ name: 'Auxilio de transporte', value: transportAllowance, color: '#c99634' }] : []),
+      { name: 'Aportes del empleador', value: seguridadSocial, color: '#a29d92' }
     ];
   }
 
+  const monthly = data?.dashboard.monthly || {};
+  const accumulated = data?.dashboard.accumulated || {};
+  const params = data?.dashboard.params;
+
   return (
-    <div className="flex-1 overflow-y-auto bg-slate-50 p-6 md:p-8 relative">
-      <div className="max-w-7xl mx-auto space-y-6">
-        
-        {/* Header */}
-        <div className="flex justify-between items-end">
-          <div>
-            <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
-              <PieChart className="w-7 h-7 text-brand-600" />
-              Dashboard Financiero RRHH
-            </h1>
-            <p className="text-sm text-slate-500 mt-1">Visión ejecutiva de flujo de caja y pasivos</p>
+    <div className="flex-1 overflow-y-auto relative animate-fade-in">
+      <div className="max-w-[1200px] mx-auto px-8 py-8 space-y-6">
+
+        <PageHeader
+          title="Costos laborales"
+          description={params
+            ? `Calculados con el salario mínimo de ${params.year} (${formatCurrency(params.smmlv)}), el auxilio de transporte (${formatCurrency(params.transportAllowance)}) y los aportes de ley${params.parafiscalExemption ? ', aplicando la exoneración del Art. 114-1 del Estatuto Tributario' : ''}.`
+            : 'Cuánto cuesta la nómina cada mes y cuánto debe la empresa en prestaciones.'}
+        />
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-5">
+            <Metric
+              size="lg"
+              label="Costo mensual de la nómina"
+              value={formatCurrency(monthly.total || 0)}
+              hint="Lo que sale de la caja cada mes por el personal activo."
+            />
+            <dl className="mt-5 pt-4 border-t border-slate-150 grid grid-cols-3 gap-3 text-[13px]">
+              <div><dt className="text-slate-500">Salarios y auxilio</dt><dd className="font-semibold text-slate-800 mt-0.5">{formatCurrency(monthly.nomina || 0)}</dd></div>
+              <div><dt className="text-slate-500">Pensión, salud y ARL</dt><dd className="font-semibold text-slate-800 mt-0.5">{formatCurrency((monthly.pension || 0) + (monthly.salud || 0) + (monthly.arl || 0))}</dd></div>
+              <div><dt className="text-slate-500">Caja, SENA e ICBF</dt><dd className="font-semibold text-slate-800 mt-0.5">{formatCurrency((monthly.ccf || 0) + (monthly.sena || 0) + (monthly.icbf || 0))}</dd></div>
+            </dl>
+          </div>
+
+          <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-5">
+            <Metric
+              size="lg"
+              label="Prestaciones y vacaciones por pagar"
+              value={formatCurrency(accumulated.total || 0)}
+              hint="Causado desde el último pago registrado en el expediente de cada empleado."
+            />
+            <dl className="mt-5 pt-4 border-t border-slate-150 grid grid-cols-4 gap-3 text-[13px]">
+              <div><dt className="text-slate-500">Prima</dt><dd className="font-semibold text-slate-800 mt-0.5">{formatCurrency(accumulated.prima || 0)}</dd></div>
+              <div><dt className="text-slate-500">Cesantías</dt><dd className="font-semibold text-slate-800 mt-0.5">{formatCurrency(accumulated.cesantias || 0)}</dd></div>
+              <div><dt className="text-slate-500">Intereses</dt><dd className="font-semibold text-slate-800 mt-0.5">{formatCurrency(accumulated.intereses || 0)}</dd></div>
+              <div><dt className="text-slate-500">Vacaciones</dt><dd className="font-semibold text-slate-800 mt-0.5">{formatCurrency(accumulated.vacaciones || 0)}</dd></div>
+            </dl>
           </div>
         </div>
 
-        {/* Nivel 1: Resumen Ejecutivo Mejorado */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          
-          {/* Tarjeta 1: Flujo de Caja (Nómina + Carga) - Protagonista */}
-          <div className="md:col-span-2 bg-brand-600 rounded-2xl p-6 border border-brand-500 shadow-lg shadow-brand-500/20 text-white relative overflow-hidden flex flex-col justify-between">
-            <div className="absolute -right-8 -bottom-8 opacity-10">
-              <DollarSign className="w-40 h-40" />
-            </div>
-            <div className="relative z-10 flex items-center justify-between">
-              <h2 className="text-sm font-extrabold text-brand-200 uppercase tracking-wider flex items-center gap-2">
-                <Clock className="w-4 h-4" /> Flujo de Caja Mensual
-              </h2>
-            </div>
-            <div className="relative z-10 mt-4">
-              <p className="text-xs text-brand-200 mb-1">Nómina + Carga Seguridad Social</p>
-              <h3 className="text-4xl font-black tracking-tight">{formatCurrency(data?.dashboard.monthly.total || 0)}</h3>
-            </div>
-            <div className="relative z-10 mt-4 flex gap-4 text-xs font-semibold text-brand-100">
-              <div className="bg-brand-700/50 px-3 py-1.5 rounded-lg">
-                Nómina: {formatCurrency(data?.dashboard.monthly.nomina || 0)}
-              </div>
-              <div className="bg-brand-700/50 px-3 py-1.5 rounded-lg">
-                S.S: {formatCurrency(employerContributions(data?.dashboard.monthly))}
-              </div>
-            </div>
-          </div>
-
-          {/* Tarjeta 2: Pasivo Prestacional (Deuda) - Neutral y Secundaria */}
-          <div className="bg-slate-50 rounded-2xl p-5 border border-slate-200/60 shadow-sm relative overflow-hidden flex flex-col justify-between">
-            <div className="relative z-10 flex items-center justify-between">
-              <h2 className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
-                <Briefcase className="w-3.5 h-3.5" /> Deuda Futura (Provisiones)
-              </h2>
-            </div>
-            <div className="relative z-10 mt-3">
-              <p className="text-[10px] text-slate-400 mb-0.5">Pasivo prestacional total proyectado</p>
-              <h3 className="text-2xl font-black tracking-tight text-slate-700">{formatCurrency(data?.dashboard.accumulated.total || 0)}</h3>
-            </div>
-            <div className="relative z-10 mt-4 grid grid-cols-2 gap-1.5 text-[10px] font-medium text-slate-500">
-              <div className="bg-white px-2 py-1 rounded border border-slate-100 flex justify-between">
-                <span>Prima:</span> <span className="font-bold">{formatCurrency(data?.dashboard.accumulated.prima || 0)}</span>
-              </div>
-              <div className="bg-white px-2 py-1 rounded border border-slate-100 flex justify-between">
-                <span>Cesantías:</span> <span className="font-bold">{formatCurrency(data?.dashboard.accumulated.cesantias || 0)}</span>
-              </div>
-              <div className="bg-white px-2 py-1 rounded border border-slate-100 flex justify-between">
-                <span>Intereses:</span> <span className="font-bold">{formatCurrency(data?.dashboard.accumulated.intereses || 0)}</span>
-              </div>
-              <div className="bg-white px-2 py-1 rounded border border-slate-100 flex justify-between">
-                <span>Vacaciones:</span> <span className="font-bold">{formatCurrency(data?.dashboard.accumulated.vacaciones || 0)}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Nivel 2: Tabla de Empleados Limpia */}
-        <div className="bg-white rounded-2xl border border-slate-200/60 shadow-sm overflow-hidden">
-          <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center">
-            <h2 className="text-base font-extrabold text-slate-800 flex items-center gap-2">
-              <Users className="w-5 h-5 text-brand-600" /> Plantilla (Haz clic para detalle financiero)
-            </h2>
-          </div>
-          <div className="overflow-x-hidden">
-            <table className="w-full text-left border-collapse">
+        <Section title="Por empleado" description="Seleccione un empleado para ver el desglose de su costo y lo que se le debe.">
+          <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+            <table className="w-full text-left text-[13px] border-collapse">
               <thead>
-                <tr className="bg-slate-50 text-[10px] uppercase tracking-wider text-slate-500 font-bold border-b border-slate-200/60">
-                  <th className="px-6 py-4">Empleado</th>
-                  <th className="px-6 py-4 hidden md:table-cell">Cargo</th>
-                  <th className="px-6 py-4">Salario Base</th>
-                  <th className="px-6 py-4 hidden md:table-cell">Seguridad Social + Parafiscales</th>
-                  <th className="px-6 py-4 text-right">Costo Mensual Total</th>
+                <tr className="bg-slate-50 text-slate-500 border-b border-slate-200">
+                  <th className="font-medium px-5 py-2.5">Empleado</th>
+                  <th className="font-medium px-4 py-2.5 text-right">Salario</th>
+                  <th className="font-medium px-4 py-2.5 text-right hidden md:table-cell">Auxilio de transporte</th>
+                  <th className="font-medium px-4 py-2.5 text-right hidden md:table-cell">Aportes del empleador</th>
+                  <th className="font-medium px-4 py-2.5 text-right">Costo mensual</th>
+                  <th className="font-medium px-5 py-2.5 text-right hidden lg:table-cell">Por pagar</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 text-sm">
+              <tbody className="divide-y divide-slate-150">
                 {data?.employees.map(emp => (
-                  <tr 
-                    key={emp.id} 
-                    className="hover:bg-brand-50/50 transition-colors cursor-pointer group"
+                  <tr
+                    key={emp.id}
+                    className="hover:bg-slate-50 transition-colors cursor-pointer"
                     onClick={() => setSelectedEmployee(emp)}
                   >
-                    <td className="px-6 py-4">
-                      <div className="font-bold text-slate-800 group-hover:text-brand-600 transition-colors">{emp.fullName}</div>
+                    <td className="px-5 py-3">
+                      <div className="font-semibold text-slate-800">{emp.fullName}</div>
+                      <div className="text-xs text-slate-500 mt-0.5">
+                        {emp.position}
+                        {emp.integralSalary && ' · Salario integral'}
+                        {emp.contractType === 'Prestación de Servicios' && ' · Prestación de servicios'}
+                      </div>
                     </td>
-                    <td className="px-6 py-4 hidden md:table-cell font-medium text-slate-500">
-                      {emp.position}
+                    <td className="px-4 py-3 text-right text-slate-600">
+                      {Number(emp.baseSalary) ? formatCurrency(emp.baseSalary) : <span className="text-amber-700">Sin salario registrado</span>}
                     </td>
-                    <td className="px-6 py-4 font-semibold text-slate-600">
-                      {formatCurrency(emp.baseSalary)}
-                    </td>
-                    <td className="px-6 py-4 hidden md:table-cell font-medium text-slate-500">
-                      {formatCurrency(employerContributions(emp.monthlyCosts))}
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <span className="inline-flex items-center gap-1 font-bold text-brand-700 bg-brand-50 group-hover:bg-white px-2.5 py-1 rounded-lg border border-brand-100 transition-colors">
-                        {formatCurrency(emp.monthlyCosts?.total || 0)}
-                        <ChevronRight className="w-4 h-4 text-brand-500 opacity-50 group-hover:opacity-100 transition-opacity" />
-                      </span>
-                    </td>
+                    <td className="px-4 py-3 text-right text-slate-600 hidden md:table-cell">{emp.transportAllowance ? formatCurrency(emp.transportAllowance) : '—'}</td>
+                    <td className="px-4 py-3 text-right text-slate-600 hidden md:table-cell">{formatCurrency(employerContributions(emp.monthlyCosts))}</td>
+                    <td className="px-4 py-3 text-right font-semibold text-slate-900">{formatCurrency(emp.monthlyCosts?.total || 0)}</td>
+                    <td className="px-5 py-3 text-right text-slate-600 hidden lg:table-cell">{formatCurrency(emp.accumulatedObligations?.total || 0)}</td>
                   </tr>
                 ))}
                 {data?.employees.length === 0 && (
                   <tr>
-                    <td colSpan="4" className="px-6 py-12 text-center text-slate-500 font-medium">No hay empleados activos registrados</td>
+                    <td colSpan="6"><EmptyState title="No hay empleados activos" /></td>
                   </tr>
                 )}
               </tbody>
             </table>
           </div>
-        </div>
+        </Section>
 
       </div>
 

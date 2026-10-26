@@ -185,7 +185,7 @@ export default function PublicAttendance() {
 
               {/* Instrucción breve */}
               <div className="text-center text-[10px] font-bold text-slate-450">
-                ⚠️ Nota: El sistema registra secuencialmente tus 4 marcaciones diarias: Entrada Mañana, Salida Mañana (Almuerzo), Entrada Tarde (Retorno) y Salida Tarde.
+                Nota: El sistema registra secuencialmente tus 4 marcaciones diarias: Entrada Mañana, Salida Mañana (Almuerzo), Entrada Tarde (Retorno) y Salida Tarde.
               </div>
             </div>
 

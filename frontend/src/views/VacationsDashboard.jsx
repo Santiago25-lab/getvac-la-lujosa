@@ -1,205 +1,150 @@
 import React, { useState, useEffect } from 'react';
-import { Search, FileSpreadsheet, FileText, CalendarCheck, AlertTriangle, UserCheck, Calculator } from 'lucide-react';
+import { Search, FileSpreadsheet, FileText } from 'lucide-react';
 import { API_URL } from '../config.js';
 import { exportEmployeesToExcel, exportEmployeesToPDF } from '../utils/exportUtils';
-import StatCard from '../components/StatCard';
+import { PageHeader, Metric, Badge, EmptyState, LoadingState } from '../components/ui.jsx';
+import { buttonStyles, formatCOP, formatDays } from '../components/styles.js';
 
-export default function VacationsDashboard({ token, userRole, onViewChange }) {
+// Meses sin disfrutar vacaciones a partir de los cuales se avisa
+const MONTHS_WARNING = 18;
+const MONTHS_CRITICAL = 24;
+
+export default function VacationsDashboard({ token, onViewChange }) {
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
 
-  const loadData = async () => {
-    try {
-      const response = await fetch(`${API_URL}/api/employees`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (!response.ok) throw new Error('Error al cargar empleados');
-      
-      const data = await response.json();
-      setEmployees(data.filter(emp => emp.status === 'activo'));
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
-    loadData();
+    fetch(`${API_URL}/api/employees`, { headers: { 'Authorization': `Bearer ${token}` } })
+      .then(res => {
+        if (!res.ok) throw new Error('No se pudo cargar la información de vacaciones.');
+        return res.json();
+      })
+      .then(data => setEmployees(data.filter(emp => emp.status === 'activo')))
+      .catch(err => setError(err.message))
+      .finally(() => setLoading(false));
   }, [token]);
 
-  const filteredEmployees = employees.filter(emp => 
-    emp.fullName.toLowerCase().includes(search.toLowerCase()) || 
+  const filteredEmployees = employees.filter(emp =>
+    emp.fullName.toLowerCase().includes(search.toLowerCase()) ||
     emp.documentNumber.includes(search)
   );
 
-  const totalPasivo = filteredEmployees.reduce((acc, emp) => acc + (emp.vacationStats?.economicValue || 0), 0);
-  const totalDiasDisponibles = filteredEmployees.reduce((acc, emp) => acc + (emp.vacationStats?.availableDays || 0), 0);
-  const totalEmpleadosConSaldo = filteredEmployees.filter(emp => (emp.vacationStats?.availableDays || 0) > 0).length;
+  const totalValue = filteredEmployees.reduce((acc, emp) => acc + (emp.vacationStats?.economicValue || 0), 0);
+  const totalDays = filteredEmployees.reduce((acc, emp) => acc + (emp.vacationStats?.availableDays || 0), 0);
+  const overLimit = filteredEmployees.filter(emp => emp.vacationStats?.exceedsAccumulation).length;
 
-  const formatCurrency = (value) => {
-    return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(value);
-  };
+  if (loading) return <LoadingState label="Calculando saldos de vacaciones…" />;
 
   return (
-    <div className="flex-1 p-8 overflow-y-auto space-y-8 animate-fade-in relative">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-black text-slate-800 dark:text-white tracking-tight">Provisión de Vacaciones</h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">
-            Análisis financiero y pasivo laboral acumulado por vacaciones.
-          </p>
-        </div>
-        
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => exportEmployeesToExcel(filteredEmployees)}
-            disabled={filteredEmployees.length === 0}
-            className="p-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/40 text-emerald-600 hover:bg-emerald-50 shadow-sm transition disabled:opacity-50"
-            title="Exportar a Excel"
-          >
-            <FileSpreadsheet className="w-5 h-5" />
-          </button>
-          <button
-            onClick={() => exportEmployeesToPDF(filteredEmployees)}
-            disabled={filteredEmployees.length === 0}
-            className="p-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/40 text-rose-500 hover:bg-rose-50 shadow-sm transition disabled:opacity-50"
-            title="Exportar a PDF"
-          >
-            <FileText className="w-5 h-5" />
-          </button>
-        </div>
-      </div>
+    <div className="flex-1 overflow-y-auto animate-fade-in">
+      <div className="max-w-[1200px] mx-auto px-8 py-8 space-y-6">
+        <PageHeader
+          title="Vacaciones"
+          description="Cuántos días de vacaciones ha ganado cada empleado, cuántos ha usado y cuánto le costaría a la empresa pagar los pendientes hoy."
+          actions={
+            <>
+              <button onClick={() => exportEmployeesToExcel(filteredEmployees)} disabled={!filteredEmployees.length} className={buttonStyles.secondary}>
+                <FileSpreadsheet className="w-4 h-4" /> Excel
+              </button>
+              <button onClick={() => exportEmployeesToPDF(filteredEmployees)} disabled={!filteredEmployees.length} className={buttonStyles.secondary}>
+                <FileText className="w-4 h-4" /> PDF
+              </button>
+            </>
+          }
+        />
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <StatCard
-          title="Pasivo Laboral Total"
-          value={formatCurrency(totalPasivo)}
-          icon={Calculator}
-          trend="+ Pasivo Acumulado"
-          trendUp={false}
-          color="amber"
-        />
-        <StatCard
-          title="Días Pendientes Globales"
-          value={totalDiasDisponibles.toFixed(2)}
-          icon={CalendarCheck}
-          trend="Días no disfrutados"
-          trendUp={false}
-          color="rose"
-        />
-        <StatCard
-          title="Empleados con Saldo"
-          value={totalEmpleadosConSaldo}
-          icon={UserCheck}
-          trend={`De ${filteredEmployees.length} empleados activos`}
-          trendUp={true}
-          color="brand"
-        />
-      </div>
+        {error && <div role="alert" className="p-3 bg-rose-50 border border-rose-200 rounded-lg text-[13px] text-rose-700">{error}</div>}
 
-      <div className="glass-card p-5">
-        <div className="relative w-full md:w-1/2">
-          <Search className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400 w-5 h-5 pointer-events-none self-center" />
+        <div className="bg-white border border-slate-200 rounded-xl shadow-sm grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-slate-150">
+          <div className="p-5">
+            <Metric label="Valor de las vacaciones pendientes" value={formatCOP(totalValue)} hint="Salario diario × días pendientes de cada empleado activo (Art. 189 CST)." />
+          </div>
+          <div className="p-5">
+            <Metric label="Días pendientes en total" value={formatDays(totalDays)} hint="Días hábiles ganados que aún no se han disfrutado ni pagado." />
+          </div>
+          <div className="p-5">
+            <Metric
+              label="Empleados sobre el tope legal"
+              value={overLimit}
+              tone={overLimit ? 'bad' : 'neutral'}
+              hint="Más de 2 años acumulados (4 en cargos de confianza o técnicos). Art. 190 CST."
+            />
+          </div>
+        </div>
+
+        <div className="relative max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
           <input
-            type="text"
+            type="search"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Buscar empleado por nombre o cédula..."
-            className="w-full bg-white border border-slate-200 focus:border-brand-500 rounded-2xl py-2.5 pl-11 pr-4 text-sm outline-none transition"
+            placeholder="Buscar por nombre o documento"
+            aria-label="Buscar empleado"
+            className="w-full bg-white border border-slate-200 rounded-lg py-2 pl-9 pr-3 text-sm"
           />
         </div>
-      </div>
 
-      <div className="glass-card overflow-hidden">
-        {loading ? (
-          <div className="p-8 text-center text-slate-500">Calculando provisiones...</div>
-        ) : filteredEmployees.length === 0 ? (
-          <div className="p-8 text-center text-slate-500 font-semibold">No hay empleados para mostrar.</div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm border-collapse">
-              <thead>
-                <tr className="bg-slate-50/70 text-slate-500 font-bold border-b border-slate-200/60">
-                  <th className="py-4 px-6">Empleado</th>
-                  <th className="py-4 px-4 text-center">Salario Base</th>
-                  <th className="py-4 px-4 text-center">Fórmula (días/año ÷ 360)</th>
-                  <th className="py-4 px-4 text-center">Días Causados</th>
-                  <th className="py-4 px-4 text-center">Días Tomados</th>
-                  <th className="py-4 px-4 text-center">Días Pendientes</th>
-                  <th className="py-4 px-6 text-right">Provisión ($)</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {filteredEmployees.map(emp => {
-                  const stats = emp.vacationStats || {};
-                  return (
-                    <tr key={emp.id} className="hover:bg-brand-50/25 transition">
-                      <td className="py-4 px-6">
-                        <div className="font-bold text-slate-800">{emp.fullName}</div>
-                        <div className="text-xs text-slate-500">{emp.documentNumber}</div>
-                      </td>
-                      <td className="py-4 px-4 text-center font-medium">
-                        {emp.baseSalary ? formatCurrency(emp.baseSalary) : 'N/A'}
-                      </td>
-                      <td className="py-4 px-4 text-center">
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${emp.appliesVacationCalculation !== false ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-50 text-slate-500'}`}>
-                          {emp.appliesVacationCalculation !== false ? 'Sí Aplica' : 'No Aplica'}
-                        </span>
-                      </td>
-                      <td className="py-4 px-4 text-center">
-                        <div className="font-bold text-slate-700">
-                          {Math.floor(stats.accruedDays || 0)} días
-                        </div>
-                        <div className="text-[10px] text-slate-400 mt-0.5">
-                          +{(stats.accruedDays % 1).toFixed(2)} acumulado
-                        </div>
-                      </td>
-                      <td className="py-4 px-4 text-center font-bold text-slate-600">
-                        {stats.takenDays || 0} días
-                      </td>
-                      <td className="py-4 px-4 text-center">
-                        <div className="font-black text-rose-500">
-                          {Math.floor(stats.availableDays || 0)} días
-                        </div>
-                        <div className="text-[10px] text-rose-400 mt-0.5 mb-1.5">
-                          +{(stats.availableDays % 1).toFixed(2)} acumulado
-                        </div>
-                        
-                        {/* Alertas de Acumulación: tope de 2 años (4 en cargos especiales), Art. 190 CST */}
-                        {stats.exceedsAccumulation ? (
-                          <div className="inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-rose-100 text-rose-700 border border-rose-200 mt-1" title={`Supera el tope legal de ${stats.accumulationLimitDays} días (${stats.accumulationYears} años, Art. 190 CST)`}>
-                            🚨 Supera tope legal ({stats.accumulationLimitDays}d)
-                          </div>
-                        ) : (stats.availableDays >= (stats.accumulationLimitDays || 30) * 0.8) ? (
-                          <div className="inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-700 border border-amber-200 mt-1" title={`Cerca del tope legal de ${stats.accumulationLimitDays} días`}>
-                            ⚠ Cerca del tope ({stats.accumulationLimitDays}d)
-                          </div>
-                        ) : null}
+        <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+          {filteredEmployees.length === 0 ? (
+            <EmptyState title="Ningún empleado coincide con la búsqueda" />
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-[13px] border-collapse">
+                <thead>
+                  <tr className="text-slate-500 border-b border-slate-200 bg-slate-50">
+                    <th className="font-medium py-2.5 px-5">Empleado</th>
+                    <th className="font-medium py-2.5 px-4 text-right">Salario</th>
+                    <th className="font-medium py-2.5 px-4 text-right" title="Días hábiles ganados por tiempo de servicio">Ganados</th>
+                    <th className="font-medium py-2.5 px-4 text-right" title="Disfrutados o pagados en dinero">Usados</th>
+                    <th className="font-medium py-2.5 px-4 text-right">Pendientes</th>
+                    <th className="font-medium py-2.5 px-4">Observaciones</th>
+                    <th className="font-medium py-2.5 px-5 text-right">Valor pendiente</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-150">
+                  {filteredEmployees.map(emp => {
+                    const stats = emp.vacationStats || {};
+                    const notes = [];
+                    if (stats.generatesVacations === false) {
+                      notes.push({ tone: 'neutral', text: 'No genera vacaciones' });
+                    }
+                    if (stats.exceedsAccumulation) {
+                      notes.push({ tone: 'bad', text: `Supera el tope de ${formatDays(stats.accumulationLimitDays)} días` });
+                    } else if (stats.accumulationLimitDays && stats.availableDays >= stats.accumulationLimitDays * 0.8) {
+                      notes.push({ tone: 'warn', text: `Cerca del tope de ${formatDays(stats.accumulationLimitDays)} días` });
+                    }
+                    if (stats.monthsSinceLastVacation >= MONTHS_CRITICAL) {
+                      notes.push({ tone: 'bad', text: `${stats.monthsSinceLastVacation} meses sin descansar` });
+                    } else if (stats.monthsSinceLastVacation >= MONTHS_WARNING) {
+                      notes.push({ tone: 'warn', text: `${stats.monthsSinceLastVacation} meses sin descansar` });
+                    }
 
-                        {/* Alertas de Tiempo sin Vacaciones */}
-                        {stats.monthsSinceLastVacation >= 24 ? (
-                          <div className="inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-rose-100 text-rose-700 border border-rose-200 mt-1 block" title="Más de 24 meses sin disfrutar vacaciones">
-                            🚨 {stats.monthsSinceLastVacation} meses sin salir
+                    return (
+                      <tr key={emp.id} className="hover:bg-slate-50 transition-colors cursor-pointer" onClick={() => onViewChange?.('employee-detail', emp.id)}>
+                        <td className="py-3 px-5">
+                          <div className="font-semibold text-slate-800">{emp.fullName}</div>
+                          <div className="text-xs text-slate-500 mt-0.5">C.C. {emp.documentNumber}</div>
+                        </td>
+                        <td className="py-3 px-4 text-right text-slate-600">{Number(emp.baseSalary) ? formatCOP(emp.baseSalary) : <span className="text-slate-400">Sin salario</span>}</td>
+                        <td className="py-3 px-4 text-right text-slate-600">{formatDays(stats.accruedDays)}</td>
+                        <td className="py-3 px-4 text-right text-slate-600">{formatDays(stats.takenDays)}</td>
+                        <td className="py-3 px-4 text-right font-semibold text-slate-900">{formatDays(stats.availableDays)}</td>
+                        <td className="py-3 px-4">
+                          <div className="flex flex-wrap gap-1">
+                            {notes.length === 0 ? <span className="text-slate-400">—</span> : notes.map(n => <Badge key={n.text} tone={n.tone}>{n.text}</Badge>)}
                           </div>
-                        ) : stats.monthsSinceLastVacation >= 18 ? (
-                          <div className="inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-700 border border-amber-200 mt-1 block" title="Más de 18 meses sin disfrutar vacaciones">
-                            ⚠ {stats.monthsSinceLastVacation} meses sin salir
-                          </div>
-                        ) : null}
-                      </td>
-                      <td className="py-4 px-6 text-right font-black text-amber-600">
-                        {formatCurrency(stats.economicValue || 0)}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
+                        </td>
+                        <td className="py-3 px-5 text-right font-semibold text-slate-900">{formatCOP(stats.economicValue)}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

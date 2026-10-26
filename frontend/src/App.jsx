@@ -46,11 +46,6 @@ export default function App() {
     };
   }, [currentPath]);
 
-  // Si es la ruta del reloj público, no exigir token ni panel administrativo
-  if (currentPath === '/asistencia-qr') {
-    return <PublicAttendance />;
-  }
-
   // Forzar Tema Claro de manera permanente al arrancar
   useEffect(() => {
     const root = window.document.documentElement;
@@ -59,6 +54,11 @@ export default function App() {
     root.classList.remove('dark');
     body.classList.remove('dark');
   }, []);
+
+  // Si es la ruta del reloj público, no exigir token ni panel administrativo
+  if (currentPath === '/asistencia-qr') {
+    return <PublicAttendance />;
+  }
 
   const handleLoginSuccess = (userToken, userData) => {
     setToken(userToken);
@@ -88,13 +88,14 @@ export default function App() {
   }
 
   return (
-    <div className="flex w-screen h-screen overflow-hidden bg-slate-50 text-slate-800 font-sans">
+    <div className="flex w-screen h-screen overflow-hidden bg-slate-100 text-slate-800 font-sans">
       
       {/* Barra de Navegación Lateral */}
       <Sidebar
         activeView={activeView}
         onViewChange={handleViewChange}
         user={user}
+        token={token}
         onLogout={handleLogout}
       />
 

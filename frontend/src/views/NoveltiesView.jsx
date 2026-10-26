@@ -1,7 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { FileText, Search, Plus, Calendar, Filter, FileUp, X, CheckCircle2, Clock, Eye, Trash2, Download } from 'lucide-react';
 import { API_URL } from '../config.js';
-import { calculateReturnDate } from '../utils/dateUtils.js';
+import { calculateReturnDate, formatDateFriendly } from '../utils/dateUtils.js';
+import { PageHeader, Badge, EmptyState } from '../components/ui.jsx';
+import { buttonStyles } from '../components/styles.js';
+
+// Estado mostrado al usuario (las vacaciones llegan con estados propios desde el backend)
+const STATUS_DISPLAY = {
+  Activa: { label: 'Vigente', tone: 'good' },
+  Pendiente: { label: 'Por revisar', tone: 'warn' },
+  Finalizada: { label: 'Finalizada', tone: 'neutral' },
+  Historico: { label: 'Finalizada', tone: 'neutral' },
+  Cancelada: { label: 'Cancelada', tone: 'neutral' },
+  Rechazada: { label: 'Cancelada', tone: 'neutral' },
+};
+
+const formatRange = (start, end) =>
+  start === end ? formatDateFriendly(start) : `${formatDateFriendly(start)} – ${formatDateFriendly(end)}`;
 
 export default function NoveltiesView({ token, userRole }) {
   const [novelties, setNovelties] = useState([]);
@@ -168,18 +183,27 @@ export default function NoveltiesView({ token, userRole }) {
     }
   };
 
+  // Nada se borra: novedades y vacaciones se cancelan y quedan en el historial.
   const handleDelete = async (id) => {
-    if (!window.confirm('¿Seguro que desea eliminar esta novedad? Esto puede afectar el cálculo de nómina y asistencias.')) return;
+    const isVacation = String(id).startsWith('vac-');
+    const message = isVacation
+      ? '¿Cancelar estas vacaciones? Los días regresan al saldo del empleado y el registro queda en el historial.'
+      : '¿Cancelar esta novedad? La asistencia de esos días dejará de estar justificada por ella.';
+    if (!window.confirm(message)) return;
     try {
-      const response = await fetch(`${API_URL}/api/novelties/${id}`, {
+      const url = isVacation
+        ? `${API_URL}/api/vacations/${String(id).replace('vac-', '')}`
+        : `${API_URL}/api/novelties/${id}`;
+      const response = await fetch(url, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
+      const result = await response.json().catch(() => ({}));
       if (response.ok) {
-        setSuccessMsg('Novedad eliminada exitosamente.');
+        setSuccessMsg(result.message || 'Registro cancelado.');
         loadData();
       } else {
-        throw new Error('Error al eliminar');
+        throw new Error(result.message || 'No se pudo cancelar el registro.');
       }
     } catch (error) {
       setErrorMsg(error.message);
@@ -226,26 +250,20 @@ export default function NoveltiesView({ token, userRole }) {
   };
 
   return (
-    <div className="flex-1 p-8 overflow-y-auto space-y-8 animate-fade-in relative">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-black text-slate-800 dark:text-white tracking-tight">Novedades y Licencias</h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">
-            Gestión centralizada de incapacidades, licencias y ausencias justificadas o injustificadas.
-          </p>
-        </div>
-        
-        <button
-          onClick={() => setShowModal(true)}
-          className="flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-brand-500 hover:bg-brand-600 text-white font-bold text-sm shadow-md hover:shadow-lg transition duration-200"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Registrar Novedad</span>
-        </button>
-      </div>
+    <div className="flex-1 overflow-y-auto animate-fade-in relative">
+      <div className="max-w-[1200px] mx-auto px-8 py-8 space-y-6">
+      <PageHeader
+        title="Novedades y licencias"
+        description="Incapacidades, licencias, permisos, suspensiones y vacaciones. Al registrar una novedad, la asistencia de esos días queda justificada automáticamente."
+        actions={
+          <button onClick={() => setShowModal(true)} className={buttonStyles.primary}>
+            <Plus className="w-4 h-4" /> Registrar novedad
+          </button>
+        }
+      />
 
       {(errorMsg || successMsg) && (
-        <div className={`p-4 rounded-2xl text-sm flex items-center justify-between ${errorMsg ? 'bg-rose-50 text-rose-600 border border-rose-200' : 'bg-emerald-50 text-emerald-600 border border-emerald-200'}`}>
+        <div role={errorMsg ? 'alert' : 'status'} className={`p-3 rounded-lg text-[13px] flex items-center justify-between ${errorMsg ? 'bg-rose-50 text-rose-700 border border-rose-200' : 'bg-emerald-50 text-emerald-800 border border-emerald-200'}`}>
           <div className="flex items-center gap-3">
             <CheckCircle2 className="w-5 h-5" />
             <span className="font-semibold">{errorMsg || successMsg}</span>
@@ -256,94 +274,99 @@ export default function NoveltiesView({ token, userRole }) {
         </div>
       )}
 
-      <div className="glass-card p-5 grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
         <div className="relative md:col-span-2">
-          <Search className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400 w-5 h-5 pointer-events-none self-center" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Buscar empleado..."
-            className="w-full bg-white border border-slate-200 focus:border-brand-500 rounded-2xl py-2.5 pl-11 pr-4 text-sm outline-none transition"
+            placeholder="Buscar por empleado"
+            aria-label="Buscar por empleado"
+            className="w-full bg-white border border-slate-200 rounded-lg py-2 pl-9 pr-3 text-sm"
           />
         </div>
         
         <select
           value={typeFilter}
           onChange={(e) => setTypeFilter(e.target.value)}
-          className="bg-white border border-slate-200 rounded-2xl py-2.5 px-4 text-sm outline-none focus:border-brand-500 transition"
+          className="bg-white border border-slate-200 rounded-lg py-2 px-3 text-sm"
+          aria-label="Filtrar por tipo"
         >
-          <option value="">Cualquier Tipo</option>
+          <option value="">Todos los tipos</option>
           {noveltyTypes.map(t => <option key={t} value={t}>{t}</option>)}
         </select>
 
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
-          className="bg-white border border-slate-200 rounded-2xl py-2.5 px-4 text-sm outline-none focus:border-brand-500 transition"
+          className="bg-white border border-slate-200 rounded-lg py-2 px-3 text-sm"
+          aria-label="Filtrar por estado"
         >
-          <option value="">Cualquier Estado</option>
-          <option value="Activa">Activa</option>
-          <option value="Pendiente">Pendiente</option>
-          <option value="Rechazada">Rechazada</option>
-          <option value="Historico">Historico</option>
+          <option value="">Todos los estados</option>
+          <option value="Activa">Vigentes</option>
+          <option value="Pendiente">Por revisar</option>
+          <option value="Historico">Finalizadas</option>
+          <option value="Rechazada">Canceladas</option>
         </select>
       </div>
 
-      <div className="glass-card overflow-hidden">
+      <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
         {loading ? (
-          <div className="p-8 text-center text-slate-500">Cargando novedades...</div>
+          <div className="p-8 text-center text-sm text-slate-500">Cargando novedades…</div>
         ) : novelties.length === 0 ? (
-          <div className="p-8 text-center text-slate-500 font-semibold">No se encontraron novedades registradas.</div>
+          <EmptyState title="No hay novedades registradas" description="Use «Registrar novedad» para incapacidades, licencias, permisos o vacaciones." />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm border-collapse">
               <thead>
-                <tr className="bg-slate-50/70 text-slate-500 font-bold border-b border-slate-200/60">
-                  <th className="py-4 px-6">Empleado</th>
-                  <th className="py-4 px-4">Tipo</th>
-                  <th className="py-4 px-4">Fechas</th>
-                  <th className="py-4 px-4">Estado</th>
-                  <th className="py-4 px-6 text-right">Acciones</th>
+                <tr className="text-slate-500 border-b border-slate-200 bg-slate-50 text-[13px]">
+                  <th className="font-medium py-2.5 px-5">Empleado</th>
+                  <th className="font-medium py-2.5 px-4">Tipo</th>
+                  <th className="font-medium py-2.5 px-4">Fechas</th>
+                  <th className="font-medium py-2.5 px-4">Estado</th>
+                  <th className="font-medium py-2.5 px-5 text-right"><span className="sr-only">Acciones</span></th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
-                {novelties.map(nov => (
-                  <tr key={nov.id} className="hover:bg-slate-50 transition">
-                    <td className="py-4 px-6">
-                      <div className="font-bold text-slate-800">{nov.employee?.fullName}</div>
-                      <div className="text-xs text-slate-500">{nov.employee?.documentNumber}</div>
+              <tbody className="divide-y divide-slate-150 text-[13px]">
+                {novelties.map(nov => {
+                  const status = STATUS_DISPLAY[nov.status] || { label: nov.status, tone: 'neutral' };
+                  const canCancel = !['Cancelada', 'Rechazada'].includes(nov.status);
+                  return (
+                  <tr key={nov.id} className="hover:bg-slate-50 transition-colors">
+                    <td className="py-3 px-5">
+                      <div className="font-semibold text-slate-800">{nov.employee?.fullName}</div>
+                      <div className="text-xs text-slate-500 mt-0.5">C.C. {nov.employee?.documentNumber}</div>
                     </td>
-                    <td className="py-4 px-4 font-semibold text-slate-700">
-                      {nov.type}
+                    <td className="py-3 px-4 text-slate-700">{nov.type}</td>
+                    <td className="py-3 px-4 text-slate-600">
+                      <div>{formatRange(nov.startDate, nov.endDate)}</div>
+                      {nov.coverage && <div className="text-xs text-slate-500 mt-0.5">{nov.coverage}</div>}
                     </td>
-                    <td className="py-4 px-4 text-slate-600">
-                      <div className="text-xs">{nov.startDate} al {nov.endDate}</div>
-                      <div className="text-[10px] font-bold text-slate-400 uppercase">{nov.coverage}</div>
-                    </td>
-                    <td className="py-4 px-4">
-                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold ${getStatusColor(nov.status)}`}>
-                        {nov.status}
-                      </span>
-                    </td>
-                    <td className="py-4 px-6 text-right space-x-2">
+                    <td className="py-3 px-4"><Badge tone={status.tone}>{status.label}</Badge></td>
+                    <td className="py-3 px-5 text-right whitespace-nowrap">
                       <button
                         onClick={() => { setSelectedNovelty(nov); setShowDetailModal(true); }}
-                        className="p-2 text-brand-600 bg-brand-50 hover:bg-brand-100 rounded-xl transition"
-                        title="Ver Detalles"
+                        className="p-1.5 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-md transition"
+                        title="Ver detalle"
+                        aria-label="Ver detalle"
                       >
                         <Eye className="w-4 h-4" />
                       </button>
-                      <button
-                        onClick={() => handleDelete(nov.id)}
-                        className="p-2 text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-xl transition"
-                        title="Eliminar Novedad"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      {canCancel && (
+                        <button
+                          onClick={() => handleDelete(nov.id)}
+                          className="p-1.5 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-md transition ml-1"
+                          title="Cancelar novedad"
+                          aria-label="Cancelar novedad"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -611,6 +634,7 @@ export default function NoveltiesView({ token, userRole }) {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }

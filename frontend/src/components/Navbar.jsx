@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, Search, Bell, AlertTriangle, ClipboardSignature } from 'lucide-react';
+import { Bell, AlertTriangle, ClipboardSignature, ChevronRight } from 'lucide-react';
 import { API_URL } from '../config.js';
+import { viewLocation } from '../navigation.js';
 
 export default function Navbar({ activeView, token, onViewChange }) {
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -10,7 +11,7 @@ export default function Navbar({ activeView, token, onViewChange }) {
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentTime(new Date());
-    }, 1000);
+    }, 30000);
     return () => clearInterval(timer);
   }, []);
 
@@ -32,8 +33,8 @@ export default function Navbar({ activeView, token, onViewChange }) {
               notifs.push({
                 id: `abs-${emp.id}-${index}`,
                 type: 'absence',
-                title: 'Inasistencia Detectada',
-                message: `El empleado ${emp.fullName} no ha registrado asistencia hoy.`,
+                title: 'Inasistencia sin justificar',
+                message: `${emp.fullName} no ha marcado entrada hoy.`,
                 view: 'attendance',
                 icon: <AlertTriangle className="w-4 h-4 text-rose-500" />
               });
@@ -53,7 +54,7 @@ export default function Navbar({ activeView, token, onViewChange }) {
             notifs.push({
               id: `nov-${nov.id}-${index}`,
               type: 'novelty',
-              title: 'Novedad Pendiente',
+              title: 'Novedad por revisar',
               message: `${empName} tiene una novedad pendiente por ${nov.type}.`,
               view: 'novelties',
               icon: <ClipboardSignature className="w-4 h-4 text-amber-500" />
@@ -72,113 +73,79 @@ export default function Navbar({ activeView, token, onViewChange }) {
     return () => clearInterval(interval);
   }, [token, activeView]);
 
-  const formatDateTime = (date) => {
-    const dateStr = date.toLocaleDateString('es-ES', {
-      weekday: 'long',
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric'
-    });
-    const timeStr = date.toLocaleTimeString('es-ES', {
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-      hour12: true
-    });
-    return `${dateStr.charAt(0).toUpperCase() + dateStr.slice(1)} | ${timeStr}`;
-  };
+  const location = viewLocation(activeView);
+  const parentLocation = location.parent ? viewLocation(location.parent) : null;
 
-  const getHeaderTitle = () => {
-    switch (activeView) {
-      case 'dashboard':
-        return 'Dashboard General';
-      case 'employees':
-        return 'Gestión de Empleados';
-      case 'employee-detail':
-        return 'Expediente del Empleado';
-      case 'settings':
-        return 'Configuración del Sistema';
-      default:
-        return 'Panel de Control';
-    }
-  };
+  const dateLabel = currentTime.toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long' });
+  const timeLabel = currentTime.toLocaleTimeString('es-CO', { hour: 'numeric', minute: '2-digit' });
 
   return (
-    <header className="h-20 bg-white border-b border-slate-200/60 px-8 flex items-center justify-between shrink-0 select-none">
-      <div>
-        <h2 className="text-xl font-extrabold text-slate-850 tracking-tight">
-          {getHeaderTitle()}
-        </h2>
-        <p className="text-xs text-slate-450 font-semibold mt-0.5">
-          Bienvenido al módulo de control de asistencia y vacaciones de personal.
-        </p>
-      </div>
+    <header className="h-14 bg-slate-100/80 border-b border-slate-200 px-8 flex items-center justify-between shrink-0 select-none">
+      {/* Ubicación actual */}
+      <nav aria-label="Ubicación" className="flex items-center gap-1.5 text-[13px] min-w-0">
+        {location.group && <span className="text-slate-450">{location.group}</span>}
+        {location.group && <ChevronRight className="w-3.5 h-3.5 text-slate-300" />}
+        {parentLocation && (
+          <>
+            <button onClick={() => onViewChange(location.parent)} className="text-slate-500 hover:text-slate-900 transition-colors">
+              {parentLocation.label}
+            </button>
+            <ChevronRight className="w-3.5 h-3.5 text-slate-300" />
+          </>
+        )}
+        <span className="font-semibold text-slate-800 truncate">{location.label}</span>
+      </nav>
 
-      <div className="flex items-center gap-6">
-        {/* Barra de búsqueda integrada según captura */}
-        <div className="relative w-60 hidden md:block">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-          <input
-            type="text"
-            placeholder="Buscar..."
-            className="w-full pl-9 pr-4 py-2 rounded-full bg-slate-100/80 border-none focus:outline-none focus:ring-2 focus:ring-brand-500/20 text-xs font-semibold placeholder-slate-400 text-slate-700"
-          />
-        </div>
+      <div className="flex items-center gap-4">
+        <span className="hidden lg:block text-[13px] text-slate-500 first-letter:uppercase">
+          {dateLabel} · {timeLabel}
+        </span>
 
-        {/* Fecha Actual Dinámica */}
-        <div className="hidden lg:flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-slate-100 text-slate-650 text-xs font-bold border border-slate-200/30">
-          <Calendar className="w-4 h-4 text-brand-550" />
-          <span className="font-semibold tracking-wide tabular-nums">{formatDateTime(currentTime)}</span>
-        </div>
-
-        {/* Campana de Notificaciones con Dropdown Real */}
+        {/* Notificaciones */}
         <div className="relative">
-          <button 
+          <button
             onClick={() => setShowDropdown(!showDropdown)}
-            className="relative p-2 rounded-full hover:bg-slate-100 text-slate-500 hover:text-slate-800 transition active:scale-95 cursor-pointer flex items-center justify-center"
+            className="relative p-2 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-white transition-colors"
+            aria-label={`Notificaciones${notifications.length ? ` (${notifications.length})` : ''}`}
           >
-            <Bell className="w-5 h-5" />
+            <Bell className="w-[18px] h-[18px]" strokeWidth={1.75} />
             {notifications.length > 0 && (
-              <span className="absolute top-1 right-1 w-4.5 h-4.5 bg-brand-500 text-[10px] font-black text-white rounded-full flex items-center justify-center ring-2 ring-white animate-pulse">
+              <span className="absolute top-1 right-1 min-w-4 h-4 px-1 bg-rose-500 text-[10px] font-bold text-white rounded-full flex items-center justify-center ring-2 ring-slate-100">
                 {notifications.length}
               </span>
             )}
           </button>
 
           {showDropdown && (
-            <div className="absolute right-0 mt-3 w-80 bg-white/95 backdrop-blur-md rounded-2xl border border-slate-200/80 shadow-2xl shadow-slate-900/10 py-3 z-50 animate-fade-in">
-              <div className="px-4 pb-2 border-b border-slate-150 flex items-center justify-between">
-                <span className="font-extrabold text-sm text-slate-800">Notificaciones</span>
+            <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl border border-slate-200 shadow-xl z-50 animate-fade-in overflow-hidden">
+              <div className="px-4 py-3 border-b border-slate-150 flex items-center justify-between">
+                <span className="font-semibold text-sm text-slate-800">Notificaciones</span>
                 {notifications.length > 0 && (
-                  <span className="bg-brand-50 text-brand-600 px-2 py-0.5 rounded-full text-[10px] font-black uppercase">
-                    {notifications.length} Nuevas
-                  </span>
+                  <span className="text-[11px] text-slate-500">{notifications.length} sin revisar</span>
                 )}
               </div>
-              <div className="max-h-64 overflow-y-auto mt-2">
+              <div className="max-h-72 overflow-y-auto">
                 {notifications.length > 0 ? (
                   notifications.map((notif) => (
-                    <div 
+                    <button
                       key={notif.id}
                       onClick={() => {
                         onViewChange(notif.view);
                         setShowDropdown(false);
                       }}
-                      className="px-4 py-3 hover:bg-slate-50 transition cursor-pointer flex gap-3 items-start border-b border-slate-50/50 last:border-0"
+                      className="w-full text-left px-4 py-3 hover:bg-slate-50 transition flex gap-3 items-start border-b border-slate-100 last:border-0"
                     >
-                      <div className="p-1.5 bg-slate-50 rounded-lg shrink-0 mt-0.5">
-                        {notif.icon}
-                      </div>
-                      <div className="flex-1">
-                        <p className="text-xs font-bold text-slate-800">{notif.title}</p>
-                        <p className="text-[11px] text-slate-500 mt-0.5 leading-relaxed">{notif.message}</p>
-                      </div>
-                    </div>
+                      <span className="mt-0.5 shrink-0">{notif.icon}</span>
+                      <span className="flex-1">
+                        <span className="block text-[13px] font-semibold text-slate-800">{notif.title}</span>
+                        <span className="block text-xs text-slate-500 mt-0.5 leading-relaxed">{notif.message}</span>
+                      </span>
+                    </button>
                   ))
                 ) : (
                   <div className="py-8 text-center px-4">
-                    <p className="text-xs font-bold text-slate-400">No tienes notificaciones pendientes.</p>
-                    <p className="text-[10px] text-slate-400 mt-0.5 font-medium">¡Todo está al día!</p>
+                    <p className="text-[13px] font-medium text-slate-600">Todo al día</p>
+                    <p className="text-xs text-slate-450 mt-0.5">No hay inasistencias ni novedades pendientes.</p>
                   </div>
                 )}
               </div>

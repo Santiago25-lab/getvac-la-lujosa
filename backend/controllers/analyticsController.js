@@ -267,6 +267,7 @@ export const getAnalyticsDashboard = async (req, res) => {
     res.json({
       kpis: {
         punctualityRate: punctualityRate.toFixed(1),
+        attendanceRecords: totalAttendances,
         averageDailyHours: averageDailyHours.toFixed(1),
         totalVacationDebt: totalVacationDebtMoney,
         absenceRate: absenceRate.toFixed(1),

@@ -1,316 +1,379 @@
 import React, { useEffect, useState } from 'react';
-import { AlertTriangle, CheckCircle2, ChevronRight, CalendarDays } from 'lucide-react';
+import { 
+  Users, Calendar, AlertTriangle, Clock, Activity, Briefcase, FileText, 
+  UserMinus, UserCheck, UserX, AlertOctagon, TrendingUp, DollarSign, Wallet,
+  ChevronRight, CalendarDays, CheckCircle2, XCircle
+} from 'lucide-react';
 import { API_URL } from '../config.js';
-import { getColombianHolidays } from '../utils/colombianHolidays.js';
-import { PageHeader, Section, Panel, Metric, Badge, EmptyState, LoadingState } from '../components/ui.jsx';
-import { buttonStyles, formatCOP, formatDays } from '../components/styles.js';
-
-const todayISO = () => new Date().toLocaleDateString('en-CA', { timeZone: 'America/Bogota' });
-const addDaysISO = (iso, days) => {
-  const d = new Date(`${iso}T12:00:00Z`);
-  d.setUTCDate(d.getUTCDate() + days);
-  return d.toISOString().slice(0, 10);
-};
-const formatShortDate = (iso) => {
-  const d = new Date(`${iso}T12:00:00Z`);
-  const part = (opts) => d.toLocaleDateString('es-CO', { ...opts, timeZone: 'UTC' }).replace('.', '');
-  return `${part({ weekday: 'short' })} ${part({ day: 'numeric' })} ${part({ month: 'short' })}`;
-};
-
-// Días hábiles pendientes a partir de los cuales conviene programar vacaciones
-const SCHEDULE_VACATION_THRESHOLD = 15;
 
 export default function Dashboard({ token, onViewChange }) {
-  const [data, setData] = useState(null);
+  const [data, setData] = useState({
+    stats: null,
+    attendance: null,
+    novelties: null,
+    laborCosts: null,
+    holidays: null,
+    specialWorkdays: null
+  });
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   useEffect(() => {
-    const headers = { 'Authorization': `Bearer ${token}` };
-    const get = (path) => fetch(`${API_URL}${path}`, { headers }).then(res => (res.ok ? res.json() : null)).catch(() => null);
+    const fetchAllData = async () => {
+      try {
+        const headers = { 'Authorization': `Bearer ${token}` };
+        
+        // Cada fuente es independiente: si un rol no tiene acceso a costos, el resto del panel sigue funcionando
+        const get = (path) => fetch(`${API_URL}${path}`, { headers }).then(res => (res.ok ? res.json() : null)).catch(() => null);
+        const [stats, attendance, novelties, laborCosts, holidays, specialWorkdays] = await Promise.all([
+          get('/api/dashboard/stats'),
+          get('/api/attendance/stats'),
+          get('/api/novelties'),
+          get('/api/labor-costs/dashboard'),
+          get('/api/company-holidays'),
+          get('/api/special-workdays')
+        ]);
 
-    Promise.all([
-      get('/api/dashboard/stats'),
-      get('/api/attendance/stats'),
-      get('/api/novelties'),
-      get('/api/labor-costs/dashboard'), // Solo para roles con acceso a finanzas
-      get('/api/company-holidays'),
-      get('/api/special-workdays'),
-      get('/api/employees'),
-    ]).then(([stats, attendance, novelties, laborCosts, companyHolidays, specialWorkdays, employees]) => {
-      if (!stats || !attendance) {
-        setError('No se pudo cargar el resumen. Revise la conexión con el servidor.');
-        return;
+        if (!stats || !attendance) {
+          throw new Error('Error al cargar métricas del sistema.');
+        }
+
+        setData({
+          stats,
+          attendance,
+          novelties: novelties || [],
+          laborCosts: laborCosts || { dashboard: null, employees: [] },
+          holidays: holidays || [],
+          specialWorkdays: specialWorkdays || []
+        });
+      } catch (err) {
+        console.error(err);
+        setError('No se pudieron obtener las estadísticas del servidor.');
+      } finally {
+        setLoading(false);
       }
-      setData({
-        stats,
-        attendance,
-        novelties: novelties || [],
-        laborCosts,
-        companyHolidays: companyHolidays || [],
-        specialWorkdays: specialWorkdays || [],
-        employees: employees || [],
-      });
-    });
+    };
+
+    fetchAllData();
   }, [token]);
+
+  if (loading) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center p-8 bg-slate-50">
+        <div className="w-12 h-12 border-4 border-slate-200 border-t-brand-600 rounded-full animate-spin mb-4 shadow-sm" />
+        <p className="text-sm font-bold text-slate-500 uppercase tracking-widest animate-pulse">Ensamblando Panel Ejecutivo...</p>
+      </div>
+    );
+  }
 
   if (error) {
     return (
       <div className="p-8">
-        <div className="p-4 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl text-sm flex items-center gap-3">
-          <AlertTriangle className="w-4 h-4 shrink-0" />
+        <div className="p-4 bg-rose-500/10 border border-rose-500/20 text-rose-600 rounded-2xl text-sm font-bold flex items-center gap-3 shadow-sm">
+          <AlertTriangle className="w-5 h-5 shrink-0" />
           <span>{error}</span>
         </div>
       </div>
     );
   }
-  if (!data) return <LoadingState label="Preparando el resumen del día…" />;
 
-  const { stats, attendance, novelties, laborCosts, companyHolidays, specialWorkdays, employees } = data;
-  const today = todayISO();
+  // --- Procesamiento de Datos ---
+
+  const { stats, attendance, novelties, laborCosts, holidays, specialWorkdays } = data;
+
+  // Bloque 1
   const pendingNovelties = novelties.filter(n => n.status === 'Pendiente');
   const absentToday = attendance.absentToday || 0;
+  const criticalAlertsCount = absentToday + pendingNovelties.length + (stats.accumulationAlertsCount || 0);
 
-  // ── Lo que requiere atención, de lo más grave a lo menos grave ──────────────
-  const attention = [
-    ...(stats.accumulationAlerts || []).map(a => ({
-      key: `acc-${a.id}`,
-      tone: 'bad',
-      title: a.fullName,
-      detail: `Tiene ${formatDays(a.availableDays)} días de vacaciones pendientes y el máximo legal acumulable es ${formatDays(a.accumulationLimitDays)} (Art. 190 CST).`,
-      action: () => onViewChange('employee-detail', a.id),
-      actionLabel: 'Ver expediente',
-    })),
-    ...(attendance.absentEmployees || []).map(e => ({
-      key: `abs-${e.id}`,
-      tone: 'bad',
-      title: e.fullName,
-      detail: e.absenceDetail ? `No ha marcado entrada. ${e.absenceDetail}.` : 'No ha marcado entrada hoy y no tiene permiso, vacaciones ni novedad registrada.',
-      action: () => onViewChange('attendance'),
-      actionLabel: 'Ir a asistencia',
-    })),
-    ...pendingNovelties.map(n => ({
-      key: `nov-${n.id}`,
-      tone: 'warn',
-      title: n.employee?.fullName || 'Empleado',
-      detail: `${n.type} pendiente de revisión.`,
-      action: () => onViewChange('novelties'),
-      actionLabel: 'Revisar',
-    })),
-    ...employees
-      .filter(e => e.status === 'activo' && e.vacationStats?.generatesVacations
-        && !e.vacationStats?.exceedsAccumulation
-        && e.vacationStats?.availableDays >= SCHEDULE_VACATION_THRESHOLD)
-      .sort((a, b) => b.vacationStats.availableDays - a.vacationStats.availableDays)
-      .map(e => ({
-        key: `vac-${e.id}`,
-        tone: 'warn',
-        title: e.fullName,
-        detail: `Acumula ${formatDays(e.vacationStats.availableDays)} días de vacaciones. Conviene programarlas antes de llegar al tope legal.`,
-        action: () => onViewChange('employee-detail', e.id),
-        actionLabel: 'Programar',
-      })),
-  ];
+  // Bloque 2
+  const monthlyCost = laborCosts.dashboard?.monthly?.total || 0;
+  const accumulatedPassive = laborCosts.dashboard?.accumulated?.total || 0;
+  const employeesWithPassive = (laborCosts.employees || []).filter(e => e.accumulatedObligations?.total > 0).length;
 
-  // ── Calendario de los próximos 15 días ──────────────────────────────────────
-  const horizon = addDaysISO(today, 15);
-  const inWindow = (iso) => iso && iso >= today && iso <= horizon;
-  const national = [Number(today.slice(0, 4)), Number(today.slice(0, 4)) + 1]
-    .flatMap(y => getColombianHolidays(y))
-    .filter(h => inWindow(h.date));
-  const events = [
-    ...(stats.upcomingVacations || []).map(v => ({ date: v.startDate, label: `${v.employeeName} sale a vacaciones`, kind: 'Vacaciones', tone: 'brand' })),
-    ...(stats.currentlyOnVacation || []).filter(v => inWindow(v.endDate)).map(v => ({ date: v.endDate, label: `Último día de vacaciones de ${v.employeeName}`, kind: 'Regreso', tone: 'neutral' })),
-    ...national.map(h => ({ date: h.date, label: h.name, kind: 'Festivo nacional', tone: 'info' })),
-    ...companyHolidays.filter(h => inWindow(h.date)).map(h => ({ date: h.date, label: h.reason, kind: 'No laborable', tone: 'info' })),
-    ...specialWorkdays.filter(s => inWindow(s.date)).map(s => ({ date: s.date, label: s.observation || s.type, kind: s.type, tone: 'warn' })),
-  ].sort((a, b) => a.date.localeCompare(b.date)).slice(0, 7);
+  // Bloque 3: Alertas
+  // Sobre el tope legal de acumulación (2 años, o 4 en cargos especiales · Art. 190 CST), calculado por el backend
+  const vencidas = (stats.accumulationAlerts || []).map(a => ({ id: a.id, fullName: a.fullName, days: a.availableDays, limit: a.accumulationLimitDays }));
+  const vencidasIds = new Set(vencidas.map(v => v.id));
+  const proximasVencer = (laborCosts.employees || [])
+    .filter(e => !vencidasIds.has(e.id) && e.accumulatedObligations?.vacationDays >= 15)
+    .map(e => ({ id: e.id, fullName: e.fullName, days: e.accumulatedObligations.vacationDays }));
 
-  const monthly = laborCosts?.dashboard?.monthly;
-  const accumulated = laborCosts?.dashboard?.accumulated;
-  const contributions = monthly ? monthly.salud + monthly.pension + monthly.ccf + (monthly.sena || 0) + (monthly.icbf || 0) + monthly.arl : 0;
-  const hour = new Date().getHours();
-  const greeting = hour < 12 ? 'Buenos días' : hour < 19 ? 'Buenas tardes' : 'Buenas noches';
-  const records = attendance.records || [];
+  // Bloque 4: Próximos Eventos
+  const today = new Date();
+  today.setHours(0,0,0,0);
+
+  const formatEventDate = (dateStr) => {
+    const d = new Date(dateStr + 'T00:00:00');
+    return d.toLocaleDateString('es-CO', { month: 'short', day: 'numeric' });
+  };
+
+  const upcomingEvents = [
+    ...(stats.upcomingVacations || []).map(v => ({ type: 'Vacaciones', title: `Salida: ${v.employeeName}`, date: v.startDate, color: 'bg-emerald-50 text-emerald-600 border-emerald-200' })),
+    ...(stats.currentlyOnVacation || []).map(v => ({ type: 'Último día', title: `Último día de vacaciones: ${v.employeeName}`, date: v.endDate, color: 'bg-indigo-50 text-indigo-600 border-indigo-200' })),
+    ...(holidays || []).filter(h => new Date(h.date + 'T00:00:00') >= today).map(h => ({ type: 'No laborable', title: h.reason, date: h.date, color: 'bg-rose-50 text-rose-600 border-rose-200' })),
+    ...(specialWorkdays || []).filter(s => new Date(s.date + 'T00:00:00') >= today).map(s => ({ type: 'Jornada Esp.', title: s.observation || s.type, date: s.date, color: 'bg-amber-50 text-amber-600 border-amber-200' }))
+  ].sort((a, b) => new Date(a.date) - new Date(b.date)).slice(0, 5); // Tomar los próximos 5
+
+  const formatCurrency = (val) => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(val);
 
   return (
-    <div className="flex-1 overflow-y-auto animate-fade-in">
-      <div className="max-w-[1200px] mx-auto px-8 py-8 space-y-8">
-        <PageHeader
-          title={greeting}
-          description={`Así está la empresa hoy, ${new Date().toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long' })}.`}
-          actions={
-            <>
-              <button onClick={() => onViewChange('novelties')} className={buttonStyles.secondary}>Registrar novedad</button>
-              <button onClick={() => onViewChange('employees')} className={buttonStyles.primary}>Ver empleados</button>
-            </>
-          }
-        />
+    <div className="flex-1 p-8 overflow-y-auto bg-slate-50/50 dark:bg-slate-950 space-y-8 select-none animate-fade-in">
+      
+      {/* HEADER */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white dark:bg-slate-900 p-6 rounded-[2rem] shadow-sm border border-slate-200/60 dark:border-slate-800/60">
+        <div>
+          <h1 className="text-3xl font-black tracking-tight text-slate-800 dark:text-white">Panel Ejecutivo</h1>
+          <p className="text-sm text-slate-500 dark:text-slate-400 font-semibold mt-1">
+            Centro de control corporativo y gestión laboral en tiempo real.
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <button onClick={() => onViewChange('labor-costs')} className="bg-slate-50 text-slate-700 border border-slate-200 px-4 py-2.5 rounded-2xl text-[11px] font-bold uppercase tracking-wider hover:bg-slate-100 transition shadow-sm flex items-center gap-2">
+            <DollarSign className="w-4 h-4" /> Finanzas
+          </button>
+          <button onClick={() => onViewChange('novelties')} className="bg-brand-600 text-white px-5 py-2.5 rounded-2xl text-[11px] font-bold uppercase tracking-wider hover:bg-brand-700 transition shadow-md shadow-brand-500/20 flex items-center gap-2">
+            Gestionar Alertas <ChevronRight className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
 
-        {/* Personal hoy */}
-        <Section title="Personal hoy" description="Se actualiza con cada marcación del reloj.">
-          <Panel padded={false}>
-            <div className="grid grid-cols-2 lg:grid-cols-5 divide-y lg:divide-y-0 lg:divide-x divide-slate-150">
-              <div className="p-5"><Metric label="Activos" value={stats.activeEmployees} hint="Empleados con contrato vigente." /></div>
-              <div className="p-5">
-                <Metric
-                  label="Presentes"
-                  value={attendance.presentToday || 0}
-                  hint={attendance.lateToday ? `${attendance.lateToday} llegaron tarde.` : 'Ya marcaron entrada.'}
-                  tone={attendance.lateToday ? 'warn' : 'neutral'}
-                />
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+        
+        {/* COLUMNA IZQUIERDA (Bloques 1 y 2) */}
+        <div className="xl:col-span-2 space-y-8">
+          
+          {/* BLOQUE 1: Resumen General */}
+          <section>
+            <h2 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2"><Activity className="w-4 h-4"/> Estado del Personal Hoy</h2>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+              <div className="bg-white p-5 rounded-3xl border border-slate-200/60 shadow-sm flex flex-col justify-between">
+                <div className="flex justify-between items-start">
+                  <div className="p-2.5 bg-indigo-50 text-indigo-600 rounded-xl"><Users className="w-5 h-5" /></div>
+                  <span className="text-2xl font-black text-slate-800">{stats.activeEmployees}</span>
+                </div>
+                <p className="text-xs font-bold text-slate-500 mt-3 uppercase tracking-wide">Activos</p>
               </div>
-              <div className="p-5"><Metric label="De vacaciones" value={stats.currentlyOnVacationCount} hint="Disfrutando su descanso hoy." /></div>
-              <div className="p-5">
-                <Metric
-                  label="Ausentes sin justificar"
-                  value={absentToday}
-                  tone={absentToday ? 'bad' : 'neutral'}
-                  hint="Se cuentan después de la hora de entrada más la tolerancia."
-                  onClick={absentToday ? () => onViewChange('attendance') : undefined}
-                />
+              
+              <div className="bg-white p-5 rounded-3xl border border-emerald-200/60 shadow-sm flex flex-col justify-between">
+                <div className="flex justify-between items-start">
+                  <div className="p-2.5 bg-emerald-50 text-emerald-600 rounded-xl"><UserCheck className="w-5 h-5" /></div>
+                  <span className="text-2xl font-black text-slate-800">{attendance.presentCount || attendance.presentToday}</span>
+                </div>
+                <p className="text-xs font-bold text-slate-500 mt-3 uppercase tracking-wide">Presentes</p>
               </div>
-              <div className="p-5">
-                <Metric
-                  label="Novedades por revisar"
-                  value={pendingNovelties.length}
-                  tone={pendingNovelties.length ? 'warn' : 'neutral'}
-                  hint="Incapacidades, licencias y permisos."
-                  onClick={() => onViewChange('novelties')}
-                />
+
+              <div className="bg-white p-5 rounded-3xl border border-amber-200/60 shadow-sm flex flex-col justify-between">
+                <div className="flex justify-between items-start">
+                  <div className="p-2.5 bg-amber-50 text-amber-600 rounded-xl"><UserMinus className="w-5 h-5" /></div>
+                  <span className="text-2xl font-black text-slate-800">{stats.currentlyOnVacationCount}</span>
+                </div>
+                <p className="text-xs font-bold text-slate-500 mt-3 uppercase tracking-wide">En Vacaciones</p>
+              </div>
+
+              <div className="bg-white p-5 rounded-3xl border border-rose-200/60 shadow-sm flex flex-col justify-between">
+                <div className="flex justify-between items-start">
+                  <div className="p-2.5 bg-rose-50 text-rose-600 rounded-xl"><UserX className="w-5 h-5" /></div>
+                  <span className="text-2xl font-black text-rose-600">{absentToday}</span>
+                </div>
+                <p className="text-xs font-bold text-rose-500 mt-3 uppercase tracking-wide">Ausentes</p>
+              </div>
+
+              <div className="bg-white p-5 rounded-3xl border border-blue-200/60 shadow-sm flex flex-col justify-between cursor-pointer hover:bg-blue-50/30 transition" onClick={() => onViewChange('novelties')}>
+                <div className="flex justify-between items-start">
+                  <div className="p-2.5 bg-blue-50 text-blue-600 rounded-xl"><FileText className="w-5 h-5" /></div>
+                  <span className="text-2xl font-black text-blue-600">{pendingNovelties.length}</span>
+                </div>
+                <p className="text-xs font-bold text-blue-500 mt-3 uppercase tracking-wide">Novedades</p>
+              </div>
+
+              <div className="bg-gradient-to-br from-rose-500 to-rose-600 p-5 rounded-3xl shadow-md flex flex-col justify-between text-white">
+                <div className="flex justify-between items-start">
+                  <div className="p-2.5 bg-white/20 rounded-xl"><AlertOctagon className="w-5 h-5" /></div>
+                  <span className="text-2xl font-black">{criticalAlertsCount}</span>
+                </div>
+                <p className="text-xs font-bold mt-3 uppercase tracking-wide text-rose-100">Alertas Críticas</p>
               </div>
             </div>
-          </Panel>
-        </Section>
+          </section>
 
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
-          {/* Requiere atención */}
-          <Section
-            className="xl:col-span-2"
-            title="Requiere atención"
-            description={attention.length ? `${attention.length} ${attention.length === 1 ? 'asunto' : 'asuntos'}, del más urgente al menos urgente.` : 'Nada pendiente por ahora.'}
-          >
-            <Panel padded={false}>
-              {attention.length === 0 ? (
-                <EmptyState icon={CheckCircle2} title="Todo en regla" description="No hay ausencias, novedades ni vacaciones acumuladas que atender." />
+          {/* BLOQUE 2: Resumen Financiero (solo roles con acceso a costos) */}
+          {laborCosts.dashboard && (
+          <section>
+            <h2 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2"><TrendingUp className="w-4 h-4"/> Indicadores Financieros</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="bg-slate-800 p-6 rounded-3xl shadow-md text-white relative overflow-hidden">
+                <div className="absolute -right-4 -bottom-4 opacity-10"><Wallet className="w-32 h-32" /></div>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Costo Laboral Mensual</p>
+                <div className="text-3xl font-black mt-2">{formatCurrency(monthlyCost)}</div>
+                <p className="text-xs font-medium text-slate-400 mt-2">Nómina y seguridad social base.</p>
+              </div>
+
+              <div className="bg-white p-6 rounded-3xl border border-slate-200/60 shadow-sm relative overflow-hidden">
+                <div className="absolute -right-4 -bottom-4 opacity-5"><Briefcase className="w-32 h-32 text-slate-800" /></div>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Pasivo Acumulado Estimado</p>
+                <div className="text-3xl font-black text-slate-800 mt-2">{formatCurrency(accumulatedPassive)}</div>
+                <div className="flex gap-4 mt-3">
+                  <div>
+                    <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Días Empresa</span>
+                    <span className="text-sm font-black text-slate-700">{Math.floor(stats.totalPendingDays)} días</span>
+                  </div>
+                  <div>
+                    <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Colaboradores</span>
+                    <span className="text-sm font-black text-slate-700">{employeesWithPassive}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+          )}
+
+          {/* BLOQUE 5: Actividad Operativa */}
+          <section>
+            <h2 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2"><Clock className="w-4 h-4"/> Actividad Operativa de Hoy</h2>
+            <div className="bg-white rounded-3xl border border-slate-200/60 shadow-sm overflow-hidden">
+              {(!attendance.records || attendance.records.length === 0) ? (
+                <div className="p-8 text-center text-slate-400 text-sm font-semibold">No hay registros de marcación hoy.</div>
               ) : (
-                <ul className="divide-y divide-slate-150">
-                  {attention.slice(0, 8).map(item => (
-                    <li key={item.key} className="flex items-start gap-3 px-5 py-3.5">
-                      <span className={`mt-1.5 w-2 h-2 rounded-full shrink-0 ${item.tone === 'bad' ? 'bg-rose-500' : 'bg-amber-500'}`} aria-hidden="true" />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-slate-800">{item.title}</p>
-                        <p className="text-[13px] text-slate-500 mt-0.5 leading-relaxed">{item.detail}</p>
-                      </div>
-                      <button onClick={item.action} className={`${buttonStyles.ghost} shrink-0 mt-0.5`}>
-                        {item.actionLabel} <ChevronRight className="w-3.5 h-3.5" />
-                      </button>
-                    </li>
-                  ))}
-                  {attention.length > 8 && (
-                    <li className="px-5 py-3 text-[13px] text-slate-500">Y {attention.length - 8} más.</li>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead>
+                      <tr className="bg-slate-50 text-slate-400 font-black uppercase tracking-widest text-[9px] border-b border-slate-100">
+                        <th className="py-4 px-6">Empleado</th>
+                        <th className="py-4 px-6">Entrada</th>
+                        <th className="py-4 px-6">Salida</th>
+                        <th className="py-4 px-6">Estado</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 font-semibold text-slate-700">
+                      {attendance.records.slice(0, 6).map(r => (
+                        <tr key={r.id} className="hover:bg-slate-50/50 transition">
+                          <td className="py-3.5 px-6 font-bold text-slate-800">{r.employee?.fullName || 'Desconocido'}</td>
+                          <td className="py-3.5 px-6 text-emerald-600">{r.checkIn || '--:--'}</td>
+                          <td className="py-3.5 px-6 text-slate-500">{r.checkOut || '--:--'}</td>
+                          <td className="py-3.5 px-6">
+                            <span className={`px-2 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest border ${
+                              r.status === 'Presente' || r.status === 'Salida registrada' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                              r.status === 'Tarde' ? 'bg-amber-50 text-amber-700 border-amber-200' :
+                              'bg-slate-50 text-slate-600 border-slate-200'
+                            }`}>
+                              {r.status}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  {attendance.records.length > 6 && (
+                    <div className="p-3 border-t border-slate-100 text-center">
+                      <button onClick={() => onViewChange('attendance')} className="text-[10px] font-bold uppercase tracking-widest text-brand-600 hover:text-brand-700">Ver todos ({attendance.records.length})</button>
+                    </div>
                   )}
-                </ul>
+                </div>
               )}
-            </Panel>
-          </Section>
+            </div>
+          </section>
 
-          {/* Calendario */}
-          <Section title="Próximos 15 días" description="Vacaciones, festivos y jornadas especiales.">
-            <Panel padded={false}>
-              {events.length === 0 ? (
-                <EmptyState icon={CalendarDays} title="Sin eventos" description="No hay vacaciones ni festivos en las próximas dos semanas." />
-              ) : (
-                <ol className="divide-y divide-slate-150">
-                  {events.map((ev, i) => (
-                    <li key={`${ev.date}-${i}`} className="flex gap-4 px-5 py-3">
-                      <span className="w-20 shrink-0 text-[13px] text-slate-500 first-letter:uppercase">{formatShortDate(ev.date)}</span>
-                      <div className="min-w-0">
-                        <p className="text-[13px] font-medium text-slate-800 leading-snug">{ev.label}</p>
-                        <div className="mt-1"><Badge tone={ev.tone}>{ev.kind}</Badge></div>
-                      </div>
-                    </li>
-                  ))}
-                </ol>
-              )}
-            </Panel>
-          </Section>
         </div>
 
-        {/* Dinero */}
-        {monthly && (
-          <Section
-            title="Costo de la nómina"
-            description="Calculado con el salario mínimo, el auxilio de transporte y los aportes vigentes."
-            action={<button onClick={() => onViewChange('labor-costs')} className={buttonStyles.ghost}>Ver el detalle por empleado <ChevronRight className="w-3.5 h-3.5" /></button>}
-          >
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Panel>
-                <Metric
-                  size="lg"
-                  label="Lo que cuesta la nómina cada mes"
-                  value={formatCOP(monthly.total)}
-                  hint="Salarios y auxilio de transporte, más los aportes que paga la empresa (pensión, salud, caja, ARL y parafiscales)."
-                />
-                <dl className="mt-5 pt-4 border-t border-slate-150 grid grid-cols-2 gap-3 text-[13px]">
-                  <div><dt className="text-slate-500">Salarios y auxilio</dt><dd className="font-semibold text-slate-800 mt-0.5">{formatCOP(monthly.nomina)}</dd></div>
-                  <div><dt className="text-slate-500">Aportes del empleador</dt><dd className="font-semibold text-slate-800 mt-0.5">{formatCOP(contributions)}</dd></div>
-                </dl>
-              </Panel>
-              <Panel>
-                <Metric
-                  size="lg"
-                  label="Lo que la empresa debe a hoy"
-                  value={formatCOP(accumulated.total)}
-                  hint="Prestaciones y vacaciones causadas que aún no se han pagado. Registre los pagos en el expediente para descontarlos."
-                />
-                <dl className="mt-5 pt-4 border-t border-slate-150 grid grid-cols-4 gap-3 text-[13px]">
-                  <div><dt className="text-slate-500">Prima</dt><dd className="font-semibold text-slate-800 mt-0.5">{formatCOP(accumulated.prima)}</dd></div>
-                  <div><dt className="text-slate-500">Cesantías</dt><dd className="font-semibold text-slate-800 mt-0.5">{formatCOP(accumulated.cesantias)}</dd></div>
-                  <div><dt className="text-slate-500">Intereses</dt><dd className="font-semibold text-slate-800 mt-0.5">{formatCOP(accumulated.intereses)}</dd></div>
-                  <div><dt className="text-slate-500">Vacaciones</dt><dd className="font-semibold text-slate-800 mt-0.5">{formatCOP(accumulated.vacaciones)}</dd></div>
-                </dl>
-              </Panel>
-            </div>
-          </Section>
-        )}
+        {/* COLUMNA DERECHA (Bloques 3 y 4) */}
+        <div className="space-y-8">
+          
+          {/* BLOQUE 3: Centro de Alertas */}
+          <section>
+            <h2 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2"><AlertTriangle className="w-4 h-4"/> Centro de Alertas</h2>
+            <div className="bg-white p-5 rounded-3xl border border-slate-200/60 shadow-sm space-y-4">
+              
+              {vencidas.length > 0 && (
+                <div>
+                  <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 border-b border-slate-100 pb-1">Sobre el Tope Legal (Art. 190 CST)</h3>
+                  <ul className="space-y-2">
+                    {vencidas.map(e => (
+                      <li key={e.id} className="flex justify-between items-center text-xs p-2 bg-rose-50 rounded-xl border border-rose-100 cursor-pointer" onClick={() => onViewChange('employee-detail', e.id)} title={`Máximo acumulable: ${e.limit} días`}>
+                        <span className="font-bold text-slate-800">{e.fullName}</span>
+                        <span className="font-black text-rose-600">{Number(e.days).toFixed(1)} d</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
 
-        {/* Marcaciones */}
-        <Section
-          title="Marcaciones de hoy"
-          description={records.length ? `${records.length} ${records.length === 1 ? 'registro' : 'registros'} desde el reloj o RR. HH.` : undefined}
-          action={records.length > 0 && <button onClick={() => onViewChange('attendance')} className={buttonStyles.ghost}>Ver asistencia completa <ChevronRight className="w-3.5 h-3.5" /></button>}
-        >
-          <Panel padded={false}>
-            {records.length === 0 ? (
-              <EmptyState title="Aún no hay marcaciones hoy" description="Aparecerán aquí a medida que el personal marque en el reloj." />
-            ) : (
-              <table className="w-full text-left text-[13px]">
-                <thead>
-                  <tr className="text-slate-500 border-b border-slate-150">
-                    <th className="font-medium py-2.5 px-5">Empleado</th>
-                    <th className="font-medium py-2.5 px-5">Entrada</th>
-                    <th className="font-medium py-2.5 px-5">Salida</th>
-                    <th className="font-medium py-2.5 px-5">Estado</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-150">
-                  {records.slice(0, 8).map(r => (
-                    <tr key={r.id}>
-                      <td className="py-2.5 px-5 font-medium text-slate-800">{r.employee?.fullName || '—'}</td>
-                      <td className="py-2.5 px-5 text-slate-600">{r.checkIn || '—'}</td>
-                      <td className="py-2.5 px-5 text-slate-600">{r.checkOut || '—'}</td>
-                      <td className="py-2.5 px-5">
-                        <Badge tone={r.status === 'Tarde' ? 'warn' : ['Presente', 'Salida registrada'].includes(r.status) ? 'good' : 'neutral'}>
-                          {r.status === 'Tarde' ? 'Llegó tarde' : r.status}
-                        </Badge>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </Panel>
-        </Section>
+              {proximasVencer.length > 0 && (
+                <div>
+                  <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 border-b border-slate-100 pb-1">Conviene Programar Vacaciones (15+ días)</h3>
+                  <ul className="space-y-2">
+                    {proximasVencer.map(e => (
+                      <li key={e.id} className="flex justify-between items-center text-xs p-2 bg-amber-50 rounded-xl border border-amber-100 cursor-pointer" onClick={() => onViewChange('employee-detail', e.id)}>
+                        <span className="font-bold text-slate-800">{e.fullName}</span>
+                        <span className="font-black text-amber-600">{Number(e.days).toFixed(1)} d</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {attendance.absentEmployees && attendance.absentEmployees.length > 0 && (
+                <div>
+                  <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 border-b border-slate-100 pb-1">Ausencias Injustificadas Hoy</h3>
+                  <ul className="space-y-2">
+                    {attendance.absentEmployees.map(e => (
+                      <li key={e.id} className="flex items-center gap-2 text-xs p-2 bg-slate-50 rounded-xl border border-slate-100">
+                        <XCircle className="w-4 h-4 text-rose-500 shrink-0" />
+                        <span className="font-bold text-slate-800">{e.fullName}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {pendingNovelties.length > 0 && (
+                <div>
+                  <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 border-b border-slate-100 pb-1">Novedades por Revisar</h3>
+                  <ul className="space-y-2">
+                    {pendingNovelties.slice(0,3).map(n => (
+                      <li key={n.id} className="flex flex-col text-xs p-2 bg-blue-50 rounded-xl border border-blue-100 cursor-pointer" onClick={() => onViewChange('novelties')}>
+                        <span className="font-bold text-slate-800">{n.employee?.fullName || 'Empleado'}</span>
+                        <span className="text-blue-600 font-semibold">{n.type}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {vencidas.length === 0 && proximasVencer.length === 0 && (!attendance.absentEmployees || attendance.absentEmployees.length === 0) && pendingNovelties.length === 0 && (
+                <div className="text-center py-6">
+                  <CheckCircle2 className="w-8 h-8 text-emerald-400 mx-auto mb-2" />
+                  <p className="text-xs font-bold text-slate-400 uppercase tracking-wide">Sin Alertas Activas</p>
+                </div>
+              )}
+
+            </div>
+          </section>
+
+          {/* BLOQUE 4: Próximos Eventos */}
+          <section>
+            <h2 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2"><CalendarDays className="w-4 h-4"/> Próximos Eventos</h2>
+            <div className="bg-white p-5 rounded-3xl border border-slate-200/60 shadow-sm space-y-3">
+              {upcomingEvents.length === 0 ? (
+                <div className="text-center py-6 text-xs font-bold text-slate-400 uppercase tracking-wide">No hay eventos programados.</div>
+              ) : (
+                upcomingEvents.map((ev, i) => (
+                  <div key={i} className={`flex items-center justify-between p-3 rounded-2xl border ${ev.color}`}>
+                    <div>
+                      <span className="block text-[9px] font-black uppercase tracking-widest opacity-80">{ev.type}</span>
+                      <span className="block text-xs font-bold mt-0.5">{ev.title}</span>
+                    </div>
+                    <div className="text-xs font-black px-2 py-1 rounded-lg bg-white/50">
+                      {formatEventDate(ev.date)}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </section>
+
+        </div>
+
       </div>
     </div>
   );

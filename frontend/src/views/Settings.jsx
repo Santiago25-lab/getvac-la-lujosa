@@ -1,44 +1,24 @@
 import React, { useEffect, useState } from 'react';
-import { ShieldAlert, CheckCircle2, AlertTriangle, ArrowRight } from 'lucide-react';
+import { Scale, ShieldAlert, ShieldCheck, CheckCircle2, AlertTriangle, ArrowRight } from 'lucide-react';
 import { API_URL } from '../config.js';
-import { PageHeader, Section } from '../components/ui.jsx';
-import { buttonStyles } from '../components/styles.js';
-
-// Tabla de reglas: lo configurado por la empresa frente a lo que exige la ley.
-function RulesTable({ items }) {
-  return (
-    <table className="w-full text-left text-[13px]">
-      <thead>
-        <tr className="text-slate-500 border-b border-slate-200 bg-slate-50">
-          <th className="font-medium py-2.5 px-5">Regla</th>
-          <th className="font-medium py-2.5 px-4">En la empresa</th>
-          <th className="font-medium py-2.5 px-4">Lo que exige la ley</th>
-          <th className="font-medium py-2.5 px-5">Fundamento</th>
-        </tr>
-      </thead>
-      <tbody className="divide-y divide-slate-150">
-        {items.map(rule => (
-          <tr key={rule.label} className="align-top">
-            <td className="py-3 px-5 text-slate-800">
-              <span className="inline-flex items-start gap-2">
-                {rule.ok
-                  ? <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" aria-label="Cumple" />
-                  : <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" aria-label="No cumple" />}
-                {rule.label}
-              </span>
-            </td>
-            <td className="py-3 px-4 font-semibold text-slate-900 whitespace-nowrap">{String(rule.company)}</td>
-            <td className="py-3 px-4 text-slate-600">{rule.legal}</td>
-            <td className="py-3 px-5 text-slate-500 max-w-xs">{rule.reference}</td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
-  );
-}
 
 // Resumen de cumplimiento: compara la política configurada por la empresa
 // con los mínimos del Código Sustantivo del Trabajo que expone el backend.
+// Resumen legible de un cambio guardado (la auditoría guarda el cuerpo enviado como JSON)
+const describeChange = (details) => {
+  try {
+    const body = JSON.parse(details);
+    const areas = [];
+    if (['companyName', 'companyNit', 'companyAddress', 'companyEmail', 'companyPhone', 'companyLogo'].some(k => k in body)) areas.push('datos de la empresa');
+    if (['workDays', 'halfWorkDays', 'checkInTime', 'checkOutTime', 'isSplitShift', 'toleranceMinutes', 'lunchBreakMinutes'].some(k => k in body)) areas.push('jornada');
+    if (['vacationDaysPerYear', 'vacationNoticeDays', 'vacationNoticeMode', 'maxMoneyCompensationPercent', 'allowAdvanceVacations'].some(k => k in body)) areas.push('vacaciones');
+    if (['smmlv', 'transportAllowanceValue', 'parafiscalExemption', 'arlRisk1Percentage'].some(k => k in body)) areas.push('nómina y aportes');
+    return areas.length ? `Guardó la configuración: ${areas.join(', ')}.` : 'Guardó la configuración.';
+  } catch {
+    return details;
+  }
+};
+
 export default function SettingsView({ token, onViewChange }) {
   const [settings, setSettings] = useState(null);
   const [legal, setLegal] = useState(null);
@@ -173,84 +153,100 @@ export default function SettingsView({ token, onViewChange }) {
     }
   ] : [];
 
-  const vacationRules = rules.slice(payrollRules.length);
-
-  // Resumen legible de un cambio guardado (la auditoría guarda el cuerpo enviado)
-  const describeChange = (details) => {
-    try {
-      const body = JSON.parse(details);
-      const areas = [];
-      if (['companyName', 'companyNit', 'companyAddress', 'companyEmail', 'companyPhone', 'companyLogo'].some(k => k in body)) areas.push('datos de la empresa');
-      if (['workDays', 'halfWorkDays', 'checkInTime', 'checkOutTime', 'isSplitShift', 'toleranceMinutes', 'lunchBreakMinutes'].some(k => k in body)) areas.push('jornada');
-      if (['vacationDaysPerYear', 'vacationNoticeDays', 'vacationNoticeMode', 'maxMoneyCompensationPercent', 'allowAdvanceVacations'].some(k => k in body)) areas.push('vacaciones');
-      if (['smmlv', 'transportAllowanceValue', 'parafiscalExemption', 'arlRisk1Percentage'].some(k => k in body)) areas.push('nómina y aportes');
-      return areas.length ? `Guardó la configuración (${areas.join(', ')}).` : 'Guardó la configuración.';
-    } catch {
-      return details;
-    }
-  };
-
-  const failing = rules.filter(r => !r.ok).length;
-
   return (
-    <div className="flex-1 overflow-y-auto animate-fade-in">
-      <div className="max-w-[1200px] mx-auto px-8 py-8 space-y-6">
-        <PageHeader
-          title="Reglas laborales"
-          description={failing
-            ? `${failing} ${failing === 1 ? 'regla no cumple' : 'reglas no cumplen'} el mínimo legal. Corríjalas en Configuración.`
-            : 'Todas las reglas de la empresa cumplen con la ley vigente. Aquí se comparan con lo que exige cada norma.'}
-          actions={onViewChange && (
-            <button onClick={() => onViewChange('superuser')} className={buttonStyles.primary}>
-              Cambiar en Configuración <ArrowRight className="w-4 h-4" />
-            </button>
-          )}
-        />
-
-        {errorMsg && (
-          <div role="alert" className="p-3 bg-rose-50 border border-rose-200 text-rose-700 rounded-lg text-[13px] flex items-center gap-2.5">
-            <ShieldAlert className="w-4 h-4 shrink-0" />
-            <span>{errorMsg}</span>
-          </div>
+    <div className="flex-1 p-8 overflow-y-auto space-y-8 animate-fade-in">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-black text-slate-800 dark:text-white tracking-tight">Reglas Laborales Vigentes</h1>
+          <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">
+            Política de la empresa comparada con los mínimos del Código Sustantivo del Trabajo.
+          </p>
+        </div>
+        {onViewChange && (
+          <button
+            onClick={() => onViewChange('superuser')}
+            className="self-start md:self-auto bg-brand-500 hover:bg-brand-600 text-white font-bold py-2.5 px-4 rounded-xl text-xs flex items-center gap-2 transition"
+          >
+            <span>Editar en Panel Super</span>
+            <ArrowRight className="w-4 h-4" />
+          </button>
         )}
+      </div>
 
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
-          <div className="xl:col-span-2 space-y-8">
-            <Section title="Nómina y jornada" description="Valores de decreto, horario y aportes.">
-              <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-x-auto">
-                <RulesTable items={payrollRules} />
-              </div>
-            </Section>
-            <Section title="Vacaciones" description="Política de la empresa frente al Código Sustantivo del Trabajo.">
-              <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-x-auto">
-                <RulesTable items={vacationRules} />
-              </div>
-            </Section>
-            <p className="text-xs text-slate-500">
-              Última actualización: {settings?.updatedBy || 'Sistema'}
-              {settings?.updatedAt && `, ${new Date(settings.updatedAt).toLocaleString('es-CO')}`}.
-            </p>
+      {errorMsg && (
+        <div className="p-4 bg-rose-500/10 border border-rose-500/20 text-rose-500 rounded-2xl text-xs font-semibold flex items-center gap-2.5">
+          <ShieldAlert className="w-4 h-4 shrink-0" />
+          <span>{errorMsg}</span>
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+        <div className="xl:col-span-2 glass-card p-6 space-y-5">
+          <div className="flex items-center gap-2.5 pb-4 border-b border-slate-100 dark:border-slate-800/40">
+            <div className="p-1.5 rounded-lg bg-indigo-500/10 text-indigo-500">
+              <Scale className="w-5 h-5" />
+            </div>
+            <h3 className="text-lg font-bold text-slate-800 dark:text-white">Vacaciones</h3>
           </div>
 
-          <Section title="Historial de cambios" description="Quién modificó la configuración y cuándo.">
-            <div className="bg-white border border-slate-200 rounded-xl shadow-sm">
-              {logs.length === 0 ? (
-                <p className="p-5 text-[13px] text-slate-500">Aún no hay cambios registrados.</p>
-              ) : (
-                <ol className="divide-y divide-slate-150 max-h-[520px] overflow-y-auto">
-                  {logs.map(log => (
-                    <li key={log.id} className="px-5 py-3 text-[13px]">
-                      <div className="flex justify-between gap-3">
-                        <span className="font-semibold text-slate-800">{log.username}</span>
-                        <time className="text-xs text-slate-500 shrink-0">{new Date(log.createdAt).toLocaleDateString('es-CO', { day: 'numeric', month: 'short', year: 'numeric' })}</time>
-                      </div>
-                      <p className="text-slate-600 mt-0.5">{describeChange(log.details)}</p>
-                    </li>
-                  ))}
-                </ol>
-              )}
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead>
+                <tr className="text-slate-400 font-black uppercase tracking-widest text-[9px] border-b border-slate-100 dark:border-slate-800/40">
+                  <th className="pb-3 pr-4">Regla</th>
+                  <th className="pb-3 px-4">Empresa</th>
+                  <th className="pb-3 px-4">Ley</th>
+                  <th className="pb-3 pl-4">Referencia</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800/40">
+                {rules.map(rule => (
+                  <tr key={rule.label}>
+                    <td className="py-3 pr-4 font-bold text-slate-700 dark:text-slate-200">
+                      <span className="inline-flex items-center gap-2">
+                        {rule.ok
+                          ? <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+                          : <AlertTriangle className="w-4 h-4 text-rose-500 shrink-0" />}
+                        {rule.label}
+                      </span>
+                    </td>
+                    <td className="py-3 px-4 font-black text-brand-600">{String(rule.company)}</td>
+                    <td className="py-3 px-4 font-semibold text-slate-500">{rule.legal}</td>
+                    <td className="py-3 pl-4 text-slate-400 font-medium max-w-xs">{rule.reference}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="pt-4 border-t border-slate-100 dark:border-slate-800/40 text-xs text-slate-400">
+            Última actualización por <span className="font-bold text-slate-600 dark:text-slate-300">{settings?.updatedBy || 'Sistema'}</span>
+            {settings?.updatedAt && <> el <span className="font-bold text-slate-600 dark:text-slate-300">{new Date(settings.updatedAt).toLocaleString('es-CO')}</span></>}
+          </div>
+        </div>
+
+        <div className="glass-card p-6 flex flex-col">
+          <div className="flex items-center gap-2.5 mb-5 border-b border-slate-100 dark:border-slate-800/40 pb-4">
+            <div className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-500">
+              <ShieldCheck className="w-5 h-5" />
             </div>
-          </Section>
+            <h3 className="text-lg font-bold text-slate-800 dark:text-white">Cambios de Configuración</h3>
+          </div>
+          {logs.length === 0 ? (
+            <p className="text-xs font-semibold text-slate-400">Aún no hay cambios registrados.</p>
+          ) : (
+            <div className="space-y-3 overflow-y-auto max-h-[420px] pr-1">
+              {logs.map(log => (
+                <div key={log.id} className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/50 dark:border-slate-800/20 text-xs space-y-1">
+                  <div className="flex justify-between">
+                    <span className="font-bold text-brand-500">{log.username}</span>
+                    <span className="text-[10px] text-slate-400 font-semibold">{new Date(log.createdAt).toLocaleString('es-CO')}</span>
+                  </div>
+                  <p className="text-slate-500 dark:text-slate-400 break-words line-clamp-3">{describeChange(log.details)}</p>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>

@@ -2,8 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { Clock, Search, Calendar, Filter, Users, UserCheck, AlertOctagon, UserX, Plus, Edit3, MessageSquare, ClipboardSignature, Download } from 'lucide-react';
 import { API_URL } from '../config.js';
 import { formatTimeTo12Hour } from '../utils/dateUtils.js';
-import { PageHeader, Metric } from '../components/ui.jsx';
-import { buttonStyles } from '../components/styles.js';
 
 export default function AttendanceView({ token, userRole }) {
   const [records, setRecords] = useState([]);
@@ -351,46 +349,103 @@ export default function AttendanceView({ token, userRole }) {
   };
 
   return (
-    <div className="flex-1 overflow-y-auto animate-fade-in">
-      <div className="max-w-[1200px] mx-auto px-8 py-8 space-y-6">
+    <div className="flex-1 overflow-y-auto p-6 md:p-8 space-y-8 bg-slate-50/50 dark:bg-slate-950/30">
+      
+      {/* Cabecera de Página */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h2 className="text-2xl font-black text-slate-850 dark:text-white tracking-tight flex items-center gap-2.5">
+            <div className="p-2 bg-brand-500 rounded-xl text-white shadow-md shadow-brand-500/10">
+              <Clock className="w-6 h-6" />
+            </div>
+            Control de Asistencia del Personal
+          </h2>
+          <p className="text-xs font-semibold text-slate-500 mt-1 pl-1">
+            Auditoría de check-in / check-out, incidencias en tiempo real y tolerancias.
+          </p>
+        </div>
 
-      <PageHeader
-        title="Asistencia"
-        description="Marcaciones de entrada y salida de los últimos días. Las vacaciones, permisos e incapacidades aparecen en el día que corresponden."
-        actions={
-          <>
-            <button onClick={exportToCSV} className={buttonStyles.secondary}>
-              <Download className="w-4 h-4" /> Exportar CSV
-            </button>
-            {(userRole === 'Administrador' || userRole === 'Super Usuario') && (
-              <button onClick={() => setShowManualModal(true)} className={buttonStyles.primary}>
-                <Plus className="w-4 h-4" /> Registro manual
-              </button>
-            )}
-          </>
-        }
-      />
+        {(userRole === 'Administrador' || userRole === 'Super Usuario') && (
+          <button
+            onClick={() => setShowManualModal(true)}
+            className="flex items-center gap-2 bg-gradient-to-r from-brand-600 to-brand-500 hover:from-brand-500 hover:to-brand-450 text-white px-5 py-3 rounded-2xl text-xs font-bold uppercase tracking-wider shadow-lg shadow-brand-500/10 transition active:scale-[0.98]"
+          >
+            <Plus className="w-4 h-4" />
+            Registro Manual
+          </button>
+        )}
+      </div>
 
+      {/* Alertas */}
       {successMsg && (
-        <div role="status" className="p-3 bg-emerald-50 border border-emerald-200 rounded-lg text-[13px] text-emerald-800">{successMsg}</div>
+        <div className="p-4 bg-emerald-500/10 border border-emerald-500/30 rounded-2xl text-xs font-bold text-emerald-600 dark:text-emerald-400">
+          ✅ {successMsg}
+        </div>
       )}
       {errorMsg && (
-        <div role="alert" className="p-3 bg-rose-50 border border-rose-200 rounded-lg text-[13px] text-rose-700">{errorMsg}</div>
+        <div className="p-4 bg-rose-500/10 border border-rose-500/30 rounded-2xl text-xs font-bold text-rose-600 dark:text-rose-400">
+          🛑 {errorMsg}
+        </div>
       )}
 
-      {/* Resumen del día */}
-      <div className="bg-white border border-slate-200 rounded-xl shadow-sm grid grid-cols-2 lg:grid-cols-4 divide-y lg:divide-y-0 lg:divide-x divide-slate-150">
-        <div className="p-5"><Metric label="Empleados activos" value={stats.totalActiveEmployees} hint="Deberían marcar hoy si es día laboral." /></div>
-        <div className="p-5"><Metric label="Presentes" value={stats.presentToday} hint="Marcaron entrada hoy." tone={stats.presentToday ? 'good' : 'neutral'} /></div>
-        <div className="p-5"><Metric label="Llegaron tarde" value={stats.lateToday} hint="Después de la hora de entrada más la tolerancia." tone={stats.lateToday ? 'warn' : 'neutral'} /></div>
-        <div className="p-5"><Metric label="Sin marcar" value={stats.absentToday} hint="Sin vacaciones, permiso ni novedad que lo justifique." tone={stats.absentToday ? 'bad' : 'neutral'} /></div>
+      {/* Resumen del Día KPIs */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        
+        {/* KPI: Total Activos */}
+        <div className="bg-white border border-slate-200/60 rounded-3xl p-6 flex items-center justify-between shadow-sm relative overflow-hidden group">
+          <div className="space-y-1 z-10">
+            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Empleados</span>
+            <div className="text-3xl font-black text-slate-850 dark:text-white leading-none">{stats.totalActiveEmployees}</div>
+            <p className="text-[10px] font-bold text-slate-500">Total en nómina activa</p>
+          </div>
+          <div className="p-3 bg-brand-50 rounded-2xl text-brand-600 dark:bg-brand-950/20 dark:text-brand-400 shadow-inner group-hover:scale-110 transition duration-300">
+            <Users className="w-6 h-6" />
+          </div>
+        </div>
+
+        {/* KPI: Presentes */}
+        <div className="bg-white border border-slate-200/60 rounded-3xl p-6 flex items-center justify-between shadow-sm relative overflow-hidden group">
+          <div className="space-y-1 z-10">
+            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest text-emerald-500">Presentes Hoy</span>
+            <div className="text-3xl font-black text-emerald-600 dark:text-emerald-400 leading-none">{stats.presentToday}</div>
+            <p className="text-[10px] font-bold text-slate-500">Ingresos del día</p>
+          </div>
+          <div className="p-3 bg-emerald-50 rounded-2xl text-emerald-600 dark:bg-emerald-950/20 dark:text-emerald-450 shadow-inner group-hover:scale-110 transition duration-300">
+            <UserCheck className="w-6 h-6" />
+          </div>
+        </div>
+
+        {/* KPI: Llegadas Tarde */}
+        <div className="bg-white border border-slate-200/60 rounded-3xl p-6 flex items-center justify-between shadow-sm relative overflow-hidden group">
+          <div className="space-y-1 z-10">
+            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest text-amber-500">Llegadas Tarde</span>
+            <div className="text-3xl font-black text-amber-600 dark:text-amber-455 leading-none">{stats.lateToday}</div>
+            <p className="text-[10px] font-bold text-slate-500">Excedieron tolerancia</p>
+          </div>
+          <div className="p-3 bg-amber-50 rounded-2xl text-amber-600 dark:bg-amber-950/20 dark:text-amber-450 shadow-inner group-hover:scale-110 transition duration-300">
+            <AlertOctagon className="w-6 h-6" />
+          </div>
+        </div>
+
+        {/* KPI: Ausentes */}
+        <div className="bg-white border border-slate-200/60 rounded-3xl p-6 flex items-center justify-between shadow-sm relative overflow-hidden group">
+          <div className="space-y-1 z-10">
+            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest text-rose-500">Sin Registrar</span>
+            <div className="text-3xl font-black text-rose-600 dark:text-rose-400 leading-none">{stats.absentToday}</div>
+            <p className="text-[10px] font-bold text-slate-500">Falta ingreso seguro</p>
+          </div>
+          <div className="p-3 bg-rose-50 rounded-2xl text-rose-600 dark:bg-rose-950/20 dark:text-rose-400 shadow-inner group-hover:scale-110 transition duration-300">
+            <UserX className="w-6 h-6" />
+          </div>
+        </div>
+
       </div>
 
       {/* Contenedor de Registros Agrupados por Fecha */}
-      <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden flex flex-col">
+      <div className="bg-white border border-slate-200/60 rounded-3xl shadow-sm overflow-hidden flex flex-col">
         
         {/* Barra de Filtros */}
-        <div className="p-4 border-b border-slate-200 bg-slate-50 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+        <div className="p-5 md:p-6 border-b border-slate-200/60 bg-white grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
           
           {/* Búsqueda */}
           <div className="relative">
@@ -412,7 +467,7 @@ export default function AttendanceView({ token, userRole }) {
               onChange={(e) => setDepartment(e.target.value)}
               className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-slate-100/60 border border-slate-200 focus:border-brand-500 dark:bg-slate-950/40 dark:border-slate-800 dark:focus:border-brand-500 text-xs font-bold outline-none transition appearance-none"
             >
-              <option value="">Todas las áreas</option>
+              <option value="">Todas las Áreas</option>
               {[...new Set(employees.map(emp => emp.department).filter(Boolean))].sort().map(dept => (
                 <option key={dept} value={dept}>{dept}</option>
               ))}
@@ -457,6 +512,15 @@ export default function AttendanceView({ token, userRole }) {
             />
           </div>
 
+          {/* Botón Exportar */}
+          <button
+            onClick={exportToCSV}
+            className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition shadow-md shadow-emerald-500/10 hover:shadow-emerald-500/20 col-span-full sm:col-span-1"
+          >
+            <Download className="w-4 h-4" />
+            <span>Exportar CSV</span>
+          </button>
+
         </div>
 
         {/* Lista agrupada por fecha — todos los empleados por día */}
@@ -467,7 +531,8 @@ export default function AttendanceView({ token, userRole }) {
             </div>
           ) : employees.length === 0 ? (
             <div className="py-20 text-center space-y-2">
-              <h4 className="text-sm font-black text-slate-700 dark:text-slate-300">Sin marcaciones</h4>
+              <div className="text-4xl">📭</div>
+              <h4 className="text-sm font-black text-slate-700 dark:text-slate-300">Sin Registros de Asistencia</h4>
               <p className="text-xs text-slate-450">No se encontraron marcaciones con los filtros seleccionados.</p>
             </div>
           ) : (() => {
@@ -509,17 +574,17 @@ export default function AttendanceView({ token, userRole }) {
 
             // Config de estado visual
             const statusConfig = {
-              vacaciones:  { rowBg: 'bg-sky-50/70',    dot: 'bg-sky-400',    badge: 'bg-sky-100 text-sky-700 border-sky-200',    label: 'Vacaciones' },
-              incapacidad: { rowBg: 'bg-violet-50/70', dot: 'bg-violet-400', badge: 'bg-violet-100 text-violet-700 border-violet-200', label: 'Incapacidad' },
-              permiso:     { rowBg: 'bg-amber-50/60',  dot: 'bg-amber-400',  badge: 'bg-amber-100 text-amber-700 border-amber-200',  label: 'Permiso' },
+              vacaciones:  { rowBg: 'bg-sky-50/70',    dot: 'bg-sky-400',    badge: 'bg-sky-100 text-sky-700 border-sky-200',    label: '🏖️ Vacaciones' },
+              incapacidad: { rowBg: 'bg-violet-50/70', dot: 'bg-violet-400', badge: 'bg-violet-100 text-violet-700 border-violet-200', label: '🏥 Incapacidad' },
+              permiso:     { rowBg: 'bg-amber-50/60',  dot: 'bg-amber-400',  badge: 'bg-amber-100 text-amber-700 border-amber-200',  label: '📋 Permiso' },
               presente:    { rowBg: '',                 dot: 'bg-emerald-500', badge: 'bg-emerald-50 text-emerald-700 border-emerald-200', label: 'Presente' },
               completado:  { rowBg: '',                 dot: 'bg-brand-500',  badge: 'bg-brand-50 text-brand-700 border-brand-200',   label: 'Completado' },
-              tarde:       { rowBg: 'bg-amber-50/30',  dot: 'bg-amber-500',  badge: 'bg-amber-50 text-amber-700 border-amber-200',  label: 'Llegó tarde' },
+              tarde:       { rowBg: 'bg-amber-50/30',  dot: 'bg-amber-500',  badge: 'bg-amber-50 text-amber-700 border-amber-200',  label: '⚡ Retardo' },
               ausente:     { rowBg: 'bg-rose-50/40',   dot: 'bg-rose-400',   badge: 'bg-rose-50 text-rose-700 border-rose-200',    label: 'Ausente' },
             };
 
             const TagBadge = ({ label, style }) => (
-              <span className={`inline-flex items-center justify-center px-2 py-0.5 rounded-full text-[11px] font-semibold border whitespace-nowrap ${style}`}>{label}</span>
+              <span className={`inline-flex items-center justify-center px-2 py-0.5 rounded-full text-[9px] font-black border uppercase tracking-wider whitespace-nowrap ${style}`}>{label}</span>
             );
             const Dash = () => <span className="text-slate-200 font-bold text-sm">—</span>;
 
@@ -1075,7 +1140,6 @@ export default function AttendanceView({ token, userRole }) {
         </div>
       )}
 
-      </div>
     </div>
   );
 }

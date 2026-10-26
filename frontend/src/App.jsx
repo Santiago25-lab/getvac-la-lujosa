@@ -88,14 +88,13 @@ export default function App() {
   }
 
   return (
-    <div className="flex w-screen h-screen overflow-hidden bg-slate-100 text-slate-800 font-sans">
+    <div className="flex w-screen h-screen overflow-hidden bg-slate-50 text-slate-800 font-sans">
       
       {/* Barra de Navegación Lateral */}
       <Sidebar
         activeView={activeView}
         onViewChange={handleViewChange}
         user={user}
-        token={token}
         onLogout={handleLogout}
       />
 

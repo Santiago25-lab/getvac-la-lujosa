@@ -1,319 +1,74 @@
 @import "tailwindcss";
 @custom-variant dark (&:where(.dark, .dark *));
 
-/*
- * Sistema de diseño "Registro".
- * Un software laboral se lee como un documento: fondo de papel cálido, tinta oscura,
- * un solo color de acción (petróleo) y color de estado solo cuando significa algo:
- * verde = en regla, ocre = atención, rojo = incumplimiento o error.
- *
- * Las vistas usan la paleta de Tailwind (slate, brand, emerald, amber, rose…).
- * Aquí se redefinen esas escalas para que toda la app hable el mismo idioma visual:
- * los tonos "decorativos" (indigo, violet, purple, blue, sky) se reducen a un único azul informativo.
- */
 @theme {
-  --font-sans: 'Public Sans', ui-sans-serif, system-ui, sans-serif;
-  --font-serif: 'Source Serif 4', ui-serif, Georgia, serif;
-
-  /* Neutros cálidos (papel y tinta) */
-  --color-slate-50: #faf9f6;
-  --color-slate-100: #f3f1ec;
-  --color-slate-105: #f0eee8;
-  --color-slate-150: #ebe8e1;
-  --color-slate-200: #e2ded5;
-  --color-slate-250: #d8d3c9;
-  --color-slate-300: #cbc6bb;
-  --color-slate-400: #a29d92;
-  --color-slate-450: #8b867b;
-  --color-slate-455: #8b867b;
-  --color-slate-500: #747064;
-  --color-slate-550: #615c51;
-  --color-slate-600: #514c43;
-  --color-slate-650: #433f37;
-  --color-slate-700: #37332c;
-  --color-slate-750: #2c2923;
-  --color-slate-800: #24211c;
-  --color-slate-850: #1c1a16;
-  --color-slate-900: #171511;
-  --color-slate-950: #0e0d0a;
-  --color-gray-50: #faf9f6;
-  --color-gray-100: #f3f1ec;
-  --color-gray-200: #e2ded5;
-  --color-gray-300: #cbc6bb;
-  --color-gray-400: #a29d92;
-  --color-gray-500: #747064;
-  --color-gray-600: #514c43;
-  --color-gray-700: #37332c;
-  --color-gray-800: #24211c;
-  --color-gray-900: #171511;
-
-  /* Acción: petróleo */
-  --color-brand-50: #eef5f6;
-  --color-brand-100: #d8e8eb;
-  --color-brand-200: #b2d0d6;
-  --color-brand-300: #82b0ba;
-  --color-brand-400: #518c98;
-  --color-brand-500: #2d6d7b;
-  --color-brand-550: #286472;
-  --color-brand-600: #225966;
-  --color-brand-650: #1e4f5b;
-  --color-brand-700: #1a4550;
-  --color-brand-800: #153a43;
-  --color-brand-900: #112f37;
-  --color-brand-950: #0a1c21;
-  --color-teal-50: #eef5f6;
-  --color-teal-100: #d8e8eb;
-  --color-teal-200: #b2d0d6;
-  --color-teal-500: #2d6d7b;
-  --color-teal-600: #225966;
-  --color-teal-700: #1a4550;
-  --color-cyan-50: #eef5f6;
-  --color-cyan-100: #d8e8eb;
-  --color-cyan-500: #2d6d7b;
-  --color-cyan-600: #225966;
-
-  /* Estado: en regla */
-  --color-emerald-50: #f0f6f1;
-  --color-emerald-100: #dcebe0;
-  --color-emerald-200: #bad8c3;
-  --color-emerald-250: #a6ccb2;
-  --color-emerald-300: #8cbf9c;
-  --color-emerald-400: #5c9d70;
-  --color-emerald-500: #3d7f53;
-  --color-emerald-600: #2f6a45;
-  --color-emerald-700: #275638;
-  --color-emerald-800: #20452e;
-  --color-emerald-900: #193725;
-  --color-emerald-950: #0d1f14;
-  --color-green-50: #f0f6f1;
-  --color-green-100: #dcebe0;
-  --color-green-200: #bad8c3;
-  --color-green-500: #3d7f53;
-  --color-green-600: #2f6a45;
-  --color-green-700: #275638;
-
-  /* Estado: atención (ocre) */
-  --color-amber-50: #fbf6ea;
-  --color-amber-100: #f5e8c9;
-  --color-amber-200: #ebd296;
-  --color-amber-300: #dcb460;
-  --color-amber-400: #c99634;
-  --color-amber-500: #b07b1d;
-  --color-amber-600: #926317;
-  --color-amber-700: #754e14;
-  --color-amber-800: #5d3e13;
-  --color-amber-900: #4a3211;
-  --color-amber-950: #2a1b07;
-  --color-yellow-50: #fbf6ea;
-  --color-yellow-100: #f5e8c9;
-  --color-yellow-200: #ebd296;
-  --color-yellow-500: #b07b1d;
-  --color-yellow-600: #926317;
-  --color-yellow-700: #754e14;
-  --color-orange-50: #fbf4ec;
-  --color-orange-100: #f5e3cf;
-  --color-orange-200: #eac5a0;
-  --color-orange-500: #b56a2a;
-  --color-orange-600: #965622;
-  --color-orange-700: #78441c;
-
-  /* Estado: incumplimiento / error */
-  --color-rose-50: #fbf2f0;
-  --color-rose-100: #f6e0dc;
-  --color-rose-200: #edbfb7;
-  --color-rose-300: #e19389;
-  --color-rose-400: #d1665b;
-  --color-rose-455: #b9443a;
-  --color-rose-500: #b9443a;
-  --color-rose-600: #9c362e;
-  --color-rose-700: #7f2c26;
-  --color-rose-800: #662520;
-  --color-rose-900: #521e1b;
-  --color-rose-950: #2e0f0d;
-  --color-red-50: #fbf2f0;
-  --color-red-100: #f6e0dc;
-  --color-red-200: #edbfb7;
-  --color-red-500: #b9443a;
-  --color-red-600: #9c362e;
-  --color-red-700: #7f2c26;
-  --color-pink-50: #fbf2f0;
-  --color-pink-100: #f6e0dc;
-  --color-pink-500: #b9443a;
-  --color-pink-600: #9c362e;
-
-  /* Información (sustituye indigo, violeta, púrpura, azul y celeste) */
-  --color-indigo-50: #f1f4f8;
-  --color-indigo-100: #dfe5ef;
-  --color-indigo-200: #bfcbdf;
-  --color-indigo-300: #96a9c9;
-  --color-indigo-400: #6b86b0;
-  --color-indigo-500: #4d6995;
-  --color-indigo-600: #3e557b;
-  --color-indigo-700: #334563;
-  --color-indigo-800: #2a384f;
-  --color-indigo-900: #222d3f;
-  --color-violet-50: #f1f4f8;
-  --color-violet-100: #dfe5ef;
-  --color-violet-200: #bfcbdf;
-  --color-violet-500: #4d6995;
-  --color-violet-600: #3e557b;
-  --color-violet-700: #334563;
-  --color-violet-750: #2e3f5a;
-  --color-violet-900: #222d3f;
-  --color-purple-50: #f1f4f8;
-  --color-purple-100: #dfe5ef;
-  --color-purple-500: #4d6995;
-  --color-purple-600: #3e557b;
-  --color-purple-700: #334563;
-  --color-blue-50: #f1f4f8;
-  --color-blue-100: #dfe5ef;
-  --color-blue-200: #bfcbdf;
-  --color-blue-500: #4d6995;
-  --color-blue-600: #3e557b;
-  --color-blue-700: #334563;
-  --color-sky-50: #f1f4f8;
-  --color-sky-100: #dfe5ef;
-  --color-sky-500: #4d6995;
-  --color-sky-600: #3e557b;
-  --color-fuchsia-500: #4d6995;
-
-  /* Formas: bordes contenidos, sombras de papel */
-  --radius-md: 6px;
-  --radius-lg: 8px;
-  --radius-xl: 10px;
-  --radius-2xl: 12px;
-  --radius-3xl: 14px;
-  --shadow-sm: 0 1px 2px rgb(28 26 22 / 0.04);
-  --shadow: 0 1px 2px rgb(28 26 22 / 0.05), 0 1px 1px rgb(28 26 22 / 0.03);
-  --shadow-md: 0 1px 3px rgb(28 26 22 / 0.06), 0 1px 2px rgb(28 26 22 / 0.04);
-  --shadow-lg: 0 4px 10px -2px rgb(28 26 22 / 0.07), 0 2px 4px -2px rgb(28 26 22 / 0.04);
-  --shadow-xl: 0 12px 24px -8px rgb(28 26 22 / 0.12);
-  --shadow-2xl: 0 24px 48px -16px rgb(28 26 22 / 0.22);
-
-  /* Tipografía: menos gritos */
-  --font-weight-semibold: 600;
-  --font-weight-bold: 650;
-  --font-weight-extrabold: 700;
-  --font-weight-black: 720;
-  --tracking-wide: 0.01em;
-  --tracking-wider: 0.03em;
-  --tracking-widest: 0.05em;
+  --color-brand-50: #fff5f5;
+  --color-brand-100: #ffe3e3;
+  --color-brand-200: #ffc9c9;
+  --color-brand-300: #ffa8a8;
+  --color-brand-400: #ff8787;
+  --color-brand-500: #fa5252;
+  --color-brand-600: #e03131;
+  --color-brand-650: #c92a2a;
+  --color-brand-700: #c92a2a;
+  --color-brand-800: #b02a2a;
+  --color-brand-900: #9c1c1c;
+  --color-brand-950: #5c0e0e;
+  
+  --color-slate-450: #78889b;
+  --color-slate-550: #55657a;
+  --color-slate-650: #3d4e66;
+  --color-slate-850: #141f32;
 }
 
-html {
-  -webkit-font-smoothing: antialiased;
-  text-rendering: optimizeLegibility;
-}
-
+/* Estilos Base para Body */
 body {
-  background-color: var(--color-slate-100);
-  color: var(--color-slate-800);
-  font-family: var(--font-sans);
-  font-feature-settings: 'tnum' 1, 'lnum' 1;
+  background-color: #f8fafc; /* slate-50 */
+  color: #1e293b; /* slate-800 */
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
   margin: 0;
 }
 
-/* Títulos de página y cifras protagonistas en serif: se leen como un documento */
-main h1,
-.font-display {
-  font-family: var(--font-serif);
-  font-weight: 600;
-  letter-spacing: -0.015em;
-  font-optical-sizing: auto;
+/* Efectos Glassmorphism Premium */
+.glass {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.25);
 }
 
-main :is(.text-3xl, .text-4xl, .text-5xl):is(.font-black, .font-extrabold, .font-bold) {
-  font-family: var(--font-serif);
-  font-weight: 600;
-  letter-spacing: -0.02em;
-}
-
-/* Las etiquetas en mayúsculas quedan pequeñas y discretas */
-.uppercase {
-  letter-spacing: 0.05em;
-}
-
-/* Etiquetas de formulario: texto normal, legible, sin gritar */
-label.uppercase {
-  text-transform: none;
-  letter-spacing: 0;
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--color-slate-700);
-}
-
-/* Las tablas heredadas usan encabezados en mayúsculas diminutas: se leen como texto normal */
-thead th.uppercase,
-thead tr.uppercase th {
-  text-transform: none;
-  letter-spacing: 0;
-  font-size: 13px;
-  font-weight: 500;
-}
-
-/* Superficies */
-.glass,
+/* Ficha / Tarjeta de Vidrio de Alta Definición (Glass-Card) */
 .glass-card {
-  background-color: #fff;
-  border: 1px solid var(--color-slate-200);
-  border-radius: var(--radius-2xl);
-  box-shadow: var(--shadow-sm);
+  border-radius: 1rem; /* 16px */
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -4px rgba(0, 0, 0, 0.05);
+  border: 1px solid rgba(226, 232, 240, 0.8); /* slate-200 */
+  background-color: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
 }
 
-/* Foco visible y consistente: anillo en botones y enlaces, borde + halo en campos */
-:where(button, a):focus-visible {
-  outline: 2px solid var(--color-brand-500);
-  outline-offset: 2px;
-}
-:where(input, select, textarea):focus {
-  outline: none;
-  border-color: var(--color-brand-500);
-  box-shadow: 0 0 0 3px rgb(45 109 123 / 0.14);
-}
-:where(input, select, textarea)::placeholder {
-  color: var(--color-slate-400);
-}
-
-input, select, textarea {
-  font-variant-numeric: tabular-nums;
-}
-
-::selection {
-  background: var(--color-brand-100);
-  color: var(--color-brand-900);
-}
-
-/* Scroll discreto */
+/* Estilos de scroll elegantes */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background-color: var(--color-slate-300);
+  background-color: #cbd5e1; /* slate-300 */
   border-radius: 9999px;
-  border: 2px solid transparent;
-  background-clip: content-box;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background-color: var(--color-slate-400);
+  background-color: #94a3b8; /* slate-400 */
 }
 
+/* Animaciones suaves */
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(4px); }
+  from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
 .animate-fade-in {
-  animation: fadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .animate-fade-in,
-  .animate-pulse,
-  .animate-spin {
-    animation: none;
-  }
+  animation: fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }

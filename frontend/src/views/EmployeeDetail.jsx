@@ -3,8 +3,6 @@ import { ChevronLeft, CalendarRange, Clock, CalendarDays, CheckCircle2, AlertTri
 import { formatDateFriendly, calculateBusinessDays, calculateLastVacationDay } from '../utils/dateUtils';
 import { exportEmployeeHistoryToPDF } from '../utils/exportUtils';
 import { API_URL } from '../config.js';
-import { Badge } from '../components/ui.jsx';
-import { buttonStyles, formatCOP, formatDays } from '../components/styles.js';
 
 export default function EmployeeDetail({ token, employeeId, onViewChange, userRole }) {
   const [employee, setEmployee] = useState(null);
@@ -879,165 +877,218 @@ export default function EmployeeDetail({ token, employeeId, onViewChange, userRo
   const stats = employee.vacationStats;
   const isCriticalBalance = employee.status === 'activo' && stats.availableDays <= 3;
 
-  // Antigüedad en años, meses y días calendario
-  const serviceTime = (() => {
-    const start = new Date(`${employee.hireDate}T12:00:00`);
-    const end = employee.terminationDate ? new Date(`${employee.terminationDate}T12:00:00`) : new Date();
-    let years = end.getFullYear() - start.getFullYear();
-    let months = end.getMonth() - start.getMonth();
-    if (end.getDate() < start.getDate()) months -= 1;
-    if (months < 0) { years -= 1; months += 12; }
-    const parts = [];
-    if (years > 0) parts.push(`${years} ${years === 1 ? 'año' : 'años'}`);
-    if (months > 0) parts.push(`${months} ${months === 1 ? 'mes' : 'meses'}`);
-    return parts.length ? parts.join(' y ') : 'Menos de un mes';
-  })();
-
-  const infoRows = [
-    ['Documento', employee.documentNumber],
-    ['Cargo', employee.position],
-    ['Área', employee.department],
-    ['Contrato', [employee.contractType, employee.integralSalary ? 'salario integral' : null].filter(Boolean).join(' · ') || '—'],
-    ['Salario', Number(employee.baseSalary) ? formatCOP(employee.baseSalary) : 'No registrado'],
-    ['Correo', employee.email || 'No registrado'],
-    ['Teléfono', employee.phone || 'No registrado'],
-    ['Ingreso', formatDateFriendly(employee.hireDate)],
-    ...(employee.terminationDate ? [['Retiro', formatDateFriendly(employee.terminationDate)]] : []),
-    ['Antigüedad', serviceTime],
-  ];
-
   return (
-    <div className="flex-1 overflow-y-auto animate-fade-in">
-      <div className="max-w-[1200px] mx-auto px-8 py-8 space-y-6">
-
-      {/* Cabecera */}
-      <header className="flex flex-col md:flex-row md:items-end justify-between gap-4 pb-6 border-b border-slate-200">
-        <div>
+    <div className="flex-1 p-8 overflow-y-auto space-y-6 select-none bg-slate-50/50 dark:bg-slate-950/20 animate-fade-in">
+      
+      {/* Cabecera y volver atrás */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="space-y-2">
+          <button
+            onClick={() => onViewChange('employees')}
+            className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 font-extrabold hover:text-brand-500 transition uppercase tracking-wider"
+          >
+            <ChevronLeft className="w-4 h-4" />
+            <span>Volver al Directorio</span>
+          </button>
+          
           <div className="flex items-center gap-3">
-            <h1 className="text-[28px] leading-tight text-slate-900">{employee.fullName}</h1>
-            <Badge tone={employee.status === 'activo' ? 'good' : 'neutral'}>{employee.status === 'activo' ? 'Activo' : 'Retirado'}</Badge>
+            <h1 className="text-2xl font-black text-slate-850 dark:text-white tracking-tight">
+              {employee.fullName}
+            </h1>
+            <span className={`inline-block px-2.5 py-0.5 text-[10px] font-black rounded-full select-none border ${
+              employee.status === 'activo'
+                ? 'bg-emerald-50 text-emerald-700 border-emerald-250 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/50'
+                : 'bg-slate-50 text-slate-500 border-slate-200 dark:bg-slate-800/40 dark:text-slate-400 dark:border-slate-750'
+            }`}>
+              {employee.status === 'activo' ? 'ACTIVO' : 'INACTIVO'}
+            </span>
           </div>
-          <p className="text-sm text-slate-500 mt-1.5">{employee.position} · {employee.department} · {serviceTime} en la empresa</p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <button onClick={() => exportEmployeeHistoryToPDF(employee, employee.vacations, stats)} className={buttonStyles.secondary}>
-            <FileText className="w-4 h-4" /> Historial de vacaciones (PDF)
-          </button>
-          <button onClick={toggleEmployeeStatus} className={buttonStyles.secondary}>
-            {employee.status === 'activo' ? 'Marcar como retirado' : 'Reactivar'}
-          </button>
+        <div className="flex items-center gap-3">
+          {/* Editar Datos */}
           {(userRole === 'Administrador' || userRole === 'Super Usuario') && (
-            <>
-              <button onClick={handleEditClick} className={buttonStyles.primary}>
-                <Edit className="w-4 h-4" /> Editar datos
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleEditClick}
+                className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-amber-200/50 bg-amber-50 dark:border-amber-900/30 dark:bg-amber-950/10 text-xs font-bold text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-950/20 transition cursor-pointer"
+              >
+                <Edit className="w-4 h-4" />
+                <span>Editar Datos</span>
               </button>
               <button
                 onClick={() => setIsDeleteModalOpen(true)}
-                className="p-2 rounded-lg text-slate-450 hover:text-rose-600 hover:bg-rose-50 transition-colors"
-                title="Eliminar empleado"
-                aria-label="Eliminar empleado"
+                className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-rose-200/50 bg-rose-50 dark:border-rose-900/30 dark:bg-rose-950/10 text-xs font-bold text-rose-700 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-950/20 transition cursor-pointer"
               >
                 <Trash2 className="w-4 h-4" />
+                <span>Eliminar Empleado</span>
               </button>
-            </>
+            </div>
           )}
+
+          {/* Alternar estado */}
+          <button
+            onClick={toggleEmployeeStatus}
+            className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 text-xs font-bold text-slate-650 dark:text-slate-350 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+          >
+            <RefreshCw className="w-4 h-4 text-slate-400 animate-spin-slow" />
+            <span>Marcar como {employee.status === 'activo' ? 'Inactivo' : 'Activo'}</span>
+          </button>
+
+          {/* Exportar expediente a PDF */}
+          <button
+            onClick={() => exportEmployeeHistoryToPDF(employee, employee.vacations, stats)}
+            className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-slate-900 dark:bg-slate-850 hover:bg-slate-800 text-white font-bold text-xs shadow-md hover:shadow-lg transition cursor-pointer"
+          >
+            <FileText className="w-4 h-4" />
+            <span>Exportar Vacaciones</span>
+          </button>
         </div>
-      </header>
+      </div>
 
+      {/* Grid de Información del Empleado */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-
-        {/* Columna izquierda: saldos y ficha */}
+        
+        {/* Columna Izquierda: Tarjeta de Perfil & Métricas */}
         <div className="lg:col-span-1 space-y-6">
-          <section className="bg-white border border-slate-200 rounded-xl shadow-sm">
-            <div className="p-5">
-              <h2 className="text-[15px] font-semibold text-slate-900">Vacaciones</h2>
-              {stats.generatesVacations === false ? (
-                <p className="text-[13px] text-slate-500 mt-2">Este vínculo no genera vacaciones.</p>
-              ) : (
-                <>
-                  <p className={`font-display text-[40px] leading-none mt-4 ${stats.exceedsAccumulation ? 'text-rose-600' : isCriticalBalance ? 'text-amber-700' : 'text-slate-900'}`}>
-                    {formatDays(stats.availableDays)}
-                  </p>
-                  <p className="text-[13px] text-slate-500 mt-1.5">días hábiles disponibles para tomar</p>
-                  {stats.exceedsAccumulation && (
-                    <p className="mt-3 text-[13px] text-rose-700 bg-rose-50 border border-rose-200 rounded-lg p-2.5">
-                      Supera el máximo legal de {formatDays(stats.accumulationLimitDays)} días acumulados (Art. 190 CST). Programe vacaciones pronto.
-                    </p>
-                  )}
-                  {!stats.exceedsAccumulation && isCriticalBalance && (
-                    <p className="mt-3 text-[13px] text-amber-800 bg-amber-50 border border-amber-200 rounded-lg p-2.5">
-                      Saldo bajo: quedan muy pocos días para nuevos periodos.
-                    </p>
-                  )}
-                </>
+          {/* Ficha técnica del empleado */}
+          <div className="bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/40 rounded-3xl p-6 space-y-4 shadow-sm">
+            <div className="flex items-center gap-3 pb-3 border-b border-slate-100 dark:border-slate-800/40">
+              <div className="p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500">
+                <UserSquare2 className="w-6 h-6" />
+              </div>
+              <div>
+                <h4 className="text-xs font-black text-slate-400 uppercase tracking-wider">Ficha de Empleado</h4>
+                <p className="text-sm font-bold text-slate-850 dark:text-white">Datos de Contacto e Ingreso</p>
+              </div>
+            </div>
+
+            <div className="space-y-3 text-xs font-semibold">
+              <div className="flex justify-between">
+                <span className="text-slate-400">Documento:</span>
+                <span className="font-bold text-slate-700 dark:text-slate-350">{employee.documentNumber}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-400">Cargo:</span>
+                <span className="font-bold text-slate-700 dark:text-slate-350">{employee.position}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-400">Área:</span>
+                <span className="font-bold text-slate-700 dark:text-slate-350">{employee.department}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-400">Correo:</span>
+                <span className="font-bold text-slate-700 dark:text-slate-350">{employee.email || 'No registrado'}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-400">Teléfono:</span>
+                <span className="font-bold text-slate-700 dark:text-slate-350">{employee.phone || 'No registrado'}</span>
+              </div>
+              <div className="flex justify-between border-t border-slate-100 dark:border-slate-800/40 pt-3 mt-1">
+                <span className="text-slate-400">Fecha Ingreso:</span>
+                <span className="font-bold text-slate-700 dark:text-slate-350">{formatDateFriendly(employee.hireDate)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-400">Tiempo Servicio:</span>
+                <span className="font-black text-brand-600 dark:text-brand-400">
+                  {(() => {
+                    const hire = new Date(employee.hireDate + 'T00:00:00');
+                    const days = Math.max(0, Math.floor((new Date() - hire) / (1000 * 60 * 60 * 24)));
+                    return `${Math.floor(days / 365)}a ${Math.floor((days % 365) / 30)}m (${days} días)`;
+                  })()}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Fichas de saldos */}
+          <div className="bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/40 rounded-3xl p-6 space-y-6 shadow-sm">
+            <h3 className="text-xs font-black text-slate-400 uppercase tracking-wider border-b border-slate-100 dark:border-slate-800/40 pb-3">Resumen de Saldos (Hitos Anuales)</h3>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div className="p-4 rounded-2xl bg-brand-500/5 border border-brand-200/20 text-center">
+                <span className="block text-2xl font-black text-brand-600 leading-none">{Math.round(stats.accruedDays * 100) / 100}</span>
+                <span className="text-[9px] font-bold text-slate-400 dark:text-slate-550 uppercase tracking-wider mt-1.5 block">Días Causados Exactos</span>
+              </div>
+              <div className="p-4 rounded-2xl bg-amber-500/5 border border-amber-200/20 text-center">
+                <span className="block text-2xl font-black text-amber-600 dark:text-amber-400 leading-none">{Math.round(stats.takenDays * 100) / 100}</span>
+                <span className="text-[9px] font-bold text-slate-400 dark:text-slate-550 uppercase tracking-wider mt-1.5 block">Consumidos</span>
+              </div>
+            </div>
+
+            <div className={`p-5 rounded-2xl border text-center ${
+              isCriticalBalance 
+                ? 'bg-rose-500/10 border-rose-500/20' 
+                : 'bg-emerald-500/10 border-emerald-500/20'
+            }`}>
+              <span className={`block text-3xl font-extrabold leading-none ${
+                isCriticalBalance ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-450'
+              }`}>{Math.round(stats.availableDays * 100) / 100} <span className="text-xl">días exactos</span></span>
+              <span className={`text-[10px] font-bold uppercase tracking-wider mt-1.5 block ${
+                isCriticalBalance ? 'text-rose-500' : 'text-emerald-500'
+              }`}>Días Hábiles Disponibles</span>
+              
+              {isCriticalBalance && (
+                <div className="mt-3 flex items-center justify-center gap-1.5 text-[9px] font-semibold text-rose-550 dark:text-rose-455 bg-rose-500/5 p-2 rounded-xl border border-rose-500/10">
+                  <AlertTriangle className="w-4 h-4 shrink-0 animate-pulse" />
+                  <span>Saldo bajo. Recomendación: no autorizar más periodos.</span>
+                </div>
               )}
             </div>
-            {stats.generatesVacations !== false && (
-              <dl className="border-t border-slate-150 grid grid-cols-2 text-[13px]">
-                <div className="p-4 border-r border-slate-150">
-                  <dt className="text-slate-500">Ganados</dt>
-                  <dd className="font-semibold text-slate-900 mt-0.5">{formatDays(stats.accruedDays)} días</dd>
-                </div>
-                <div className="p-4">
-                  <dt className="text-slate-500">Usados</dt>
-                  <dd className="font-semibold text-slate-900 mt-0.5">{formatDays(stats.takenDays)} días</dd>
-                </div>
-                <div className="p-4 border-r border-t border-slate-150">
-                  <dt className="text-slate-500">Por año</dt>
-                  <dd className="font-semibold text-slate-900 mt-0.5">{formatDays(stats.vacationDaysPerYear)} días hábiles</dd>
-                </div>
-                <div className="p-4 border-t border-slate-150">
-                  <dt className="text-slate-500">Último descanso</dt>
-                  <dd className="font-semibold text-slate-900 mt-0.5">
-                    {stats.monthsSinceLastVacation > 0 ? `Hace ${stats.monthsSinceLastVacation} ${stats.monthsSinceLastVacation === 1 ? 'mes' : 'meses'}` : 'Este mes'}
-                  </dd>
-                </div>
-                {stats.unpaidLeaveDays > 0 && (
-                  <div className="p-4 border-t border-slate-150 col-span-2 text-slate-500">
-                    Se descontaron {stats.unpaidLeaveDays} días de suspensiones o licencias no remuneradas (Arts. 51 y 53 CST).
-                  </div>
-                )}
-              </dl>
-            )}
-          </section>
-
-          <section className="bg-white border border-slate-200 rounded-xl shadow-sm p-5">
-            <h2 className="text-[15px] font-semibold text-slate-900 mb-3">Datos del empleado</h2>
-            <dl className="divide-y divide-slate-150 text-[13px]">
-              {infoRows.map(([label, value]) => (
-                <div key={label} className="flex justify-between gap-4 py-2">
-                  <dt className="text-slate-500">{label}</dt>
-                  <dd className="text-slate-800 text-right">{value}</dd>
-                </div>
-              ))}
-            </dl>
-          </section>
+          </div>
         </div>
 
         {/* Columna Derecha: Panel de Pestañas Unidas */}
         <div className="lg:col-span-2 space-y-6">
           
           {/* Navegación por pestañas */}
-          <nav className="flex gap-1 border-b border-slate-200" aria-label="Secciones del expediente">
-            {[
-              { id: 'vacaciones', label: 'Vacaciones' },
-              { id: 'asistencia', label: 'Asistencia' },
-              { id: 'novedades', label: 'Novedades' },
-              { id: 'prestaciones', label: 'Prestaciones' },
-            ].map(t => (
-              <button
-                key={t.id}
-                onClick={() => setActiveTab(t.id)}
-                aria-current={activeTab === t.id ? 'page' : undefined}
-                className={`px-3 py-2.5 text-[13px] border-b-2 -mb-px transition-colors ${
-                  activeTab === t.id ? 'border-brand-500 text-slate-900 font-semibold' : 'border-transparent text-slate-500 hover:text-slate-800'
-                }`}
-              >
-                {t.label}
-              </button>
-            ))}
-          </nav>
+          <div className="flex border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-3xl p-1.5 shadow-sm gap-1">
+            <button
+              onClick={() => setActiveTab('vacaciones')}
+              className={`flex-1 py-3 text-xs font-bold uppercase tracking-wider rounded-2xl transition duration-150 flex items-center justify-center gap-2 ${
+                activeTab === 'vacaciones'
+                  ? 'bg-brand-500 text-white shadow-md shadow-brand-500/10'
+                  : 'text-slate-450 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-800 dark:hover:text-slate-200'
+              }`}
+            >
+              <CalendarDays className="w-4 h-4" />
+              <span>Vacaciones</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('asistencia')}
+              className={`flex-1 py-3 text-xs font-bold uppercase tracking-wider rounded-2xl transition duration-150 flex items-center justify-center gap-2 ${
+                activeTab === 'asistencia'
+                  ? 'bg-brand-500 text-white shadow-md shadow-brand-500/10'
+                  : 'text-slate-450 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-800 dark:hover:text-slate-200'
+              }`}
+            >
+              <Clock className="w-4 h-4" />
+              <span>Asistencia</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('novedades')}
+              className={`flex-1 py-3 text-xs font-bold uppercase tracking-wider rounded-2xl transition duration-150 flex items-center justify-center gap-2 ${
+                activeTab === 'novedades'
+                  ? 'bg-brand-500 text-white shadow-md shadow-brand-500/10'
+                  : 'text-slate-450 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-800 dark:hover:text-slate-200'
+              }`}
+            >
+              <AlertOctagon className="w-4 h-4" />
+              <span>Novedades</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('prestaciones')}
+              className={`flex-1 py-3 text-xs font-bold uppercase tracking-wider rounded-2xl transition duration-150 flex items-center justify-center gap-2 ${
+                activeTab === 'prestaciones'
+                  ? 'bg-rose-500 text-white shadow-md shadow-rose-500/10'
+                  : 'text-slate-450 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-800 dark:hover:text-slate-200'
+              }`}
+            >
+              <FileText className="w-4 h-4" />
+              <span>Prestaciones</span>
+            </button>
+          </div>
 
           {/* Contenido de la pestaña: VACACIONES */}
           {activeTab === 'vacaciones' && (
@@ -1977,7 +2028,6 @@ export default function EmployeeDetail({ token, employeeId, onViewChange, userRo
           </div>
         </div>
       )}
-      </div>
     </div>
   );
 }

@@ -3,8 +3,9 @@ import { Search, Plus, FileSpreadsheet, FileText, Trash2, Eye, UserPlus, X, Cale
 import { exportEmployeesToExcel, exportEmployeesToPDF } from '../utils/exportUtils';
 import { formatDateFriendly } from '../utils/dateUtils';
 import { API_URL } from '../config.js';
-import { PageHeader, Badge } from '../components/ui.jsx';
-import { buttonStyles, formatDays } from '../components/styles.js';
+
+// Días con máximo dos decimales (evita mostrar 24.380000000000003)
+const formatDays = (value) => Math.round((Number(value) || 0) * 100) / 100;
 
 export default function EmployeeList({ token, userRole, onViewChange }) {
   const [employees, setEmployees] = useState([]);
@@ -276,149 +277,192 @@ export default function EmployeeList({ token, userRole, onViewChange }) {
     );
   }
 
-  const activeCount = employees.filter(e => e.status === 'activo').length;
-
   return (
-    <div className="flex-1 overflow-y-auto animate-fade-in relative">
-      <div className="max-w-[1200px] mx-auto px-8 py-8 space-y-6">
-      <PageHeader
-        title="Empleados"
-        description={`${activeCount} activos de ${employees.length} registrados. Haga clic en un empleado para ver su expediente, vacaciones y prestaciones.`}
-        actions={
-          <>
-            <button
-              onClick={() => exportEmployeesToExcel(filteredEmployees)}
-              disabled={filteredEmployees.length === 0}
-              className={buttonStyles.secondary}
-            >
-              <FileSpreadsheet className="w-4 h-4" /> Excel
-            </button>
-            <button
-              onClick={() => exportEmployeesToPDF(filteredEmployees)}
-              disabled={filteredEmployees.length === 0}
-              className={buttonStyles.secondary}
-            >
-              <FileText className="w-4 h-4" /> PDF
-            </button>
-            <button onClick={handleAddClick} className={buttonStyles.primary}>
-              <UserPlus className="w-4 h-4" /> Registrar empleado
-            </button>
-          </>
-        }
-      />
+    <div className="flex-1 p-8 overflow-y-auto space-y-8 select-none animate-fade-in relative">
+      
+      {/* Encabezado y Acciones Principales */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-black text-slate-800 dark:text-white tracking-tight">
+            Directorio de Personal
+          </h1>
+          <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">
+            Registra, administra y audita el estado y balances de los empleados.
+          </p>
+        </div>
+        
+        <div className="flex items-center gap-3 self-end md:self-auto">
+          {/* Botones de Exportar */}
+          <button
+            onClick={() => exportEmployeesToExcel(filteredEmployees)}
+            disabled={filteredEmployees.length === 0}
+            className="p-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/40 text-emerald-600 dark:text-emerald-450 hover:bg-emerald-50 dark:hover:bg-emerald-500/5 shadow-sm hover:shadow transition duration-200 disabled:opacity-50"
+            title="Exportar a Excel"
+          >
+            <FileSpreadsheet className="w-5 h-5" />
+          </button>
+          
+          <button
+            onClick={() => exportEmployeesToPDF(filteredEmployees)}
+            disabled={filteredEmployees.length === 0}
+            className="p-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/40 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/5 shadow-sm hover:shadow transition duration-200 disabled:opacity-50"
+            title="Exportar a PDF"
+          >
+            <FileText className="w-5 h-5" />
+          </button>
+
+          {/* Botón Añadir Empleado */}
+          <button
+            onClick={handleAddClick}
+            className="flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-brand-500 hover:bg-brand-600 text-white font-bold text-sm shadow-md hover:shadow-lg transition duration-200"
+          >
+            <UserPlus className="w-4 h-4" />
+            <span>Registrar Empleado</span>
+          </button>
+        </div>
+      </div>
 
       {error && (
-        <div className="p-4 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl text-sm flex items-center gap-3">
-          <AlertTriangle className="w-4 h-4" />
+        <div className="p-4 bg-rose-500/10 border border-rose-500/20 text-rose-400 rounded-2xl text-sm flex items-center gap-3">
+          <AlertTriangle className="w-5 h-5" />
           <span>{error}</span>
         </div>
       )}
 
       {saveWarnings.length > 0 && (
-        <div className="p-4 bg-amber-50 border border-amber-200 text-amber-800 rounded-xl text-[13px] flex items-start gap-3">
-          <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 text-amber-600" />
+        <div className="p-4 bg-amber-50 border border-amber-200 text-amber-800 rounded-2xl text-xs font-semibold flex items-start gap-3">
+          <AlertTriangle className="w-5 h-5 shrink-0 text-amber-500" />
           <div className="flex-1 space-y-1">
-            <p className="font-semibold">Guardado, con advertencias legales:</p>
             {saveWarnings.map(w => <p key={w}>{w}</p>)}
           </div>
-          <button onClick={() => setSaveWarnings([])} className="text-amber-600 hover:text-amber-800" aria-label="Cerrar">
+          <button onClick={() => setSaveWarnings([])} className="text-amber-500 hover:text-amber-700" title="Cerrar">
             <X className="w-4 h-4" />
           </button>
         </div>
       )}
 
-      {/* Filtros */}
-      <div className="flex flex-col md:flex-row gap-3">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+      {/* Barra de Filtros y Búsqueda */}
+      <div className="glass-card p-5 grid grid-cols-1 md:grid-cols-4 gap-4">
+        {/* Buscador */}
+        <div className="relative md:col-span-2">
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 pointer-events-none" />
           <input
-            type="search"
+            type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Buscar por nombre o documento"
-            aria-label="Buscar empleado"
-            className="w-full bg-white border border-slate-200 rounded-lg py-2 pl-9 pr-3 text-sm transition"
+            placeholder="Buscar por nombre o número de documento..."
+            className="w-full bg-white border border-slate-200 focus:border-brand-500 rounded-2xl py-2.5 pl-11 pr-4 text-sm outline-none transition duration-200 focus:ring-2 focus:ring-brand-500/10"
           />
         </div>
+
+        {/* Filtro por Departamento */}
         <select
           value={deptFilter}
           onChange={(e) => setDeptFilter(e.target.value)}
-          aria-label="Filtrar por área"
-          className="bg-white border border-slate-200 rounded-lg py-2 px-3 text-sm md:w-56"
+          className="bg-white border border-slate-200 rounded-2xl py-2.5 px-4 text-sm outline-none focus:border-brand-500 transition duration-200"
         >
-          <option value="">Todas las áreas</option>
+          <option value="">Todos los Departamentos</option>
           {departments.map(dept => (
             <option key={dept.id} value={dept.name}>{dept.name}</option>
           ))}
         </select>
+
+        {/* Filtro por Estado */}
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
-          aria-label="Filtrar por estado"
-          className="bg-white border border-slate-200 rounded-lg py-2 px-3 text-sm md:w-44"
+          className="bg-white border border-slate-200 rounded-2xl py-2.5 px-4 text-sm outline-none focus:border-brand-500 transition duration-200"
         >
-          <option value="">Activos e inactivos</option>
-          <option value="activo">Solo activos</option>
-          <option value="inactivo">Solo inactivos</option>
+          <option value="">Todos los Estados</option>
+          <option value="activo">Activos</option>
+          <option value="inactivo">Inactivos</option>
         </select>
       </div>
 
       {/* Tabla de Empleados */}
-      <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+      <div className="glass-card overflow-hidden">
         {filteredEmployees.length === 0 ? (
           <div className="py-16 text-center">
-            <p className="text-sm text-slate-500">Ningún empleado coincide con la búsqueda.</p>
+            <p className="text-sm font-semibold text-slate-400 dark:text-slate-500">No se encontraron empleados con los criterios de búsqueda.</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-[13px] border-collapse">
+            <table className="w-full text-left text-sm border-collapse">
               <thead>
-                <tr className="text-slate-500 border-b border-slate-200 bg-slate-50">
-                  <th className="font-medium py-2.5 px-5">Empleado</th>
-                  <th className="font-medium py-2.5 px-4">Cargo y área</th>
-                  <th className="font-medium py-2.5 px-4">Ingreso</th>
-                  <th className="font-medium py-2.5 px-4">Estado</th>
-                  <th className="font-medium py-2.5 px-4 text-right" title="Días hábiles de vacaciones ganados por tiempo de servicio">Días causados</th>
-                  <th className="font-medium py-2.5 px-4 text-right" title="Días ya disfrutados o pagados en dinero">Usados</th>
-                  <th className="font-medium py-2.5 px-5 text-right" title="Días que el empleado aún puede tomar">Disponibles</th>
+                <tr className="bg-slate-50/70 text-slate-500 font-bold border-b border-slate-200/60">
+                  <th className="py-4 px-6">Empleado</th>
+                  <th className="py-4 px-4">Documento</th>
+                  <th className="py-4 px-4">Cargo / Área</th>
+                  <th className="py-4 px-4">Ingreso</th>
+                  <th className="py-4 px-4 text-center">Estado</th>
+                  <th className="py-4 px-4 text-center">Acum.</th>
+                  <th className="py-4 px-4 text-center">Tomados</th>
+                  <th className="py-4 px-4 text-center">Disp.</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-150">
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800/30">
                 {filteredEmployees.map(emp => {
                   const stats = emp.vacationStats || { accruedDays: 0, takenDays: 0, availableDays: 0 };
-                  const isLowBalance = emp.status === 'activo' && stats.generatesVacations !== false && stats.availableDays <= 3;
-                  const overLimit = emp.status === 'activo' && stats.exceedsAccumulation;
-
+                  const isLowBalance = emp.status === 'activo' && stats.availableDays <= 3;
+                  
                   return (
-                    <tr
-                      key={emp.id}
-                      className="hover:bg-slate-50 transition-colors cursor-pointer"
+                    <tr 
+                      key={emp.id} 
+                      className="hover:bg-brand-50/50 transition-colors cursor-pointer group"
                       onClick={() => onViewChange('employee-detail', emp.id)}
                     >
-                      <td className="py-3 px-5">
-                        <div className="font-semibold text-slate-800">{emp.fullName}</div>
-                        <div className="text-xs text-slate-500 mt-0.5">C.C. {emp.documentNumber}</div>
+                      {/* Nombre */}
+                      <td className="py-4 px-6">
+                        <div className="font-bold text-slate-800 dark:text-slate-200 leading-snug">{emp.fullName}</div>
                       </td>
-                      <td className="py-3 px-4">
-                        <div className="text-slate-700">{emp.position}</div>
-                        <div className="text-xs text-slate-500 mt-0.5">{emp.department}</div>
+                      
+                      {/* Documento */}
+                      <td className="py-4 px-4 font-semibold text-slate-600 dark:text-slate-400">
+                        {emp.documentNumber}
                       </td>
-                      <td className="py-3 px-4 text-slate-600 whitespace-nowrap">
+
+                      {/* Cargo y Área */}
+                      <td className="py-4 px-4">
+                        <div className="font-semibold text-slate-700 dark:text-slate-300 text-xs">{emp.position}</div>
+                        <div className="text-[10px] text-slate-400 font-bold tracking-wide uppercase mt-0.5">{emp.department}</div>
+                      </td>
+
+                      {/* Fecha de Ingreso */}
+                      <td className="py-4 px-4 text-xs font-semibold text-slate-600 dark:text-slate-400">
                         {formatDateFriendly(emp.hireDate)}
                       </td>
-                      <td className="py-3 px-4">
-                        <Badge tone={emp.status === 'activo' ? 'good' : 'neutral'}>
-                          {emp.status === 'activo' ? 'Activo' : 'Retirado'}
-                        </Badge>
-                      </td>
-                      <td className="py-3 px-4 text-right text-slate-600">{formatDays(stats.accruedDays)}</td>
-                      <td className="py-3 px-4 text-right text-slate-600">{formatDays(stats.takenDays)}</td>
-                      <td className="py-3 px-5 text-right">
-                        <span className={`font-semibold ${overLimit ? 'text-rose-600' : isLowBalance ? 'text-amber-700' : 'text-slate-900'}`}>
-                          {formatDays(stats.availableDays)}
+
+                      {/* Estado */}
+                      <td className="py-4 px-4 text-center">
+                        <span className={`inline-block px-2.5 py-0.5 text-[10px] font-bold rounded-full select-none ${
+                          emp.status === 'activo'
+                            ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+                            : 'bg-slate-500/10 text-slate-500 dark:text-slate-400'
+                        }`}>
+                          {emp.status === 'activo' ? 'Activo' : 'Inactivo'}
                         </span>
-                        {overLimit && <span className="block text-[11px] text-rose-600">Supera el tope legal</span>}
-                        {!overLimit && isLowBalance && <span className="block text-[11px] text-amber-700">Saldo bajo</span>}
+                      </td>
+
+                      {/* Acumulados */}
+                      <td className="py-4 px-4 text-center font-bold text-slate-600 dark:text-slate-400">
+                        {formatDays(stats.accruedDays)}
+                      </td>
+
+                      {/* Tomados */}
+                      <td className="py-4 px-4 text-center font-bold text-slate-600 dark:text-slate-400">
+                        {formatDays(stats.takenDays)}
+                      </td>
+
+                      {/* Disponibles */}
+                      <td className={`py-4 px-4 text-center font-black ${
+                        isLowBalance
+                          ? 'text-rose-600 dark:text-rose-450'
+                          : 'text-emerald-600 dark:text-emerald-450'
+                      }`}>
+                        <div className="flex items-center justify-center gap-1">
+                          <span>{formatDays(stats.availableDays)}</span>
+                          {isLowBalance && <AlertTriangle className="w-3.5 h-3.5 text-rose-500 shrink-0" title="Saldo crítico de días" />}
+                        </div>
                       </td>
                     </tr>
                   );
@@ -427,7 +471,6 @@ export default function EmployeeList({ token, userRole, onViewChange }) {
             </table>
           </div>
         )}
-      </div>
       </div>
 
       {/* MODAL REGISTRAR / EDITAR EMPLEADO */}

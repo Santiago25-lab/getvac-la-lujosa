@@ -8,32 +8,18 @@ Este documento mantiene un registro histórico de las modificaciones, correccion
 
 ---
 
-## [Evolución 4] - 26 de Octubre de 2026 — Rediseño de la interfaz
+## [Evolución 4] - 26 de Octubre de 2026 — Correcciones de interfaz (diseño original)
 
-### 🎨 Sistema de diseño "Registro" (`frontend/src/index.css`)
-- Tipografía Public Sans (interfaz) y Source Serif 4 (títulos y cifras), con números tabulares.
-- Neutros cálidos, un solo color de acción (petróleo) y color de estado solo cuando significa algo: verde en regla, ocre atención, rojo incumplimiento.
-- Las escalas de Tailwind se redefinen en un solo lugar, así que todas las vistas heredan el estilo.
-- Componentes compartidos en `components/ui.jsx` (`PageHeader`, `Section`, `Metric`, `Badge`, `EmptyState`) y formatos en `components/styles.js`.
+Se probó un rediseño completo de la interfaz y se revirtió a petición del usuario: se conserva el diseño original y solo se aplican las correcciones de datos y lógica.
 
-### 🧭 Navegación
-- Menú agrupado (Personas, Finanzas, Administración) en `navigation.js`. "Panel Super" pasa a llamarse **Configuración**, y la antigua "Configuración", **Reglas laborales**.
-- La cabecera muestra la ubicación (miga de pan) en lugar de repetir el título; se quitó un buscador que no hacía nada.
-- La barra lateral muestra el nombre y el logo de la empresa configurados y el usuario conectado.
-
-### 🖥️ Vistas
-- **Inicio:** estado del personal hoy, una sola lista de "Requiere atención" ordenada por gravedad, próximos 15 días (incluye festivos nacionales) y costo de la nómina explicado.
-- **Configuración:** organizada en pestañas (Empresa, Jornada y calendario, Vacaciones, Nómina y aportes, Usuarios, Auditoría).
-- **Empleados, Vacaciones, Novedades, Asistencia, Costos laborales, Analítica, Reglas laborales y Expediente:** encabezados uniformes, columnas con nombres claros, cada cifra con su explicación.
-- **Login** en dos columnas, sin degradados.
-
-### 🐛 Correcciones encontradas en el rediseño
-- Inicio: "Ausentes" leía un campo inexistente (siempre 0); los festivos y las jornadas especiales mostraban nombres vacíos; la alerta de "vacaciones vencidas" no usaba el tope legal; para el rol Administrador la página fallaba por no tener acceso a costos.
-- Analítica: "Saludable" y "Atención" estaban fijos; con cero marcaciones mostraba 100% de puntualidad.
-- Novedades: cancelar unas vacaciones desde la tabla fallaba; las fechas salían en formato técnico.
-- Asistencia: filtro de áreas con valores inventados.
-- Cifras con ruido decimal (24.380000000000003) y lupas de búsqueda deformadas.
-- Un hook de React declarado después de un `return` condicional en `App.jsx`.
+- **Dashboard:** "Ausentes" leía un campo inexistente y siempre mostraba 0; los días no laborables y las jornadas especiales salían sin nombre; la alerta de vacaciones ahora usa el tope legal calculado por el backend (Art. 190 CST); para el rol Administrador el panel fallaba por no tener acceso a costos (ahora oculta solo la sección financiera).
+- **Analytics:** las etiquetas "Saludable"/"Atención" estaban fijas; ahora dependen del valor. Sin marcaciones en el periodo muestra "Sin datos" en lugar de 100% de puntualidad.
+- **Novedades:** cancelar unas vacaciones desde la tabla fallaba (se enviaba `vac-1` a la ruta de novedades).
+- **Asistencias:** el filtro de áreas tenía valores inventados; ahora usa las áreas reales.
+- **Empleados y expediente:** saldos sin ruido decimal (24.380000000000003 → 24.38).
+- **Cabecera:** título y descripción correctos para cada sección (antes casi todas decían "Panel de Control").
+- **Configuración del Sistema:** el historial de cambios se muestra en texto legible en lugar de JSON.
+- Íconos de búsqueda desalineados y un hook de React declarado después de un `return` condicional en `App.jsx`.
 
 ---
 

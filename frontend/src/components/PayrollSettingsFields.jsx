@@ -1,5 +1,4 @@
 import React from 'react';
-import { computeScheduleHours } from './styles.js';
 import { Landmark, ShieldAlert, Clock, Info, RotateCcw, AlertTriangle, CheckCircle2 } from 'lucide-react';
 
 // Secciones del Panel Super para los parámetros de nómina y jornada.
@@ -72,6 +71,24 @@ export function LegalValuesFields({ settings, setSettings, legal }) {
     </div>
   );
 }
+
+// Mismo cálculo que scheduleHours() en el backend.
+const spanHours = (start, end) => {
+  if (!start || !end) return 0;
+  const [h1, m1] = start.split(':').map(Number);
+  const [h2, m2] = end.split(':').map(Number);
+  const diff = (h2 * 60 + m2 - (h1 * 60 + m1)) / 60;
+  return diff > 0 ? diff : 0;
+};
+
+export const computeScheduleHours = (settings) => {
+  const dailyHours = settings.isSplitShift
+    ? spanHours(settings.checkInTimeMorning, settings.checkOutTimeMorning) + spanHours(settings.checkInTimeAfternoon, settings.checkOutTimeAfternoon)
+    : Math.max(0, spanHours(settings.checkInTime, settings.checkOutTime) - (Number(settings.lunchBreakMinutes) || 0) / 60);
+  const count = (value) => String(value || '').split(',').filter(Boolean).length;
+  const weeklyHours = dailyHours * count(settings.workDays) + (dailyHours / 2) * count(settings.halfWorkDays);
+  return { dailyHours: Math.round(dailyHours * 100) / 100, weeklyHours: Math.round(weeklyHours * 100) / 100 };
+};
 
 // Resumen de la jornada configurada frente a la jornada máxima legal (Ley 2101 de 2021).
 export function WorkScheduleSummary({ settings, legal }) {

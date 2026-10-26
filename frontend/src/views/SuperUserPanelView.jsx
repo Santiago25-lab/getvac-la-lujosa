@@ -3,7 +3,6 @@ import { ShieldCheck, Briefcase, History, Save, Plus, Trash2, Edit, CheckCircle2
 import { API_URL } from '../config.js';
 import { getColombianHolidays } from '../utils/colombianHolidays.js';
 import VacationPolicyFields from '../components/VacationPolicyFields.jsx';
-import { PageHeader } from '../components/ui.jsx';
 import { LegalValuesFields, WorkScheduleSummary, SocialSecurityFields, WorkRulesInfo } from '../components/PayrollSettingsFields.jsx';
 
 export default function SuperUserPanelView({ token, userRole }) {
@@ -41,7 +40,6 @@ export default function SuperUserPanelView({ token, userRole }) {
   const thisYear = new Date().getFullYear();
   const [activeHolidayYear, setActiveHolidayYear] = useState(thisYear);
   const [settingsWarnings, setSettingsWarnings] = useState([]);
-  const [tab, setTab] = useState('empresa');
   
   // Jornadas Especiales
   const [specialWorkdays, setSpecialWorkdays] = useState([]);
@@ -441,71 +439,55 @@ export default function SuperUserPanelView({ token, userRole }) {
     ? logs.filter(log => log.username && log.username.toLowerCase() === auditFilterUsername.toLowerCase())
     : logs;
 
-  const SETTINGS_TABS = ['empresa', 'jornada', 'vacaciones', 'nomina'];
-  const TABS = [
-    { id: 'empresa', label: 'Empresa' },
-    { id: 'jornada', label: 'Jornada y calendario' },
-    { id: 'vacaciones', label: 'Vacaciones' },
-    { id: 'nomina', label: 'Nómina y aportes' },
-    { id: 'usuarios', label: 'Usuarios' },
-    { id: 'auditoria', label: 'Auditoría' },
-  ];
-
   return (
-    <div className="flex-1 overflow-y-auto animate-fade-in">
-      <div className="max-w-[1040px] mx-auto px-8 py-8 space-y-6">
-
-      <PageHeader
-        title="Configuración"
-        description="Las reglas con las que el sistema calcula vacaciones, asistencia y costos. Todo se valida contra la ley vigente: no se aceptan valores por debajo del mínimo legal."
-      />
-
-      <nav className="flex gap-1 border-b border-slate-200 -mt-2 overflow-x-auto" aria-label="Secciones de configuración">
-        {TABS.map(t => (
-          <button
-            key={t.id}
-            type="button"
-            onClick={() => { setTab(t.id); setSuccessMsg(''); setErrorMsg(''); }}
-            aria-current={tab === t.id ? 'page' : undefined}
-            className={`px-3 py-2.5 text-[13px] whitespace-nowrap border-b-2 -mb-px transition-colors ${
-              tab === t.id ? 'border-brand-500 text-slate-900 font-semibold' : 'border-transparent text-slate-500 hover:text-slate-800'
-            }`}
-          >
-            {t.label}
-          </button>
-        ))}
-      </nav>
+    <div className="flex-1 p-8 overflow-y-auto space-y-8 select-none animate-fade-in">
+      
+      <div>
+        <h1 className="text-2xl font-black text-slate-800 tracking-tight">
+          Panel de Super Usuario
+        </h1>
+        <p className="text-sm text-slate-500 font-medium">
+          Gestión de reglas de la empresa, departamentos e historial de auditoría.
+        </p>
+      </div>
 
       {successMsg && (
-        <div role="status" className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-lg text-[13px] flex items-center gap-2.5">
-          <CheckCircle2 className="w-4 h-4 shrink-0" />
+        <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 rounded-2xl text-xs font-semibold flex items-center gap-2.5">
+          <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-500" />
           <span>{successMsg}</span>
         </div>
       )}
 
       {errorMsg && (
-        <div role="alert" className="p-3 bg-rose-50 border border-rose-200 text-rose-700 rounded-lg text-[13px] flex items-center gap-2.5">
-          <ShieldAlert className="w-4 h-4 shrink-0" />
+        <div className="p-4 bg-rose-500/10 border border-rose-500/20 text-rose-500 rounded-2xl text-xs font-semibold flex items-center gap-2.5">
+          <ShieldAlert className="w-4 h-4 shrink-0 text-rose-500" />
           <span>{errorMsg}</span>
         </div>
       )}
 
       {settingsWarnings.length > 0 && (
-        <div className="p-3 bg-amber-50 border border-amber-200 text-amber-800 rounded-lg text-[13px] space-y-1">
+        <div className="p-4 bg-amber-50 border border-amber-200 text-amber-800 rounded-2xl text-xs font-semibold space-y-1">
           {settingsWarnings.map(w => (
             <div key={w} className="flex items-start gap-2.5">
-              <ShieldAlert className="w-4 h-4 shrink-0 mt-0.5" />
+              <ShieldAlert className="w-4 h-4 shrink-0 text-amber-500" />
               <span>{w}</span>
             </div>
           ))}
         </div>
       )}
 
-      {SETTINGS_TABS.includes(tab) && (
-        <form onSubmit={handleSaveSettings} className="bg-white border border-slate-200 rounded-xl shadow-sm">
-          <div className="p-6 space-y-4">
-          {tab === 'empresa' && (
-            <>
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+        
+        {/* Bloque 1: Reglas de la Empresa */}
+        <div className="glass-card p-6 space-y-6">
+          <div className="flex items-center gap-2.5 pb-4 border-b border-slate-100">
+            <div className="p-1.5 rounded-lg bg-brand-500/10 text-brand-500">
+              <ShieldCheck className="w-5 h-5" />
+            </div>
+            <h3 className="text-lg font-bold text-slate-800">Reglas de la Empresa</h3>
+          </div>
+
+          <form onSubmit={handleSaveSettings} className="space-y-4">
             <div className="space-y-1">
               <label className="text-xs font-bold text-slate-500 uppercase">Nombre de la Empresa</label>
               <input
@@ -574,10 +556,8 @@ export default function SuperUserPanelView({ token, userRole }) {
               />
             </div>
 
-            </>
-          )}
-          {tab === 'jornada' && (
-            <>
+            <LegalValuesFields settings={settings} setSettings={setSettings} legal={legalFramework} />
+
             <div className="flex items-center gap-2.5 pt-4 pb-2 border-b border-slate-100">
               <div className="p-1.5 rounded-lg bg-rose-500/10 text-rose-500">
                 <Calendar className="w-5 h-5" />
@@ -593,15 +573,15 @@ export default function SuperUserPanelView({ token, userRole }) {
                   const isHalf = halfDays.includes(day.id);
                   
                   let btnClass = 'bg-white text-slate-650 border-slate-200 hover:bg-slate-100 hover:text-slate-800'; // ⚪
-                  let iconStr = '○';
+                  let iconStr = '⚪';
                   let titleStr = `${day.name} (No laboral)`;
 
                   if (isHalf) {
-                    btnClass = 'bg-brand-100 text-brand-800 border-brand-300 hover:bg-brand-200'; // ◐
+                    btnClass = 'bg-amber-500 text-white border-amber-500 hover:bg-amber-600 shadow-md shadow-amber-500/20'; // ◐
                     iconStr = '◐';
                     titleStr = `${day.name} (Media jornada)`;
                   } else if (isFull) {
-                    btnClass = 'bg-brand-600 text-white border-brand-600 hover:bg-brand-700'; // ●
+                    btnClass = 'bg-rose-600 text-white border-rose-600 hover:bg-rose-700 shadow-md shadow-rose-600/20'; // ●
                     iconStr = '●';
                     titleStr = `${day.name} (Jornada completa)`;
                   }
@@ -621,9 +601,9 @@ export default function SuperUserPanelView({ token, userRole }) {
                 })}
               </div>
               <div className="text-[10px] text-slate-400 font-medium mt-1 flex gap-3">
-                <span>○ No laboral</span>
-                <span><span className="text-brand-400">◐</span> Media jornada</span>
-                <span><span className="text-brand-600">●</span> Jornada completa</span>
+                <span>⚪ No laboral</span>
+                <span><span className="text-amber-500">◐</span> Media</span>
+                <span><span className="text-rose-600">●</span> Completa</span>
               </div>
             </div>
 
@@ -729,10 +709,6 @@ export default function SuperUserPanelView({ token, userRole }) {
 
             <WorkScheduleSummary settings={settings} legal={legalFramework} />
 
-            </>
-          )}
-          {tab === 'vacaciones' && (
-            <>
             <VacationPolicyFields settings={settings} setSettings={setSettings} legal={legalFramework} />
 
             <div className="flex flex-col gap-2 p-3 bg-slate-50 dark:bg-slate-950/20 rounded-2xl border border-slate-100 dark:border-slate-800 ">
@@ -766,30 +742,20 @@ export default function SuperUserPanelView({ token, userRole }) {
             </div>
 
 
-            </>
-          )}
-          {tab === 'nomina' && (
-            <>
-            <LegalValuesFields settings={settings} setSettings={setSettings} legal={legalFramework} />
-
             <SocialSecurityFields settings={settings} setSettings={setSettings} legal={legalFramework} />
 
             <WorkRulesInfo legal={legalFramework} />
 
-            </>
-          )}
-          </div>
-          <div className="flex items-center justify-between gap-4 px-6 py-3.5 border-t border-slate-200 bg-slate-50 rounded-b-xl">
-            <p className="text-xs text-slate-500">Los cambios aplican a todos los cálculos desde que se guardan.</p>
-            <button type="submit" className="inline-flex items-center gap-2 bg-brand-600 hover:bg-brand-700 text-white text-[13px] font-semibold px-4 py-2 rounded-lg transition-colors">
-              <Save className="w-4 h-4" /> Guardar cambios
+            <button
+              type="submit"
+              className="w-full bg-brand-500 hover:bg-brand-600 text-white font-bold py-2.5 px-4 rounded-xl shadow-lg shadow-brand-500/10 transition flex items-center justify-center gap-2"
+            >
+              <Save className="w-4 h-4" />
+              <span>Guardar Reglas</span>
             </button>
-          </div>
-        </form>
-      )}
+          </form>
+        </div>
 
-      {tab === 'empresa' && (
-        <>
         {/* Bloque 2: Gestión de Departamentos */}
         <div className="glass-card p-6 space-y-6">
           <div className="flex items-center gap-2.5 pb-4 border-b border-slate-100">
@@ -833,11 +799,8 @@ export default function SuperUserPanelView({ token, userRole }) {
           </div>
         </div>
 
-        </>
-      )}
+      </div>
 
-      {tab === 'jornada' && (
-        <>
       {/* Jornadas Especiales */}
       <div className="glass-card p-6 space-y-6">
         <div className="flex items-center gap-2.5 pb-4 border-b border-slate-100">
@@ -1115,11 +1078,6 @@ export default function SuperUserPanelView({ token, userRole }) {
 
       </div>
 
-        </>
-      )}
-
-      {tab === 'usuarios' && (
-        <>
       {/* Bloque: Gestión de Usuarios */}
       <div className="glass-card p-6 space-y-6">
         <div className="flex items-center gap-2.5 pb-4 border-b border-slate-100">
@@ -1246,11 +1204,6 @@ export default function SuperUserPanelView({ token, userRole }) {
         </div>
       </div>
 
-        </>
-      )}
-
-      {tab === 'auditoria' && (
-        <>
       {/* Bloque 3: Historial de Auditoría */}
       <div className="glass-card p-6 space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
@@ -1326,10 +1279,6 @@ export default function SuperUserPanelView({ token, userRole }) {
         </div>
       </div>
 
-        </>
-      )}
-
-      </div>
       {/* Modal de Edición de Usuario */}
       {isUserEditModalOpen && editingUser && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-fade-in">

@@ -3,6 +3,7 @@ import { ShieldCheck, Briefcase, History, Save, Plus, Trash2, Edit, CheckCircle2
 import { API_URL } from '../config.js';
 import { getColombianHolidays } from '../utils/colombianHolidays.js';
 import VacationPolicyFields from '../components/VacationPolicyFields.jsx';
+import { LegalValuesFields, WorkScheduleSummary, SocialSecurityFields, WorkRulesInfo } from '../components/PayrollSettingsFields.jsx';
 
 export default function SuperUserPanelView({ token, userRole }) {
   const [logs, setLogs] = useState([]);
@@ -36,7 +37,9 @@ export default function SuperUserPanelView({ token, userRole }) {
   // Días Especiales No Laborables y Festivos
   const [companyHolidays, setCompanyHolidays] = useState([]);
   const [newHoliday, setNewHoliday] = useState({ date: '', reason: '' });
-  const [activeHolidayYear, setActiveHolidayYear] = useState(2026);
+  const thisYear = new Date().getFullYear();
+  const [activeHolidayYear, setActiveHolidayYear] = useState(thisYear);
+  const [settingsWarnings, setSettingsWarnings] = useState([]);
   
   // Jornadas Especiales
   const [specialWorkdays, setSpecialWorkdays] = useState([]);
@@ -147,6 +150,22 @@ export default function SuperUserPanelView({ token, userRole }) {
     }
   };
 
+  const handleDeleteDepartment = async (dept) => {
+    if (!window.confirm(`¿Eliminar el departamento "${dept.name}"?`)) return;
+    try {
+      const res = await fetch(`${API_URL}/api/departments/${dept.id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Error al eliminar departamento');
+      setSuccessMsg('Departamento eliminado.');
+      fetchData();
+    } catch (err) {
+      setErrorMsg(err.message);
+    }
+  };
+
   const handleSaveSettings = async (e) => {
     e.preventDefault();
     try {
@@ -161,7 +180,9 @@ export default function SuperUserPanelView({ token, userRole }) {
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Error al guardar configuración');
       
+      setErrorMsg('');
       setSuccessMsg('Reglas de la empresa actualizadas con éxito.');
+      setSettingsWarnings(data.warnings || []);
       fetchData();
     } catch (err) {
       setErrorMsg(err.message);
@@ -444,6 +465,17 @@ export default function SuperUserPanelView({ token, userRole }) {
         </div>
       )}
 
+      {settingsWarnings.length > 0 && (
+        <div className="p-4 bg-amber-50 border border-amber-200 text-amber-800 rounded-2xl text-xs font-semibold space-y-1">
+          {settingsWarnings.map(w => (
+            <div key={w} className="flex items-start gap-2.5">
+              <ShieldAlert className="w-4 h-4 shrink-0 text-amber-500" />
+              <span>{w}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
         
         {/* Bloque 1: Reglas de la Empresa */}
@@ -524,46 +556,14 @@ export default function SuperUserPanelView({ token, userRole }) {
               />
             </div>
 
-            <div className="flex flex-col gap-2 p-3 bg-slate-50 dark:bg-slate-950/20 rounded-2xl border border-slate-100 dark:border-slate-800 mt-2">
-              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Parámetros de Vacaciones</span>
-              <div className="flex gap-6 mt-1">
-                <div className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    id="vacationsSaturdaysCount"
-                    checked={settings.vacationsSaturdaysCount || false}
-                    onChange={(e) => setSettings({ ...settings, vacationsSaturdaysCount: e.target.checked })}
-                    className="rounded border-slate-300 text-brand-500 focus:ring-brand-500"
-                  />
-                  <label htmlFor="vacationsSaturdaysCount" className="text-xs font-bold text-slate-650 cursor-pointer">Contar Sábados</label>
-                </div>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    id="vacationsSundaysCount"
-                    checked={settings.vacationsSundaysCount || false}
-                    onChange={(e) => setSettings({ ...settings, vacationsSundaysCount: e.target.checked })}
-                    className="rounded border-slate-300 text-brand-500 focus:ring-brand-500"
-                  />
-                  <label htmlFor="vacationsSundaysCount" className="text-xs font-bold text-slate-650 cursor-pointer">Contar Domingos</label>
-                </div>
-              </div>
-            </div>
+            <LegalValuesFields settings={settings} setSettings={setSettings} legal={legalFramework} />
 
-            <div className="space-y-1">
-              <label className="text-xs font-bold text-slate-500 uppercase">SMMLV (Año en Curso)</label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold">$</span>
-                <input
-                  type="number"
-                  value={settings.smmlv || ''}
-                  onChange={(e) => setSettings({ ...settings, smmlv: parseInt(e.target.value) || 0 })}
-                  className="w-full bg-white border border-slate-200 rounded-xl py-2 pl-7 px-3 text-sm font-bold text-slate-800 outline-none focus:border-brand-500 transition"
-                  placeholder="1300000"
-                />
+            <div className="flex items-center gap-2.5 pt-4 pb-2 border-b border-slate-100">
+              <div className="p-1.5 rounded-lg bg-rose-500/10 text-rose-500">
+                <Calendar className="w-5 h-5" />
               </div>
+              <h3 className="text-sm font-bold text-slate-800">Jornada Laboral</h3>
             </div>
-
 
             <div className="space-y-2">
               <label className="text-xs font-bold text-slate-500 uppercase block">Días Laborables</label>
@@ -638,6 +638,17 @@ export default function SuperUserPanelView({ token, userRole }) {
                     className="w-full bg-white border border-slate-200 rounded-xl py-2 px-3 text-sm font-bold text-slate-800 outline-none focus:border-brand-500 transition"
                   />
                 </div>
+                <div className="space-y-1 col-span-2">
+                  <label className="text-xs font-bold text-slate-500 uppercase">Minutos de almuerzo (no son tiempo de trabajo)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    max={legalFramework?.limits?.lunchBreakMaxMinutes || 180}
+                    value={settings.lunchBreakMinutes ?? 60}
+                    onChange={(e) => setSettings({ ...settings, lunchBreakMinutes: e.target.value === '' ? '' : Number(e.target.value) })}
+                    className="w-full bg-white border border-slate-200 rounded-xl py-2 px-3 text-sm font-bold text-slate-800 outline-none focus:border-brand-500 transition"
+                  />
+                </div>
               </div>
             ) : (
               <div className="space-y-4">
@@ -685,111 +696,55 @@ export default function SuperUserPanelView({ token, userRole }) {
             )}
 
             <div className="space-y-1">
-              <label className="text-xs font-bold text-slate-500 uppercase">Minutos de Tolerancia</label>
+              <label className="text-xs font-bold text-slate-500 uppercase">Minutos de Tolerancia para Retardos</label>
               <input
                 type="number"
-                value={settings.toleranceMinutes || 0}
-                onChange={(e) => setSettings({ ...settings, toleranceMinutes: parseInt(e.target.value) })}
+                min="0"
+                max={legalFramework?.limits?.toleranceMaxMinutes || 60}
+                value={settings.toleranceMinutes ?? 0}
+                onChange={(e) => setSettings({ ...settings, toleranceMinutes: e.target.value === '' ? '' : Number(e.target.value) })}
                 className="w-full bg-white border border-slate-200 rounded-xl py-2 px-3 text-sm font-bold text-slate-800 outline-none focus:border-brand-500 transition"
               />
             </div>
 
+            <WorkScheduleSummary settings={settings} legal={legalFramework} />
+
             <VacationPolicyFields settings={settings} setSettings={setSettings} legal={legalFramework} />
 
-            <div className="flex items-center gap-2.5 pt-4 pb-2 border-b border-slate-100">
-              <div className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-500">
-                <Briefcase className="w-5 h-5" />
-              </div>
-              <h3 className="text-sm font-bold text-slate-800">Cargas Prestacionales (Empresa %)</h3>
-            </div>
-
-            <div className="grid grid-cols-3 gap-4">
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-500 uppercase">Salud (%)</label>
-                <input
-                  type="number" step="any"
-                  value={settings.healthCompanyPercentage || ''}
-                  onChange={(e) => setSettings({ ...settings, healthCompanyPercentage: parseFloat(e.target.value) })}
-                  className="w-full bg-white border border-slate-200 rounded-xl py-2 px-3 text-sm font-bold text-slate-800 outline-none focus:border-brand-500 transition"
-                  placeholder="Ej: 8.5"
-                />
-              </div>
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-500 uppercase">Pensión (%)</label>
-                <input
-                  type="number" step="any"
-                  value={settings.pensionCompanyPercentage || ''}
-                  onChange={(e) => setSettings({ ...settings, pensionCompanyPercentage: parseFloat(e.target.value) })}
-                  className="w-full bg-white border border-slate-200 rounded-xl py-2 px-3 text-sm font-bold text-slate-800 outline-none focus:border-brand-500 transition"
-                  placeholder="Ej: 12.0"
-                />
-              </div>
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-500 uppercase">Caja Comp. (%)</label>
-                <input
-                  type="number" step="any"
-                  value={settings.compensationFundPercentage || ''}
-                  onChange={(e) => setSettings({ ...settings, compensationFundPercentage: parseFloat(e.target.value) })}
-                  className="w-full bg-white border border-slate-200 rounded-xl py-2 px-3 text-sm font-bold text-slate-800 outline-none focus:border-brand-500 transition"
-                  placeholder="Ej: 4.0"
-                />
+            <div className="flex flex-col gap-2 p-3 bg-slate-50 dark:bg-slate-950/20 rounded-2xl border border-slate-100 dark:border-slate-800 ">
+              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Conteo de días hábiles de vacaciones (opcional)</span>
+              <span className="text-[11px] font-medium text-slate-400">
+                Los días laborables de la jornada siempre se descuentan. Marque estas casillas solo si la política de la empresa
+                es descontar también sábados o domingos que no se trabajan.
+              </span>
+              <div className="flex gap-6 mt-1">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="vacationsSaturdaysCount"
+                    checked={settings.vacationsSaturdaysCount || false}
+                    onChange={(e) => setSettings({ ...settings, vacationsSaturdaysCount: e.target.checked })}
+                    className="rounded border-slate-300 text-brand-500 focus:ring-brand-500"
+                  />
+                  <label htmlFor="vacationsSaturdaysCount" className="text-xs font-bold text-slate-650 cursor-pointer">Contar Sábados</label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="vacationsSundaysCount"
+                    checked={settings.vacationsSundaysCount || false}
+                    onChange={(e) => setSettings({ ...settings, vacationsSundaysCount: e.target.checked })}
+                    className="rounded border-slate-300 text-brand-500 focus:ring-brand-500"
+                  />
+                  <label htmlFor="vacationsSundaysCount" className="text-xs font-bold text-slate-650 cursor-pointer">Contar Domingos</label>
+                </div>
               </div>
             </div>
 
-            <div className="flex items-center gap-2.5 pt-4 pb-2 border-b border-slate-100">
-              <div className="p-1.5 rounded-lg bg-orange-500/10 text-orange-500">
-                <ShieldAlert className="w-5 h-5" />
-              </div>
-              <h3 className="text-sm font-bold text-slate-800">ARL por Riesgo (%)</h3>
-            </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-500 uppercase">Riesgo I</label>
-                <input
-                  type="number" step="any"
-                  value={settings.arlRisk1Percentage || ''}
-                  onChange={(e) => setSettings({ ...settings, arlRisk1Percentage: parseFloat(e.target.value) })}
-                  className="w-full bg-white border border-slate-200 rounded-xl py-2 px-2 text-xs font-bold text-slate-800 outline-none focus:border-brand-500 transition"
-                />
-              </div>
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-500 uppercase">Riesgo II</label>
-                <input
-                  type="number" step="any"
-                  value={settings.arlRisk2Percentage || ''}
-                  onChange={(e) => setSettings({ ...settings, arlRisk2Percentage: parseFloat(e.target.value) })}
-                  className="w-full bg-white border border-slate-200 rounded-xl py-2 px-2 text-xs font-bold text-slate-800 outline-none focus:border-brand-500 transition"
-                />
-              </div>
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-500 uppercase">Riesgo III</label>
-                <input
-                  type="number" step="any"
-                  value={settings.arlRisk3Percentage || ''}
-                  onChange={(e) => setSettings({ ...settings, arlRisk3Percentage: parseFloat(e.target.value) })}
-                  className="w-full bg-white border border-slate-200 rounded-xl py-2 px-2 text-xs font-bold text-slate-800 outline-none focus:border-brand-500 transition"
-                />
-              </div>
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-500 uppercase">Riesgo IV</label>
-                <input
-                  type="number" step="any"
-                  value={settings.arlRisk4Percentage || ''}
-                  onChange={(e) => setSettings({ ...settings, arlRisk4Percentage: parseFloat(e.target.value) })}
-                  className="w-full bg-white border border-slate-200 rounded-xl py-2 px-2 text-xs font-bold text-slate-800 outline-none focus:border-brand-500 transition"
-                />
-              </div>
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-500 uppercase">Riesgo V</label>
-                <input
-                  type="number" step="any"
-                  value={settings.arlRisk5Percentage || ''}
-                  onChange={(e) => setSettings({ ...settings, arlRisk5Percentage: parseFloat(e.target.value) })}
-                  className="w-full bg-white border border-slate-200 rounded-xl py-2 px-2 text-xs font-bold text-slate-800 outline-none focus:border-brand-500 transition"
-                />
-              </div>
-            </div>
+            <SocialSecurityFields settings={settings} setSettings={setSettings} legal={legalFramework} />
+
+            <WorkRulesInfo legal={legalFramework} />
 
             <button
               type="submit"
@@ -831,7 +786,12 @@ export default function SuperUserPanelView({ token, userRole }) {
             {departments.map((dept) => (
               <div key={dept.id} className="flex items-center justify-between p-2.5 bg-slate-50 rounded-xl border border-slate-150">
                 <span className="text-xs font-bold text-slate-700">{dept.name}</span>
-                <button className="text-slate-400 hover:text-rose-500 transition">
+                <button
+                  type="button"
+                  onClick={() => handleDeleteDepartment(dept)}
+                  className="text-slate-400 hover:text-rose-500 transition"
+                  title="Eliminar departamento"
+                >
                   <Trash2 className="w-4 h-4" />
                 </button>
               </div>
@@ -1056,14 +1016,14 @@ export default function SuperUserPanelView({ token, userRole }) {
               </div>
               <div>
                 <h3 className="text-lg font-bold text-slate-800">Festivos Nacionales de Colombia</h3>
-                <p className="text-xs text-slate-500 mt-0.5">Cálculo exacto bajo la Ley Emiliano-Romano (Ley 51 de 1983).</p>
+                <p className="text-xs text-slate-500 mt-0.5">Cálculo automático según la Ley Emiliani (Ley 51 de 1983).</p>
               </div>
             </div>
           </div>
 
           {/* Selector de Año */}
           <div className="flex bg-slate-100/80 p-1 rounded-xl gap-1">
-            {[2023, 2024, 2025, 2026].map((year) => (
+            {[thisYear - 1, thisYear, thisYear + 1].map((year) => (
               <button
                 key={year}
                 type="button"

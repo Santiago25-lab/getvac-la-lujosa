@@ -2,6 +2,27 @@ import { Op } from 'sequelize';
 import { Attendance, Employee, Novelty, Vacation, Setting, Permission } from '../models/index.js';
 import { calculateEmployeeVacationStats } from './employeeController.js';
 
+const ON_TIME_STATUSES = ['A tiempo', 'Presente', 'Salida registrada'];
+
+const toSeconds = (time) => {
+  if (!time) return null;
+  const [h, m, sec] = String(time).split(':').map(Number);
+  return Number.isFinite(h) && Number.isFinite(m) ? h * 3600 + m * 60 + (sec || 0) : null;
+};
+const segment = (start, end) => {
+  const a = toSeconds(start);
+  const b = toSeconds(end);
+  return a !== null && b !== null && b > a ? b - a : 0;
+};
+
+// Horas trabajadas de un registro: en jornada partida no se cuenta el almuerzo.
+const workedHours = (att) => {
+  const seconds = att.checkOutMorning || att.checkInAfternoon
+    ? segment(att.checkIn, att.checkOutMorning) + segment(att.checkInAfternoon, att.checkOut)
+    : segment(att.checkIn, att.checkOut);
+  return seconds / 3600;
+};
+
 export const getAnalyticsDashboard = async (req, res) => {
   try {
     const { period } = req.query; // '1m', '3m', '6m', '1y'
@@ -71,22 +92,19 @@ export const getAnalyticsDashboard = async (req, res) => {
       if (trendMap[trendKey]) {
         if (att.status === 'Tarde') {
           trendMap[trendKey].retardos++;
-        } else if (att.status === 'A tiempo' || att.status === 'Presente') {
+        } else if (ON_TIME_STATUSES.includes(att.status)) {
           trendMap[trendKey].aTiempo++;
         }
       }
 
       // Contadores globales
       if (att.status === 'Tarde') totalLate++;
-      if (att.status === 'A tiempo' || att.status === 'Presente') totalOntime++;
+      if (ON_TIME_STATUSES.includes(att.status)) totalOntime++;
 
       // Horas
-      if (att.employee && att.employee.status === 'activo' && att.checkIn && att.checkOut) {
-        const timeToDate = (timeStr) => new Date(`1970-01-01T${timeStr}Z`);
-        const start = timeToDate(att.checkIn);
-        const end = timeToDate(att.checkOut);
-        if (start < end) {
-          const diffHours = (end - start) / (1000 * 60 * 60);
+      if (att.employee && att.employee.status === 'activo') {
+        const diffHours = workedHours(att);
+        if (diffHours > 0) {
           totalHoursAll += diffHours;
           countHoursEntries++;
           
@@ -121,7 +139,7 @@ export const getAnalyticsDashboard = async (req, res) => {
     let totalAbsenceDaysGlobal = 0;
 
     novelties.forEach(nov => {
-      const type = nov.noveltyType || 'Otra';
+      const type = nov.type || 'Otra';
       noveltyTypesCount[type] = (noveltyTypesCount[type] || 0) + 1;
 
       // Calcular días de la novedad
@@ -154,8 +172,8 @@ export const getAnalyticsDashboard = async (req, res) => {
       where: {
         startDate: { [Op.lte]: endDate },
         endDate: { [Op.gte]: startDate },
-        tipoDisfrute: 'Físico',
-        status: { [Op.in]: ['Aprobada', 'Programada', 'En disfrute', 'Finalizada'] }
+        tipoDisfrute: { [Op.in]: ['Físico', 'Mixto'] },
+        status: { [Op.in]: ['Aprobada', 'Programada', 'En disfrute', 'Finalizada', 'Suspendida'] }
       }
     });
 
@@ -174,7 +192,7 @@ export const getAnalyticsDashboard = async (req, res) => {
 
     const permissionTypesCount = {};
     permissions.forEach(p => {
-      const pType = p.permissionType || 'Otro';
+      const pType = p.type || 'Otro';
       permissionTypesCount[pType] = (permissionTypesCount[pType] || 0) + 1;
       
       // Contar como ausencia temporal (para la gráfica de tendencia)

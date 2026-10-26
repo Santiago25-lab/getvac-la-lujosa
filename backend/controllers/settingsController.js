@@ -1,31 +1,73 @@
 import { Setting } from '../models/index.js';
-import { CST, POLICY_FIELDS, VACATION_NOTICE_MODES, validatePolicyUpdate } from '../utils/laborLaw.js';
+import {
+  CST,
+  POLICY_FIELDS,
+  VACATION_NOTICE_MODES,
+  ANNUAL_LEGAL_VALUES,
+  MAX_WEEKLY_HOURS_SCHEDULE,
+  SUNDAY_SURCHARGE_SCHEDULE,
+  SOCIAL_SECURITY,
+  ARL_RATES,
+  TOLERANCE_MAX_MINUTES,
+  LUNCH_BREAK_MAX_MINUTES,
+  validatePolicyUpdate,
+  validatePayrollSettings,
+  resolvePayrollParams,
+  legalSnapshot,
+  scheduleHours,
+} from '../utils/laborLaw.js';
 
-// Campos de política laboral configurables por empresa (validados contra el CST)
-const POLICY_KEYS = [
-  'vacationDaysPerYear', 'vacationNoticeDays', 'vacationNoticeMode', 'maxMoneyCompensationPercent',
-  'allowAdvanceVacations', 'discountUnpaidLeaveFromVacations'
+// Campos que la empresa puede configurar. Los aportes de salud, pensión y caja
+// de compensación son fijos por ley y no se aceptan desde el panel.
+const TEXT_FIELDS = [
+  'companyName', 'companyNit', 'companyAddress', 'companyPhone', 'companyEmail', 'companyLogo',
+  'workDays', 'halfWorkDays', 'checkInTime', 'checkOutTime',
+  'checkInTimeMorning', 'checkOutTimeMorning', 'checkInTimeAfternoon', 'checkOutTimeAfternoon',
+  'vacationNoticeMode',
 ];
+const BOOLEAN_FIELDS = [
+  'vacationsSaturdaysCount', 'vacationsSundaysCount', 'isSplitShift',
+  'allowAdvanceVacations', 'discountUnpaidLeaveFromVacations', 'parafiscalExemption',
+];
+const INTEGER_FIELDS = ['smmlv', 'transportAllowanceValue', 'toleranceMinutes', 'lunchBreakMinutes', 'vacationNoticeDays'];
+const FLOAT_FIELDS = ['vacationDaysPerYear', 'maxMoneyCompensationPercent', ...Object.values(ARL_RATES).map(r => r.setting)];
+
+const defaultSettings = () => {
+  const params = resolvePayrollParams({});
+  return {
+    smmlv: params.smmlv,
+    transportAllowanceValue: params.transportAllowance,
+    checkInTime: '08:00',
+    checkOutTime: '17:00',
+    toleranceMinutes: 10,
+    workDays: '1,2,3,4,5',
+    updatedBy: 'Sistema (Inicial)',
+  };
+};
 
 // Marco legal que el frontend usa para mostrar mínimos y explicar cada regla
-export const getLegalFramework = (req, res) => {
-  res.json({ cst: CST, policyFields: POLICY_FIELDS, vacationNoticeModes: VACATION_NOTICE_MODES });
+export const getLegalFramework = async (req, res) => {
+  const settings = await Setting.findOne().catch(() => null);
+  res.json({
+    cst: CST,
+    policyFields: POLICY_FIELDS,
+    vacationNoticeModes: VACATION_NOTICE_MODES,
+    annualValues: ANNUAL_LEGAL_VALUES,
+    maxWeeklyHoursSchedule: MAX_WEEKLY_HOURS_SCHEDULE,
+    sundaySurchargeSchedule: SUNDAY_SURCHARGE_SCHEDULE,
+    socialSecurity: SOCIAL_SECURITY,
+    arlRates: ARL_RATES,
+    limits: { toleranceMaxMinutes: TOLERANCE_MAX_MINUTES, lunchBreakMaxMinutes: LUNCH_BREAK_MAX_MINUTES },
+    snapshot: legalSnapshot(),
+    schedule: settings ? scheduleHours(settings) : null,
+  });
 };
 
 export const getSettings = async (req, res) => {
   try {
     let setting = await Setting.findOne();
     if (!setting) {
-      // Si no existe, crear la configuración por defecto
-      setting = await Setting.create({
-        daysRequiredForOneVacationDay: 24.333333333333332,
-        checkInTime: '08:00',
-        checkOutTime: '17:00',
-        toleranceMinutes: 10,
-        workDays: '1,2,3,4,5',
-        smmlv: 1300000,
-        updatedBy: 'Sistema (Inicial)'
-      });
+      setting = await Setting.create(defaultSettings());
     }
     res.json(setting);
   } catch (error) {
@@ -35,89 +77,57 @@ export const getSettings = async (req, res) => {
 };
 
 export const updateSettings = async (req, res) => {
-  const { 
-    daysRequiredForOneVacationDay, checkInTime, checkOutTime, toleranceMinutes, workDays, halfWorkDays,
-    companyName, companyNit, companyAddress, companyPhone, companyEmail, companyLogo,
-    vacationsSaturdaysCount, vacationsSundaysCount, isSplitShift,
-    checkInTimeMorning, checkOutTimeMorning, checkInTimeAfternoon, checkOutTimeAfternoon,
-    healthCompanyPercentage, pensionCompanyPercentage, compensationFundPercentage,
-    arlRisk1Percentage, arlRisk2Percentage, arlRisk3Percentage, arlRisk4Percentage, arlRisk5Percentage,
-    smmlv
-  } = req.body;
-
-  const legalErrors = validatePolicyUpdate(req.body);
-  if (legalErrors.length > 0) {
-    return res.status(400).json({ message: legalErrors.join(' '), errors: legalErrors });
+  const errors = [...validatePolicyUpdate(req.body), ...validatePayrollSettings(req.body)];
+  if (errors.length > 0) {
+    return res.status(400).json({ message: errors.join(' '), errors });
   }
 
-  const policyUpdates = {};
-  for (const key of POLICY_KEYS) {
-    if (req.body[key] !== undefined && req.body[key] !== '') policyUpdates[key] = req.body[key];
+  const updates = {};
+  for (const key of TEXT_FIELDS) {
+    if (req.body[key] !== undefined) updates[key] = req.body[key] === null ? '' : String(req.body[key]);
+  }
+  for (const key of BOOLEAN_FIELDS) {
+    if (req.body[key] !== undefined) updates[key] = req.body[key] === true;
+  }
+  for (const key of INTEGER_FIELDS) {
+    if (req.body[key] !== undefined && req.body[key] !== '' && req.body[key] !== null) updates[key] = Math.round(Number(req.body[key]));
+  }
+  for (const key of FLOAT_FIELDS) {
+    if (req.body[key] !== undefined && req.body[key] !== '' && req.body[key] !== null) updates[key] = Number(req.body[key]);
+  }
+
+  // Validaciones que dependen de varios campos a la vez
+  const merged = { ...(await Setting.findOne())?.toJSON(), ...updates };
+  if (!merged.workDays && !merged.halfWorkDays) {
+    return res.status(400).json({ message: 'Debe haber al menos un día laborable en la semana.' });
+  }
+  if (merged.isSplitShift && scheduleHours(merged).dailyHours <= 0) {
+    return res.status(400).json({ message: 'La jornada partida necesita horas de entrada y salida válidas para la mañana y la tarde.' });
+  }
+  if (!merged.isSplitShift && scheduleHours(merged).dailyHours <= 0) {
+    return res.status(400).json({ message: 'La hora de salida debe ser posterior a la de entrada (descontando el almuerzo).' });
   }
 
   try {
     let setting = await Setting.findOne();
     if (!setting) {
-      setting = await Setting.create({
-        ...policyUpdates,
-        daysRequiredForOneVacationDay: daysRequiredForOneVacationDay !== undefined ? parseFloat(daysRequiredForOneVacationDay) : 24.333333333333332,
-        checkInTime: checkInTime || '08:00',
-        checkOutTime: checkOutTime || '17:00',
-        toleranceMinutes: toleranceMinutes !== undefined ? parseInt(toleranceMinutes) : 10,
-        workDays: workDays || '1,2,3,4,5',
-        halfWorkDays: halfWorkDays || '',
-        companyName, companyNit, companyAddress, companyPhone, companyEmail, companyLogo,
-        vacationsSaturdaysCount, vacationsSundaysCount, isSplitShift,
-        checkInTimeMorning, checkOutTimeMorning, checkInTimeAfternoon, checkOutTimeAfternoon,
-        healthCompanyPercentage: healthCompanyPercentage !== undefined ? parseFloat(healthCompanyPercentage) : 8.5,
-        pensionCompanyPercentage: pensionCompanyPercentage !== undefined ? parseFloat(pensionCompanyPercentage) : 12.0,
-        compensationFundPercentage: compensationFundPercentage !== undefined ? parseFloat(compensationFundPercentage) : 4.0,
-        arlRisk1Percentage: arlRisk1Percentage !== undefined ? parseFloat(arlRisk1Percentage) : 0.522,
-        arlRisk2Percentage: arlRisk2Percentage !== undefined ? parseFloat(arlRisk2Percentage) : 1.044,
-        arlRisk3Percentage: arlRisk3Percentage !== undefined ? parseFloat(arlRisk3Percentage) : 2.436,
-        arlRisk4Percentage: arlRisk4Percentage !== undefined ? parseFloat(arlRisk4Percentage) : 4.350,
-        arlRisk5Percentage: arlRisk5Percentage !== undefined ? parseFloat(arlRisk5Percentage) : 6.960,
-        smmlv: smmlv !== undefined ? parseInt(smmlv) : 1300000,
-        updatedBy: req.user.fullName
-      });
+      setting = await Setting.create({ ...defaultSettings(), ...updates, updatedBy: req.user.fullName });
     } else {
-      if (daysRequiredForOneVacationDay !== undefined) setting.daysRequiredForOneVacationDay = parseFloat(daysRequiredForOneVacationDay);
-      if (checkInTime !== undefined) setting.checkInTime = checkInTime;
-      if (checkOutTime !== undefined) setting.checkOutTime = checkOutTime;
-      if (toleranceMinutes !== undefined) setting.toleranceMinutes = parseInt(toleranceMinutes);
-      if (workDays !== undefined) setting.workDays = workDays;
-      if (halfWorkDays !== undefined) setting.halfWorkDays = halfWorkDays;
-      if (companyName !== undefined) setting.companyName = companyName;
-      if (companyNit !== undefined) setting.companyNit = companyNit;
-      if (companyAddress !== undefined) setting.companyAddress = companyAddress;
-      if (companyPhone !== undefined) setting.companyPhone = companyPhone;
-      if (companyEmail !== undefined) setting.companyEmail = companyEmail;
-      if (companyLogo !== undefined) setting.companyLogo = companyLogo;
-      if (vacationsSaturdaysCount !== undefined) setting.vacationsSaturdaysCount = vacationsSaturdaysCount;
-      if (vacationsSundaysCount !== undefined) setting.vacationsSundaysCount = vacationsSundaysCount;
-      if (isSplitShift !== undefined) setting.isSplitShift = isSplitShift;
-      if (checkInTimeMorning !== undefined) setting.checkInTimeMorning = checkInTimeMorning;
-      if (checkOutTimeMorning !== undefined) setting.checkOutTimeMorning = checkOutTimeMorning;
-      if (checkInTimeAfternoon !== undefined) setting.checkInTimeAfternoon = checkInTimeAfternoon;
-      if (checkOutTimeAfternoon !== undefined) setting.checkOutTimeAfternoon = checkOutTimeAfternoon;
-      if (healthCompanyPercentage !== undefined) setting.healthCompanyPercentage = parseFloat(healthCompanyPercentage);
-      if (pensionCompanyPercentage !== undefined) setting.pensionCompanyPercentage = parseFloat(pensionCompanyPercentage);
-      if (compensationFundPercentage !== undefined) setting.compensationFundPercentage = parseFloat(compensationFundPercentage);
-      if (arlRisk1Percentage !== undefined) setting.arlRisk1Percentage = parseFloat(arlRisk1Percentage);
-      if (arlRisk2Percentage !== undefined) setting.arlRisk2Percentage = parseFloat(arlRisk2Percentage);
-      if (arlRisk3Percentage !== undefined) setting.arlRisk3Percentage = parseFloat(arlRisk3Percentage);
-      if (arlRisk4Percentage !== undefined) setting.arlRisk4Percentage = parseFloat(arlRisk4Percentage);
-      if (arlRisk5Percentage !== undefined) setting.arlRisk5Percentage = parseFloat(arlRisk5Percentage);
-      if (smmlv !== undefined) setting.smmlv = parseInt(smmlv);
-      Object.assign(setting, policyUpdates);
-      
-      setting.updatedBy = req.user.fullName;
-      await setting.save();
+      await setting.update({ ...updates, updatedBy: req.user.fullName });
+    }
+
+    // Advertencias legales que no bloquean el guardado
+    const warnings = [];
+    const snapshot = legalSnapshot();
+    const { weeklyHours } = scheduleHours(setting);
+    if (weeklyHours > snapshot.maxWeeklyHours) {
+      warnings.push(`El horario configurado suma ${weeklyHours} horas semanales y la jornada máxima legal hoy es de ${snapshot.maxWeeklyHours} (Ley 2101 de 2021). Las horas adicionales son horas extra.`);
     }
 
     res.json({
       message: 'Configuración actualizada exitosamente.',
-      setting
+      setting,
+      warnings
     });
   } catch (error) {
     console.error('Error al actualizar configuración:', error);

@@ -53,19 +53,15 @@ Hoy el sistema es de **una sola empresa**: hay un solo registro de `Settings` (`
 - Ley 1581 de 2012 (Habeas Data): política de tratamiento de datos, consentimiento y retención de soportes médicos (las incapacidades son datos sensibles).
 
 ### 3.3 Configuración por empresa (Panel Super)
-Ya se pueden configurar: días de vacaciones por año, días de aviso, modo de aviso, tope de compensación en dinero, vacaciones anticipadas, descuento de suspensiones, calendario laboral, horarios, porcentajes de aportes y ARL.
+Ya se pueden configurar: días de vacaciones por año, días de aviso, modo de aviso, tope de compensación en dinero, vacaciones anticipadas, descuento de suspensiones, calendario laboral, horarios y almuerzo (validados contra la Ley 2101), SMMLV y auxilio de transporte del año (nunca por debajo del decreto), exoneración del Art. 114-1 E.T. y tarifas ARL dentro del rango legal.
 
 Todavía falta poder configurar:
 
 | Configuración | Por qué varía entre empresas |
 |---|---|
-| **Tabla anual de SMMLV y auxilio de transporte** | Cambian cada año por decreto; hoy hay un solo valor ($1.300.000 por defecto, desactualizado) |
-| **Exoneración Art. 114-1 E.T.** (sí/no) | Depende de la naturaleza tributaria de cada empresa |
-| **Parafiscales SENA / ICBF** | Aplican solo a quienes no están exonerados |
 | **Tipos de contrato como catálogo** con efectos (genera vacaciones, prima, cesantías; salario integral) | Hoy `contractType` es texto libre |
 | **Catálogo de novedades** (remunerada sí/no, suspende el contrato sí/no, requiere soporte) | Cada empresa tiene licencias extralegales propias |
 | **Licencias legales precargadas**: luto (Ley 1280/2009), maternidad (Ley 2114/2021), paternidad, calamidad doméstica (Art. 57-6), día de la familia (Ley 1857/2017), sufragio (Ley 403/1997), citas médicas y obligaciones escolares (Ley 2466/2025) | Son mínimos de ley; la empresa solo puede ampliarlos |
-| **Jornada máxima semanal** validada contra la Ley 2101 | Evita configurar horarios ilegales |
 | **Vacaciones colectivas** | Algunas empresas cierran en diciembre |
 | **Flujo de aprobación de vacaciones** (Pendiente → Aprobada → Programada) con aprobadores | Hoy RRHH registra directo |
 
@@ -84,8 +80,8 @@ Todavía falta poder configurar:
 | 0 | Corrección de errores de cálculo y motor legal de vacaciones | ✅ Evolución 2 |
 | 1 | Seguridad de producción (seeds, JWT, endpoint público) y migraciones versionadas | Pendiente |
 | 2 | Multi-tenant: `Companies`, `companyId`, rol Dueño de plataforma, QR por empresa, branding por empresa | Pendiente |
-| 3 | Catálogos configurables: contratos, novedades y licencias, tabla anual de SMMLV | Pendiente |
-| 4 | Prestaciones completas: salario variable, salario integral, parafiscales, exoneración, liquidación de contrato | Pendiente |
+| 3 | Catálogos configurables: contratos, novedades y licencias (✅ tabla anual de SMMLV, Evolución 3) | Parcial |
+| 4 | Prestaciones completas: salario variable y liquidación de contrato (✅ salario integral, parafiscales y exoneración, Evolución 3) | Parcial |
 | 5 | Jornada: validación de la Ley 2101, horas extra y recargos de la Ley 2466 | Pendiente |
 | 6 | Comercial: planes, facturación, onboarding guiado y portal del empleado (opcional) | Pendiente |
 

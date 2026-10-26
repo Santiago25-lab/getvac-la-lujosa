@@ -8,6 +8,38 @@ Este documento mantiene un registro histórico de las modificaciones, correccion
 
 ---
 
+## [Evolución 3] - 26 de Octubre de 2026 — Panel Super y cálculos según la ley vigente en 2026
+
+### ⚖️ Panel Super: configuración de la empresa
+- **Valores legales del año:** SMMLV ($1.750.905) y auxilio de transporte ($249.095) de 2026, con su decreto. El panel no acepta valores menores y al arrancar el servidor corrige los que estén por debajo (la base tenía $1.300.000).
+- **Jornada laboral:** nuevo campo de minutos de almuerzo en jornada continua y resumen de horas semanales comparadas con la jornada máxima de la Ley 2101 (42 h desde el 15/07/2026), con advertencia al guardar.
+- **Aportes del empleador:** salud, pensión y caja ya no son editables (son fijos por ley). Nueva opción de exoneración del Art. 114-1 E.T. y tarifas ARL limitadas al rango del Decreto 1772 de 1994.
+- **Recargos vigentes** (Ley 2466): dominical y festivo, nocturno desde las 19:00 y horas extra, solo informativos.
+- El botón de eliminar departamento no hacía nada; ahora funciona, y no deja borrar un departamento que tenga empleados.
+- Festivos: selector de años dinámico (antes llegaba solo hasta 2026).
+
+### 💰 Costos laborales (`utils/laborCosts.js`)
+- Faltaban SENA (2%) e ICBF (3%), y se cobraba salud del 8,5% aunque la empresa estuviera exonerada.
+- A los contratistas de prestación de servicios se les calculaban aportes y prestaciones.
+- El auxilio de transporte ahora es automático según el salario (o "no aplica" / valor pactado).
+- Salario integral: sin prima ni cesantías, con aportes sobre el 70%.
+- El IBC queda entre 1 y 25 SMMLV.
+- Se eliminaron las N+1 consultas de pagos por empleado.
+
+### 🐛 Correcciones
+- **Año comercial:** un periodo que terminaba el 30 de un mes de 31 días perdía un día (afectaba vacaciones, prima y cesantías).
+- **Asistencia:** los festivos marcaban a todo el personal como ausente; el último día de vacaciones no se reconocía; los días de vacaciones contaban como trabajados; la salida borraba el retardo de la entrada; los días futuros del mes contaban como inasistencias; la media jornada esperaba horas de día completo.
+- **Analítica:** leía `noveltyType` y `permissionType`, campos que no existen, y todo salía como "Otra"; la jornada partida contaba el almuerzo como trabajado; quien ya había marcado la salida no contaba como puntual; faltaban las vacaciones mixtas.
+- **Novedades:** el tipo de vacaciones "Compensado" no existía en el backend y siempre se rechazaba. Ahora hay Físico, Mixto y Dinero, con fecha de notificación. Los tipos `Permiso No Remunerado` y `Permiso Remunerado` no aparecían en la pantalla, así que las suspensiones nunca se descontaban.
+- **Cron:** como Render duerme el servidor, los estados de vacaciones se quedaban sin actualizar. Ahora también se actualizan al arrancar.
+- **Filtros por área** de Inasistencias y Permisos: tenían áreas fijas que no existen en la empresa.
+- **Empleados:** validaciones de salario (bajo el mínimo, integral < 13 SMMLV, auxilio negativo, retiro antes del ingreso). Ya no se puede borrar un empleado con historial laboral.
+
+### 🆕 Nuevas licencias
+Calamidad doméstica, día de la familia, accidente de trabajo, permiso remunerado y permiso no remunerado.
+
+---
+
 ## [Evolución 2] - 23 de Octubre de 2026 — Motor legal laboral (CST)
 
 ### ⚖️ Motor legal y políticas por empresa

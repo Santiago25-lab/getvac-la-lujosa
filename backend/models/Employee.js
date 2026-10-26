@@ -33,9 +33,22 @@ const Employee = sequelize.define('Employee', {
     defaultValue: 'activo',
     allowNull: false,
   },
+  // 'auto': valor legal si devenga hasta 2 SMMLV · 'ninguno': la empresa da el transporte o hay teletrabajo
+  // · 'manual': se usa `transportAllowance` (valor pactado)
+  transportAllowanceMode: {
+    type: DataTypes.STRING,
+    defaultValue: 'auto',
+    allowNull: false,
+  },
   transportAllowance: {
     type: DataTypes.INTEGER,
     defaultValue: 0,
+    allowNull: false,
+  },
+  // Art. 132 CST: salario integral (mínimo 13 SMMLV, sin prima ni cesantías)
+  integralSalary: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false,
     allowNull: false,
   },
   arlRiskLevel: {

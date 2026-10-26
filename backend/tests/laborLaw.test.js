@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   days360,
+  commercialDaysInclusive,
   accruedVacationDays,
   calendarDaysInclusive,
   overlapDays,
@@ -23,6 +24,13 @@ test('un año de servicio son 360 días comerciales y causa 15 días (Art. 186)'
 test('febrero y los meses de 31 días cuentan como 30', () => {
   assert.equal(days360('2026-02-01', '2026-03-01'), 30);
   assert.equal(days360('2026-01-01', '2026-02-01'), 30);
+  // Un periodo que termina el 30 de un mes de 31 días no pierde ese día
+  assert.equal(commercialDaysInclusive('2026-07-01', '2026-07-30'), 30);
+  assert.equal(commercialDaysInclusive('2026-07-01', '2026-07-31'), 30);
+  // El último día de febrero completa el mes
+  assert.equal(commercialDaysInclusive('2026-01-01', '2026-02-28'), 60);
+  assert.equal(commercialDaysInclusive('2026-01-01', '2026-06-30'), 180);
+  assert.equal(commercialDaysInclusive('2026-01-01', '2026-12-31'), 360);
 });
 
 test('rangos de fechas inclusivos', () => {

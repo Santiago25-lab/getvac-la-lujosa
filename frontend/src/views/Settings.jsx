@@ -46,7 +46,54 @@ export default function SettingsView({ token, onViewChange }) {
   }
 
   const cst = legal?.cst || {};
+  const snapshot = legal?.snapshot;
+  const formatCOP = (value) => `$${Math.round(Number(value) || 0).toLocaleString('es-CO')}`;
+  const payrollRules = settings && snapshot ? [
+    {
+      label: `SMMLV ${snapshot.annual.year}`,
+      company: formatCOP(settings.smmlv),
+      legal: `Mínimo ${formatCOP(snapshot.annual.smmlv)}`,
+      reference: snapshot.annual.source,
+      ok: Number(settings.smmlv) >= snapshot.annual.smmlv
+    },
+    {
+      label: 'Auxilio de transporte',
+      company: formatCOP(settings.transportAllowanceValue),
+      legal: `Mínimo ${formatCOP(snapshot.annual.transportAllowance)}`,
+      reference: 'Ley 15 de 1959: para quienes devengan hasta 2 SMMLV.',
+      ok: Number(settings.transportAllowanceValue) >= snapshot.annual.transportAllowance
+    },
+    {
+      label: 'Jornada semanal configurada',
+      company: legal.schedule ? `${legal.schedule.weeklyHours} h` : '—',
+      legal: `Máximo ${snapshot.maxWeeklyHours} h`,
+      reference: `Ley 2101 de 2021${snapshot.nextMaxWeeklyHours ? `: ${snapshot.nextMaxWeeklyHours.hours} h desde ${snapshot.nextMaxWeeklyHours.from}` : ''}.`,
+      ok: !legal.schedule || legal.schedule.weeklyHours <= snapshot.maxWeeklyHours
+    },
+    {
+      label: 'Recargo dominical y festivo',
+      company: `${snapshot.sundaySurchargePercent}%`,
+      legal: 'Fijo por ley',
+      reference: `Ley 2466 de 2025${snapshot.nextSundaySurcharge ? `: ${snapshot.nextSundaySurcharge.percent}% desde ${snapshot.nextSundaySurcharge.from}` : ''}.`,
+      ok: true
+    },
+    {
+      label: 'Inicio de la jornada nocturna',
+      company: snapshot.nightWorkStart,
+      legal: 'Fijo por ley',
+      reference: `Ley 2466 de 2025. Recargo nocturno ${snapshot.surcharges.NIGHT}%.`,
+      ok: true
+    },
+    {
+      label: 'Exoneración de salud, SENA e ICBF',
+      company: settings.parafiscalExemption === false ? 'No aplica' : 'Aplica',
+      legal: 'Según la naturaleza de la empresa',
+      reference: 'Art. 114-1 E.T.: trabajadores que devengan menos de 10 SMMLV.',
+      ok: true
+    }
+  ] : [];
   const rules = settings && legal ? [
+    ...payrollRules,
     ...Object.entries(legal.policyFields).map(([key, field]) => ({
       label: field.label,
       company: settings[key] ?? field.default,

@@ -61,7 +61,8 @@ import { getUsers, createUser, updateUser, deleteUser } from './controllers/user
 import { auditMiddleware } from './middleware/auditMiddleware.js';
 
 import specialWorkdayRoutes from './routes/specialWorkdayRoutes.js';
-import { startVacationCronJob } from './jobs/vacationUpdater.js';
+import { startVacationCronJob, updateVacationStatuses } from './jobs/vacationUpdater.js';
+import { resolvePayrollParams } from './utils/laborLaw.js';
 import noveltyRoutes from './routes/noveltyRoutes.js';
 import laborCostRoutes from './routes/laborCostRoutes.js';
 import benefitPaymentRoutes from './routes/benefitPaymentRoutes.js';
@@ -627,8 +628,33 @@ sequelize.sync()
       maxMoneyCompensationPercent: { type: DT.FLOAT, allowNull: false, defaultValue: 50 },
       allowAdvanceVacations: { type: DT.BOOLEAN, allowNull: false, defaultValue: true },
       discountUnpaidLeaveFromVacations: { type: DT.BOOLEAN, allowNull: false, defaultValue: true },
+      transportAllowanceValue: { type: DT.INTEGER, allowNull: false, defaultValue: 249095 },
+      parafiscalExemption: { type: DT.BOOLEAN, allowNull: false, defaultValue: true },
+      lunchBreakMinutes: { type: DT.INTEGER, allowNull: false, defaultValue: 60 },
     });
+
+    await ensureColumns('Employees', {
+      transportAllowanceMode: { type: DT.STRING, allowNull: false, defaultValue: 'auto' },
+      integralSalary: { type: DT.BOOLEAN, allowNull: false, defaultValue: false },
+    });
+    await ensureEnumValues('enum_Novelties_type', ['Calamidad Doméstica', 'Día de la Familia', 'Accidente de Trabajo', 'Permiso Remunerado', 'Permiso No Remunerado']);
+
+    // El SMMLV y el auxilio de transporte son de decreto: nunca pueden quedar por debajo del valor legal del año.
+    const companySettings = await Setting.findOne();
+    if (companySettings) {
+      const params = resolvePayrollParams(companySettings);
+      const updates = {};
+      if (Number(companySettings.smmlv) < params.smmlv) updates.smmlv = params.smmlv;
+      if (Number(companySettings.transportAllowanceValue) < params.transportAllowance) updates.transportAllowanceValue = params.transportAllowance;
+      if (Object.keys(updates).length > 0) {
+        await companySettings.update({ ...updates, updatedBy: `Sistema (valores legales ${params.legal.year})` });
+        console.log(`✅ Valores legales ${params.legal.year} aplicados:`, updates);
+      }
+    }
     // ─────────────────────────────────────────────────────────────────────────
+
+    // El servidor puede estar dormido a medianoche: poner al día los estados al arrancar.
+    await updateVacationStatuses().catch(err => console.error('No se pudieron actualizar los estados de vacaciones:', err));
 
     await seedDatabase();
     app.listen(PORT, '0.0.0.0', () => {

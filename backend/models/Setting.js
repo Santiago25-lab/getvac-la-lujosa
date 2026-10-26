@@ -12,9 +12,27 @@ const Setting = sequelize.define('Setting', {
     defaultValue: 24.333333333333332,
     allowNull: false,
   },
+  // Valores de decreto del año en curso. Nunca por debajo de ANNUAL_LEGAL_VALUES (utils/laborLaw.js).
   smmlv: {
     type: DataTypes.INTEGER,
-    defaultValue: 1300000,
+    defaultValue: 1750905,
+    allowNull: false,
+  },
+  transportAllowanceValue: {
+    type: DataTypes.INTEGER,
+    defaultValue: 249095,
+    allowNull: false,
+  },
+  // Art. 114-1 E.T.: exoneración de salud (8,5%), SENA e ICBF para quienes devengan menos de 10 SMMLV
+  parafiscalExemption: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: true,
+    allowNull: false,
+  },
+  // Pausa de almuerzo en jornada continua: no es tiempo de trabajo (Ley 2101 de 2021)
+  lunchBreakMinutes: {
+    type: DataTypes.INTEGER,
+    defaultValue: 60,
     allowNull: false,
   },
   checkInTime: {

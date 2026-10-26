@@ -1,4 +1,4 @@
-import { Department } from '../models/index.js';
+import { Department, Employee } from '../models/index.js';
 
 export const getDepartments = async (req, res) => {
   try {
@@ -48,6 +48,10 @@ export const deleteDepartment = async (req, res) => {
     const department = await Department.findByPk(id);
     if (!department) {
       return res.status(404).json({ message: 'Departamento no encontrado.' });
+    }
+    const assigned = await Employee.count({ where: { department: department.name } });
+    if (assigned > 0) {
+      return res.status(400).json({ message: `No se puede eliminar "${department.name}": tiene ${assigned} empleado(s) asignado(s). Reasígnelos primero.` });
     }
     await department.destroy();
     res.json({ message: 'Departamento eliminado exitosamente.' });

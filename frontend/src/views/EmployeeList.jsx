@@ -27,12 +27,15 @@ export default function EmployeeList({ token, userRole, onViewChange }) {
     position: '',
     department: '',
     hireDate: '',
-    hireDate: '',
     status: 'activo',
     email: '',
     phone: '',
     contractType: 'Término Fijo',
     baseSalary: '',
+    transportAllowanceMode: 'auto',
+    transportAllowance: '',
+    integralSalary: false,
+    arlRiskLevel: 'Riesgo I',
     appliesVacationCalculation: true,
     isLegacy: false,
     lastVacationCutoffDate: '',
@@ -44,6 +47,7 @@ export default function EmployeeList({ token, userRole, onViewChange }) {
     terminationDate: '',
     terminationReason: ''
   });
+  const [saveWarnings, setSaveWarnings] = useState([]);
 
   const fetchEmployees = async () => {
     try {
@@ -102,7 +106,9 @@ export default function EmployeeList({ token, userRole, onViewChange }) {
       phone: emp.phone || '',
       contractType: emp.contractType || 'Término Fijo',
       baseSalary: emp.baseSalary || '',
+      transportAllowanceMode: emp.transportAllowanceMode || 'auto',
       transportAllowance: emp.transportAllowance || '',
+      integralSalary: emp.integralSalary === true,
       arlRiskLevel: emp.arlRiskLevel || 'Riesgo I',
       appliesVacationCalculation: emp.appliesVacationCalculation !== false,
       isLegacy: emp.isLegacy || false,
@@ -132,7 +138,9 @@ export default function EmployeeList({ token, userRole, onViewChange }) {
       phone: '',
       contractType: 'Término Fijo',
       baseSalary: '',
+      transportAllowanceMode: 'auto',
       transportAllowance: '',
+      integralSalary: false,
       arlRiskLevel: 'Riesgo I',
       appliesVacationCalculation: true,
       isLegacy: false,
@@ -189,6 +197,8 @@ export default function EmployeeList({ token, userRole, onViewChange }) {
       if (!response.ok) {
         throw new Error(data.message || 'Error al guardar los datos del empleado.');
       }
+
+      setSaveWarnings((data.warnings || []).map(w => `${formData.fullName}: ${w}`));
 
       // Reiniciar formulario, cerrar modal y recargar lista
       setFormData({
@@ -313,6 +323,18 @@ export default function EmployeeList({ token, userRole, onViewChange }) {
         <div className="p-4 bg-rose-500/10 border border-rose-500/20 text-rose-400 rounded-2xl text-sm flex items-center gap-3">
           <AlertTriangle className="w-5 h-5" />
           <span>{error}</span>
+        </div>
+      )}
+
+      {saveWarnings.length > 0 && (
+        <div className="p-4 bg-amber-50 border border-amber-200 text-amber-800 rounded-2xl text-xs font-semibold flex items-start gap-3">
+          <AlertTriangle className="w-5 h-5 shrink-0 text-amber-500" />
+          <div className="flex-1 space-y-1">
+            {saveWarnings.map(w => <p key={w}>{w}</p>)}
+          </div>
+          <button onClick={() => setSaveWarnings([])} className="text-amber-500 hover:text-amber-700" title="Cerrar">
+            <X className="w-4 h-4" />
+          </button>
         </div>
       )}
 
@@ -600,7 +622,7 @@ export default function EmployeeList({ token, userRole, onViewChange }) {
                     name="baseSalary"
                     value={formData.baseSalary}
                     onChange={handleInputChange}
-                    placeholder="Ej: 1300000"
+                    placeholder="Ej: 1750905"
                     className="w-full bg-white border border-slate-200 rounded-2xl py-2.5 px-4 text-sm outline-none focus:border-brand-500 transition focus:ring-2 focus:ring-brand-500/10"
                   />
                 </div>
@@ -608,15 +630,28 @@ export default function EmployeeList({ token, userRole, onViewChange }) {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-500 pl-1 uppercase tracking-wide">Auxilio Transporte ($ COP)</label>
-                  <input
-                    type="number"
-                    name="transportAllowance"
-                    value={formData.transportAllowance}
+                  <label className="text-xs font-bold text-slate-500 pl-1 uppercase tracking-wide">Auxilio de Transporte</label>
+                  <select
+                    name="transportAllowanceMode"
+                    value={formData.transportAllowanceMode}
                     onChange={handleInputChange}
-                    placeholder="Ej: 162000"
-                    className="w-full bg-white border border-slate-200 rounded-2xl py-2.5 px-4 text-sm outline-none focus:border-brand-500 transition focus:ring-2 focus:ring-brand-500/10"
-                  />
+                    className="w-full bg-white border border-slate-200 rounded-2xl py-2.5 px-4 text-sm outline-none focus:border-brand-500 transition"
+                  >
+                    <option value="auto">Automático (valor legal si gana hasta 2 SMMLV)</option>
+                    <option value="ninguno">No aplica (la empresa da el transporte o hay teletrabajo)</option>
+                    <option value="manual">Valor pactado por la empresa</option>
+                  </select>
+                  {formData.transportAllowanceMode === 'manual' && (
+                    <input
+                      type="number"
+                      min="0"
+                      name="transportAllowance"
+                      value={formData.transportAllowance}
+                      onChange={handleInputChange}
+                      placeholder="Ej: 249095"
+                      className="w-full bg-white border border-slate-200 rounded-2xl py-2.5 px-4 text-sm outline-none focus:border-brand-500 transition focus:ring-2 focus:ring-brand-500/10"
+                    />
+                  )}
                 </div>
                 
                 <div className="space-y-1.5">
@@ -637,6 +672,22 @@ export default function EmployeeList({ token, userRole, onViewChange }) {
               </div>
 
               <div className="flex flex-col gap-3 bg-brand-50/50 p-4 rounded-2xl border border-brand-100/50">
+                {formData.contractType !== 'Prestación de Servicios' && formData.contractType !== 'Aprendizaje' && (
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="checkbox"
+                      name="integralSalary"
+                      checked={formData.integralSalary}
+                      onChange={(e) => setFormData(prev => ({ ...prev, integralSalary: e.target.checked }))}
+                      className="w-4 h-4 text-brand-500 rounded border-slate-300 focus:ring-brand-500 transition"
+                      id="integralSalaryCheckbox"
+                    />
+                    <label htmlFor="integralSalaryCheckbox" className="text-sm font-semibold text-slate-700 cursor-pointer select-none">
+                      Salario integral (mínimo 13 SMMLV; no causa prima, cesantías ni intereses · Art. 132 CST)
+                    </label>
+                  </div>
+                )}
+
                 <div className="flex items-center gap-3">
                   <input
                     type="checkbox"

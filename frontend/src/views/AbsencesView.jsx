@@ -253,10 +253,9 @@ export default function AbsencesView({ token, userRole }) {
               className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-white border border-slate-200 focus:border-brand-500 text-xs font-bold outline-none transition appearance-none"
             >
               <option value="">Todas las Áreas</option>
-              <option value="Tecnología">Tecnología</option>
-              <option value="Recursos Humanos">Recursos Humanos</option>
-              <option value="Administración">Administración</option>
-              <option value="Finanzas">Finanzas</option>
+              {[...new Set(employees.map(emp => emp.department).filter(Boolean))].sort().map(dept => (
+                <option key={dept} value={dept}>{dept}</option>
+              ))}
             </select>
           </div>
 

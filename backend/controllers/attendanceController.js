@@ -1,6 +1,16 @@
 import { Attendance, Employee, Setting, Permission, Vacation, Absence, CompanyHoliday, Novelty, SpecialWorkday } from '../models/index.js';
 import { Op } from 'sequelize';
 import { isColombianHoliday } from '../utils/colombianHolidays.js';
+import { scheduleHours } from '../utils/laborLaw.js';
+
+// Día de la semana (1 = lunes … 7 = domingo) de una fecha YYYY-MM-DD, sin depender de la zona horaria del servidor.
+const isoDayOfWeek = (dateStr) => {
+  const day = new Date(`${dateStr}T12:00:00Z`).getUTCDay();
+  return day === 0 ? 7 : day;
+};
+
+// Las vacaciones en dinero no son ausencia; `endDate` es el último día de descanso (inclusive).
+const VACATION_ABSENCE_STATUSES = ['Programada', 'En disfrute', 'Finalizada', 'Suspendida'];
 
 
 // --- ENDPOINTS PÚBLICOS (QR - Sin Auth) ---
@@ -93,7 +103,7 @@ export const registerPublicAttendance = async (req, res) => {
       }
     } else {
       // Prioridad 2 y 3: Festivo o Configuración Semanal
-      const currentDayOfWeek = now.getDay() === 0 ? 7 : now.getDay();
+      const currentDayOfWeek = isoDayOfWeek(dateStr);
       const isHalfWorkday = (settings.halfWorkDays || '').split(',').includes(currentDayOfWeek.toString());
       if (isHalfWorkday) {
         isSplitShift = false; // Media jornada = 2 marcas
@@ -170,7 +180,8 @@ export const registerPublicAttendance = async (req, res) => {
           }
           
           record.checkOut = timeStr;
-          record.status = 'Salida registrada';
+          // Conservar el retardo de la entrada: la salida no lo borra.
+          if (record.status !== 'Tarde') record.status = 'Salida registrada';
           record.ipAddress = ipAddress;
           record.userAgent = userAgent;
           await record.save();
@@ -523,7 +534,7 @@ export const getAttendanceStats = async (req, res) => {
 
     const presentCount = todayRecords.filter(r => r.status === 'Presente' || r.status === 'Salida registrada' || r.status === 'Sin salida' || r.status === 'Tarde').length;
     const lateCount = todayRecords.filter(r => r.status === 'Tarde').length;
-    const checkoutCount = todayRecords.filter(r => r.status === 'Salida registrada').length;
+    const checkoutCount = todayRecords.filter(r => r.checkOut).length;
 
     // Obtener políticas horarias configuradas
     const settings = await Setting.findOne() || {
@@ -541,6 +552,10 @@ export const getAttendanceStats = async (req, res) => {
     const halfWorkDaysArray = settings.halfWorkDays ? settings.halfWorkDays.split(',').map(Number) : [];
     
     let isTodayWorkDay = workDaysArray.includes(dayOfWeek) || halfWorkDaysArray.includes(dayOfWeek);
+
+    // Festivos nacionales y días no laborables de la empresa: nadie está ausente.
+    const companyHoliday = await CompanyHoliday.findOne({ where: { date: todayStr } });
+    if (isColombianHoliday(todayStr) || companyHoliday) isTodayWorkDay = false;
 
     const specialDay = await SpecialWorkday.findOne({ where: { date: todayStr } });
     if (specialDay) {
@@ -563,9 +578,10 @@ export const getAttendanceStats = async (req, res) => {
       // Obtener vacaciones activas hoy
       const todayVacations = await Vacation.findAll({
         where: {
-          status: { [Op.in]: ['Programada', 'En disfrute', 'Finalizada'] },
+          status: { [Op.in]: VACATION_ABSENCE_STATUSES },
+          tipoDisfrute: { [Op.ne]: 'Dinero' },
           startDate: { [Op.lte]: todayStr },
-          endDate: { [Op.gt]: todayStr }
+          endDate: { [Op.gte]: todayStr }
         }
       });
       const vacationEmployeeIds = new Set(todayVacations.map(v => v.employeeId));
@@ -725,21 +741,10 @@ export const getEmployeeMonthlyReport = async (req, res) => {
       isSplitShift: false
     };
 
-    const getHoursDiff = (startStr, endStr) => {
-      if (!startStr || !endStr) return 0;
-      const [startH, startM] = startStr.split(':').map(Number);
-      const [endH, endM] = endStr.split(':').map(Number);
-      return (endH * 60 + endM - (startH * 60 + startM)) / 60;
-    };
+    const reportTodayStr = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Bogota' });
 
-    let expectedHoursPerDay = 8;
-    if (settings.isSplitShift) {
-      const mHours = getHoursDiff(settings.checkInTimeMorning, settings.checkOutTimeMorning);
-      const aHours = getHoursDiff(settings.checkInTimeAfternoon, settings.checkOutTimeAfternoon);
-      expectedHoursPerDay = mHours + aHours;
-    } else {
-      expectedHoursPerDay = getHoursDiff(settings.checkInTime, settings.checkOutTime);
-    }
+    // Horas ordinarias por día completo (descontando el almuerzo en jornada continua)
+    let expectedHoursPerDay = scheduleHours(settings).dailyHours;
     if (expectedHoursPerDay <= 0) expectedHoursPerDay = 8;
 
     const startDateStr = `${year}-${String(month).padStart(2, '0')}-01`;
@@ -782,7 +787,8 @@ export const getEmployeeMonthlyReport = async (req, res) => {
     const vacations = await Vacation.findAll({
       where: {
         employeeId: id,
-        status: { [Op.in]: ['Programada', 'En disfrute', 'Finalizada'] },
+        status: { [Op.in]: VACATION_ABSENCE_STATUSES },
+        tipoDisfrute: { [Op.ne]: 'Dinero' },
         [Op.or]: [
           { startDate: { [Op.between]: [startDateStr, endDateStr] } },
           { endDate: { [Op.between]: [startDateStr, endDateStr] } },
@@ -820,8 +826,9 @@ export const getEmployeeMonthlyReport = async (req, res) => {
 
     for (let d = 1; d <= daysInMonth; d++) {
       const currentDayStr = `${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-      const currentDate = new Date(year, month - 1, d);
-      const dayOfWeek = currentDate.getDay() === 0 ? 7 : currentDate.getDay();
+      const currentDate = new Date(`${currentDayStr}T12:00:00Z`);
+      const dayOfWeek = isoDayOfWeek(currentDayStr);
+      const isHalfDay = !workDaysArray.includes(dayOfWeek) && halfWorkDaysArray.includes(dayOfWeek);
       
       const isHoliday = isColombianHoliday(currentDayStr) || companyHolidaysList.includes(currentDayStr);
       let isWorkDay = workDaysArray.includes(dayOfWeek) || halfWorkDaysArray.includes(dayOfWeek);
@@ -845,7 +852,7 @@ export const getEmployeeMonthlyReport = async (req, res) => {
       });
 
       const hasVacation = vacations.find(v => {
-        return currentDayStr >= v.startDate && currentDayStr < v.endDate;
+        return currentDayStr >= v.startDate && currentDayStr <= v.endDate;
       });
 
       const manualAbsence = absences.find(a => a.date === currentDayStr);
@@ -856,7 +863,11 @@ export const getEmployeeMonthlyReport = async (req, res) => {
       let checkOut = '-';
       let notes = '';
 
-      if (att) {
+      // Solo cuenta como día trabajado si hubo alguna marcación (los registros de
+      // vacaciones o ausencias justificadas no tienen horas).
+      const hasMarks = att && (att.checkIn || att.checkOut || att.checkOutMorning || att.checkInAfternoon);
+
+      if (hasMarks) {
         totalRealDaysWorked++;
         checkIn = att.checkIn || '-';
         
@@ -893,15 +904,19 @@ export const getEmployeeMonthlyReport = async (req, res) => {
         }
         notes = att.notes || '';
       } else {
+        notes = att?.notes || '';
         if (hasNovelty) {
           status = hasNovelty.type;
           totalNoveltiesCount++;
-        } else if (hasVacation && isWorkDay) {
+        } else if ((hasVacation || att?.status === 'Vacaciones') && isWorkDay) {
           status = 'Vacaciones';
           totalVacationsCount++;
         } else if (hasPermission) {
           status = 'Permiso';
           totalPermissionsCount++;
+        } else if (att?.status === 'Ausencia Justificada') {
+          status = 'Ausencia Justificada';
+          totalNoveltiesCount++;
         } else if (manualAbsence) {
           status = manualAbsence.type === 'incapacidad' ? 'Incapacidad' : 'Inasistencia';
           if (status === 'Inasistencia') {
@@ -909,14 +924,18 @@ export const getEmployeeMonthlyReport = async (req, res) => {
           }
         } else if (!isWorkDay) {
           status = isHoliday ? 'Festivo' : 'Día Libre';
+        } else if (currentDayStr > reportTodayStr) {
+          status = 'Por registrar'; // Día futuro: todavía no es inasistencia
         } else {
           status = 'Inasistencia';
           totalAbsencesCount++;
         }
       }
 
-      if (isWorkDay && status !== 'Vacaciones' && status !== 'Permiso' && status !== 'Incapacidad') {
-        totalExpectedSeconds += expectedHoursPerDay * 3600;
+      // Horas esperadas: días laborables sin vacaciones, permisos, novedades ni incapacidades.
+      const isExcused = !hasMarks && (hasNovelty || ['Vacaciones', 'Permiso', 'Incapacidad', 'Ausencia Justificada', 'Por registrar'].includes(status));
+      if (isWorkDay && !isExcused) {
+        totalExpectedSeconds += (isHalfDay ? expectedHoursPerDay / 2 : expectedHoursPerDay) * 3600;
       }
 
 
@@ -925,7 +944,7 @@ export const getEmployeeMonthlyReport = async (req, res) => {
 
       dailyDetails.push({
         date: currentDayStr,
-        dayName: currentDate.toLocaleDateString('es-ES', { weekday: 'long' }),
+        dayName: currentDate.toLocaleDateString('es-ES', { weekday: 'long', timeZone: 'UTC' }),
         checkIn,
         checkOut,
         workedHours: workedSeconds > 0 ? `${hours}h ${minutes}m` : '-',

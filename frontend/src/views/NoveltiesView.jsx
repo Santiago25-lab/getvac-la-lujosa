@@ -18,7 +18,7 @@ export default function NoveltiesView({ token, userRole }) {
   const [selectedNovelty, setSelectedNovelty] = useState(null);
 
   // Formulario de Novedad
-  const [formData, setFormData] = useState({
+  const emptyForm = {
     employeeId: '',
     type: 'Incapacidad',
     startDate: '',
@@ -28,8 +28,11 @@ export default function NoveltiesView({ token, userRole }) {
     notes: '',
     status: 'Activa',
     diasATomar: '',
-    tipoDisfrute: 'Físico'
-  });
+    tipoDisfrute: 'Físico',
+    compensatedDays: '',
+    fechaNotificacion: ''
+  };
+  const [formData, setFormData] = useState(emptyForm);
   const [attachments, setAttachments] = useState([]);
   
   // Settings y Calendario para Vacaciones
@@ -94,9 +97,9 @@ export default function NoveltiesView({ token, userRole }) {
     const { name, value } = e.target;
     setFormData(prev => {
       const next = { ...prev, [name]: value };
-      // Autocalcular Fecha de Regreso para Vacaciones Físicas
+      // Autocalcular el último día de descanso para vacaciones físicas o mixtas
       if (next.type === 'Vacaciones' && next.startDate && next.diasATomar) {
-        if (next.tipoDisfrute === 'Físico') {
+        if (next.tipoDisfrute !== 'Dinero') {
           const s = settings || {};
           const returnDate = calculateReturnDate(
             next.startDate, 
@@ -110,8 +113,8 @@ export default function NoveltiesView({ token, userRole }) {
           );
           next.endDate = returnDate;
         } else {
-          // Compensado: no hay fecha real de regreso
-          next.endDate = next.startDate; 
+          // Compensado en dinero: no hay periodo de descanso
+          next.endDate = next.startDate;
         }
       }
       return next;
@@ -152,18 +155,12 @@ export default function NoveltiesView({ token, userRole }) {
         throw new Error(result.message || 'Error al guardar novedad');
       }
 
-      setSuccessMsg('Novedad registrada exitosamente.');
+      const warnings = result.warnings || [];
+      setSuccessMsg(warnings.length > 0
+        ? `Novedad registrada con advertencias: ${warnings.join(' ')}`
+        : 'Novedad registrada exitosamente.');
       setShowModal(false);
-      setFormData({
-        employeeId: '',
-        type: 'Incapacidad',
-        startDate: '',
-        endDate: '',
-        coverage: 'Jornada Completa',
-        reason: '',
-        notes: '',
-        status: 'Activa'
-      });
+      setFormData(emptyForm);
       setAttachments([]);
       loadData();
     } catch (error) {
@@ -211,9 +208,11 @@ export default function NoveltiesView({ token, userRole }) {
     }
   };
 
+  // 'Suspensión' y 'Permiso No Remunerado' pueden descontarse del tiempo de servicio para vacaciones (Arts. 51 y 53 CST)
   const noveltyTypes = [
-    'Incapacidad', 'Licencia Maternidad', 'Licencia Paternidad', 
-    'Licencia Luto', 'Permiso', 'Suspensión', 'Abandono de Cargo', 'Vacaciones', 'Otro'
+    'Incapacidad', 'Accidente de Trabajo', 'Licencia Maternidad', 'Licencia Paternidad',
+    'Licencia Luto', 'Calamidad Doméstica', 'Día de la Familia', 'Permiso Remunerado',
+    'Permiso No Remunerado', 'Suspensión', 'Abandono de Cargo', 'Vacaciones', 'Otro'
   ];
 
   const getStatusColor = (status) => {
@@ -429,10 +428,43 @@ export default function NoveltiesView({ token, userRole }) {
                       onChange={handleInputChange}
                       className="w-full bg-white border border-slate-200 rounded-2xl py-2.5 px-4 text-sm outline-none focus:border-brand-500 transition"
                     >
-                      <option value="Físico">Físico</option>
-                      <option value="Compensado">Compensado en Dinero</option>
+                      <option value="Físico">Descanso (físico)</option>
+                      <option value="Mixto">Mixto (descanso + dinero)</option>
+                      <option value="Dinero">Compensado en dinero</option>
                     </select>
                   </div>
+                  {formData.tipoDisfrute === 'Mixto' && (
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-slate-500 uppercase">Días compensados en dinero</label>
+                      <input
+                        type="number"
+                        name="compensatedDays"
+                        value={formData.compensatedDays}
+                        onChange={handleInputChange}
+                        min="1"
+                        required
+                        className="w-full bg-white border border-slate-200 rounded-2xl py-2.5 px-4 text-sm outline-none focus:border-brand-500 transition"
+                      />
+                    </div>
+                  )}
+                  {formData.tipoDisfrute !== 'Dinero' && (
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-slate-500 uppercase">Fecha de notificación al trabajador</label>
+                      <input
+                        type="date"
+                        name="fechaNotificacion"
+                        value={formData.fechaNotificacion}
+                        onChange={handleInputChange}
+                        className="w-full bg-white border border-slate-200 rounded-2xl py-2.5 px-4 text-sm outline-none focus:border-brand-500 transition"
+                      />
+                      <p className="text-[11px] text-slate-400 font-medium">Art. 187 CST: se debe avisar con al menos 15 días de anticipación.</p>
+                    </div>
+                  )}
+                  {formData.tipoDisfrute !== 'Físico' && (
+                    <p className="md:col-span-2 text-[11px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 rounded-xl p-2.5">
+                      Art. 189 CST: solo se puede compensar en dinero hasta la mitad de las vacaciones, con acuerdo escrito.
+                    </p>
+                  )}
                 </div>
               )}
 
@@ -449,7 +481,7 @@ export default function NoveltiesView({ token, userRole }) {
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-500 uppercase">{formData.type === 'Vacaciones' ? 'Fecha de Regreso (Calculada)' : 'Hasta'}</label>
+                  <label className="text-xs font-bold text-slate-500 uppercase">{formData.type === 'Vacaciones' ? 'Último día de descanso (calculado)' : 'Hasta'}</label>
                   <input
                     type="date"
                     name="endDate"

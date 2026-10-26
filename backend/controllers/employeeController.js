@@ -1,4 +1,4 @@
-import { Employee, Vacation, Setting, Attendance, Permission, Absence, AuditLog, Novelty } from '../models/index.js';
+import { Employee, Vacation, Setting, Attendance, Permission, Absence, AuditLog, Novelty, BenefitPayment } from '../models/index.js';
 import { Op } from 'sequelize';
 import {
   resolveVacationPolicy,
@@ -10,7 +10,28 @@ import {
   contractGeneratesVacations,
   maxAccumulationYears,
   SUSPENSION_NOVELTY_TYPES,
+  TRANSPORT_ALLOWANCE_MODES,
+  resolvePayrollParams,
+  validateEmployeeSalary,
 } from '../utils/laborLaw.js';
+
+// Validaciones legales de los datos laborales. Devuelve { errors, warnings }.
+const validateEmployeeData = async (data) => {
+  const errors = [];
+  const warnings = [];
+  if (data.transportAllowanceMode !== undefined && !TRANSPORT_ALLOWANCE_MODES.includes(data.transportAllowanceMode)) {
+    errors.push(`Modo de auxilio de transporte inválido. Valores permitidos: ${TRANSPORT_ALLOWANCE_MODES.join(', ')}.`);
+  }
+  if (data.terminationDate && data.hireDate && data.terminationDate < data.hireDate) {
+    errors.push('La fecha de retiro no puede ser anterior a la fecha de ingreso.');
+  }
+  if (data.status === 'inactivo' && !data.terminationDate) {
+    warnings.push('El empleado quedó inactivo sin fecha de retiro: regístrela para liquidar correctamente vacaciones y prestaciones.');
+  }
+  const params = resolvePayrollParams(await Setting.findOne() || {});
+  const salaryCheck = validateEmployeeSalary(data, params);
+  return { errors: [...errors, ...salaryCheck.errors], warnings: [...warnings, ...salaryCheck.warnings] };
+};
 
 // Fecha hasta la cual se causan vacaciones: retiro, o hoy si sigue activo.
 const getServiceEndDate = (employee) => {
@@ -200,8 +221,15 @@ export const createEmployee = async (req, res) => {
       initialPrimaDays,
       terminationDate,
       terminationReason,
-      extendedVacationAccumulation
+      extendedVacationAccumulation,
+      transportAllowanceMode,
+      integralSalary
     } = req.body;
+
+    const { errors, warnings } = await validateEmployeeData({ ...req.body, status: status || 'activo' });
+    if (errors.length > 0) {
+      return res.status(400).json({ message: errors.join(' '), errors });
+    }
 
     const employee = await Employee.create({
       fullName,
@@ -226,12 +254,15 @@ export const createEmployee = async (req, res) => {
       initialPrimaDays: initialPrimaDays === '' || initialPrimaDays === undefined ? null : Number(initialPrimaDays),
       terminationDate: terminationDate || null,
       terminationReason: terminationReason || null,
-      extendedVacationAccumulation: extendedVacationAccumulation === true
+      extendedVacationAccumulation: extendedVacationAccumulation === true,
+      transportAllowanceMode: transportAllowanceMode || 'auto',
+      integralSalary: integralSalary === true
     });
 
     res.status(201).json({
       message: 'Empleado registrado exitosamente.',
-      employee
+      employee,
+      warnings
     });
   } catch (error) {
     console.error('Error al registrar empleado:', error);
@@ -273,14 +304,21 @@ export const updateEmployee = async (req, res) => {
       initialPrimaDays,
       terminationDate,
       terminationReason,
-      extendedVacationAccumulation
+      extendedVacationAccumulation,
+      transportAllowanceMode,
+      integralSalary
     } = req.body;
+
+    const { errors, warnings } = await validateEmployeeData({ ...employee.toJSON(), ...req.body });
+    if (errors.length > 0) {
+      return res.status(400).json({ message: errors.join(' '), errors });
+    }
 
     // Detect changes for AuditLog
     const changes = [];
     if (hireDate && hireDate !== employee.hireDate) changes.push(`Fecha Ingreso: ${employee.hireDate} -> ${hireDate}`);
     if (position && position !== employee.position) changes.push(`Cargo: ${employee.position} -> ${position}`);
-    if (baseSalary !== undefined && baseSalary !== employee.baseSalary) changes.push(`Salario Base: ${employee.baseSalary} -> ${baseSalary}`);
+    if (baseSalary !== undefined && Number(baseSalary) !== Number(employee.baseSalary)) changes.push(`Salario Base: ${employee.baseSalary} -> ${baseSalary}`);
     if (arlRiskLevel !== undefined && arlRiskLevel !== employee.arlRiskLevel) changes.push(`Nivel ARL: ${employee.arlRiskLevel} -> ${arlRiskLevel}`);
     if (terminationDate !== undefined && (terminationDate || null) !== employee.terminationDate) changes.push(`Fecha Retiro: ${employee.terminationDate || 'N/A'} -> ${terminationDate || 'N/A'}`);
 
@@ -295,7 +333,7 @@ export const updateEmployee = async (req, res) => {
     if (profilePicture !== undefined) employee.profilePicture = profilePicture;
     if (contractType !== undefined) employee.contractType = contractType;
     if (baseSalary !== undefined) employee.baseSalary = baseSalary === '' ? null : Number(baseSalary);
-    if (transportAllowance !== undefined) employee.transportAllowance = transportAllowance === '' ? null : Number(transportAllowance);
+    if (transportAllowance !== undefined) employee.transportAllowance = transportAllowance === '' || transportAllowance === null ? 0 : Number(transportAllowance);
     if (arlRiskLevel !== undefined) employee.arlRiskLevel = arlRiskLevel;
     if (appliesVacationCalculation !== undefined) employee.appliesVacationCalculation = appliesVacationCalculation;
     if (isLegacy !== undefined) employee.isLegacy = isLegacy;
@@ -307,6 +345,8 @@ export const updateEmployee = async (req, res) => {
     if (terminationDate !== undefined) employee.terminationDate = terminationDate || null;
     if (terminationReason !== undefined) employee.terminationReason = terminationReason || null;
     if (extendedVacationAccumulation !== undefined) employee.extendedVacationAccumulation = extendedVacationAccumulation === true;
+    if (transportAllowanceMode !== undefined) employee.transportAllowanceMode = transportAllowanceMode;
+    if (integralSalary !== undefined) employee.integralSalary = integralSalary === true;
 
     await employee.save();
 
@@ -323,7 +363,8 @@ export const updateEmployee = async (req, res) => {
 
     res.json({
       message: 'Empleado actualizado exitosamente.',
-      employee
+      employee,
+      warnings
     });
   } catch (error) {
     console.error('Error al actualizar empleado:', error);
@@ -338,6 +379,20 @@ export const deleteEmployee = async (req, res) => {
     const employee = await Employee.findByPk(id);
     if (!employee) {
       return res.status(404).json({ message: 'Empleado no encontrado.' });
+    }
+
+    // El historial laboral (vacaciones, novedades, asistencia, pagos) debe conservarse:
+    // a un trabajador con historial se le registra el retiro, no se le borra.
+    const [vacations, novelties, attendances, payments] = await Promise.all([
+      Vacation.count({ where: { employeeId: id } }),
+      Novelty.count({ where: { employeeId: id } }),
+      Attendance.count({ where: { employeeId: id } }),
+      BenefitPayment.count({ where: { employeeId: id } }),
+    ]);
+    if (vacations + novelties + attendances + payments > 0) {
+      return res.status(400).json({
+        message: 'El empleado tiene historial laboral (vacaciones, novedades, asistencia o pagos) que debe conservarse. Márquelo como inactivo y registre su fecha de retiro en lugar de eliminarlo.'
+      });
     }
 
     await employee.destroy();

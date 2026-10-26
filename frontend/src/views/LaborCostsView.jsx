@@ -3,6 +3,10 @@ import { DollarSign, PieChart, Users, AlertCircle, Briefcase, ChevronRight, X, C
 import { PieChart as RechartsPieChart, Pie, Cell, Tooltip as RechartsTooltip, ResponsiveContainer, Legend } from 'recharts';
 import { API_URL } from '../config';
 
+// Aportes a cargo del empleador (seguridad social y parafiscales).
+const employerContributions = (c) =>
+  (c?.salud || 0) + (c?.pension || 0) + (c?.arl || 0) + (c?.ccf || 0) + (c?.sena || 0) + (c?.icbf || 0);
+
 export default function LaborCostsView({ token, userRole }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -79,7 +83,7 @@ export default function LaborCostsView({ token, userRole }) {
   let donutData = [];
   if (selectedEmployee) {
     const { monthlyCosts, baseSalary, transportAllowance } = selectedEmployee;
-    const seguridadSocial = (monthlyCosts?.salud || 0) + (monthlyCosts?.pension || 0) + (monthlyCosts?.ccf || 0) + (monthlyCosts?.arl || 0);
+    const seguridadSocial = employerContributions(monthlyCosts);
 
     donutData = [
       { name: 'Salario Base', value: baseSalary || 0, color: '#3b82f6' }, // blue-500
@@ -125,7 +129,7 @@ export default function LaborCostsView({ token, userRole }) {
                 Nómina: {formatCurrency(data?.dashboard.monthly.nomina || 0)}
               </div>
               <div className="bg-brand-700/50 px-3 py-1.5 rounded-lg">
-                S.S: {formatCurrency((data?.dashboard.monthly.salud || 0) + (data?.dashboard.monthly.pension || 0) + (data?.dashboard.monthly.ccf || 0) + (data?.dashboard.monthly.arl || 0))}
+                S.S: {formatCurrency(employerContributions(data?.dashboard.monthly))}
               </div>
             </div>
           </div>
@@ -193,23 +197,11 @@ export default function LaborCostsView({ token, userRole }) {
                       {formatCurrency(emp.baseSalary)}
                     </td>
                     <td className="px-6 py-4 hidden md:table-cell font-medium text-slate-500">
-                      {formatCurrency(
-                        (emp.monthlyCosts?.salud || 0) + 
-                        (emp.monthlyCosts?.pension || 0) + 
-                        (emp.monthlyCosts?.arl || 0) + 
-                        (emp.monthlyCosts?.ccf || 0)
-                      )}
+                      {formatCurrency(employerContributions(emp.monthlyCosts))}
                     </td>
                     <td className="px-6 py-4 text-right">
                       <span className="inline-flex items-center gap-1 font-bold text-brand-700 bg-brand-50 group-hover:bg-white px-2.5 py-1 rounded-lg border border-brand-100 transition-colors">
-                        {formatCurrency(
-                          (emp.baseSalary || 0) + 
-                          (emp.transportAllowance || 0) + 
-                          (emp.monthlyCosts?.salud || 0) + 
-                          (emp.monthlyCosts?.pension || 0) + 
-                          (emp.monthlyCosts?.arl || 0) + 
-                          (emp.monthlyCosts?.ccf || 0)
-                        )}
+                        {formatCurrency(emp.monthlyCosts?.total || 0)}
                         <ChevronRight className="w-4 h-4 text-brand-500 opacity-50 group-hover:opacity-100 transition-opacity" />
                       </span>
                     </td>
@@ -319,7 +311,9 @@ export default function LaborCostsView({ token, userRole }) {
                         <span className="text-sm font-bold text-slate-800">{formatCurrency(selectedEmployee.transportAllowance || 0)}</span>
                       </div>
                       <div className="flex justify-between items-center">
-                        <span className="text-sm font-medium text-slate-600">Salud (Empleador)</span>
+                        <span className="text-sm font-medium text-slate-600">
+                          Salud (Empleador){selectedEmployee.monthlyCosts?.exempt && <span className="text-[10px] text-emerald-600 font-bold"> · Exonerado Art. 114-1 E.T.</span>}
+                        </span>
                         <span className="text-sm font-bold text-slate-800">{formatCurrency(selectedEmployee.monthlyCosts?.salud || 0)}</span>
                       </div>
                       <div className="flex justify-between items-center">
@@ -331,22 +325,19 @@ export default function LaborCostsView({ token, userRole }) {
                         <span className="text-sm font-bold text-slate-800">{formatCurrency(selectedEmployee.monthlyCosts?.arl || 0)}</span>
                       </div>
                       <div className="flex justify-between items-center">
-                        <span className="text-sm font-medium text-slate-600">Parafiscales (CCF/SENA/ICBF)</span>
+                        <span className="text-sm font-medium text-slate-600">Caja de Compensación (4%)</span>
                         <span className="text-sm font-bold text-slate-800">{formatCurrency(selectedEmployee.monthlyCosts?.ccf || 0)}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm font-medium text-slate-600">SENA (2%) e ICBF (3%)</span>
+                        <span className="text-sm font-bold text-slate-800">{formatCurrency((selectedEmployee.monthlyCosts?.sena || 0) + (selectedEmployee.monthlyCosts?.icbf || 0))}</span>
                       </div>
                     </div>
                     
                     <div className="mt-4 bg-brand-50 border border-brand-100 rounded-xl p-4 flex justify-between items-center">
                       <span className="text-xs font-bold uppercase tracking-wider text-brand-700">Total Desembolso Mes</span>
                       <span className="text-lg font-black text-brand-700">
-                        {formatCurrency(
-                          (selectedEmployee.baseSalary || 0) + 
-                          (selectedEmployee.transportAllowance || 0) + 
-                          (selectedEmployee.monthlyCosts?.salud || 0) + 
-                          (selectedEmployee.monthlyCosts?.pension || 0) + 
-                          (selectedEmployee.monthlyCosts?.arl || 0) + 
-                          (selectedEmployee.monthlyCosts?.ccf || 0)
-                        )}
+                        {formatCurrency(selectedEmployee.monthlyCosts?.total || 0)}
                       </span>
                     </div>
                   </div>
